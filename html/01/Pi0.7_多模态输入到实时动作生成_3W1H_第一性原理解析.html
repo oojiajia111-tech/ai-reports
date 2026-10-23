@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>π0.7：多模态输入到实时动作生成 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>π0.7：从多模态输入到实时动作生成<span class="sub">A Steerable Model with Emergent Capabilities · Physical Intelligence · 2026-04-16</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 知乎 AI椰青《两万字学习π0.7》· 官方技术报告</div>
+    <div><b>机构</b> Physical Intelligence</div>
+    <div><b>关键词</b> 可导向泛化 · 组合式新技能 · 多模态提示</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>机器人模型泛化不了，根本原因不是"数据太少"，而是<b>同一个画面对应太多种合理动作</b>——快做还是慢做、关节控还是末端控、精做还是凑合做，数据里全都有却没告诉模型"这一次是哪种"。π0.7 的解法是把"任务描述"升级为"行为说明书"：用语言、质量/速度元数据、控制模态标签、视觉子目标图这四类提示，把行为的多义性在训练时逐条钉死。歧义一旦消除，异构机器人、人类视频、甚至质量差的自主采集数据就全部变成了可用训练信号——模型第一次在机器人上表现出 LLM 式的<b>组合泛化</b>：技能像积木一样重新拼装出训练中从未见过的任务。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个"可导向"的机器人通用大模型</h2>
+  <p>π0.7 是 Physical Intelligence 发布的通用视觉-语言-动作（VLA）模型，主打一个此前机器人模型没有的能力——<b>开箱即用的专精级性能 + 组合式泛化</b>：</p>
+  <ul>
+    <li><b>专精级灵巧</b>：大量高难度操作（如浓缩咖啡制作、叠衣、换被套）不微调就能达到此前 RL 微调专精模型 π*0.6 的速度与成功率；</li>
+    <li><b>听得懂新话</b>：能执行训练数据里从未出现过的语言指令；</li>
+    <li><b>拼出新任务</b>：把学过的技能重新组合去解新问题——比如操作没见过的厨房电器，甚至让一台<b>没有叠衣数据的机器人</b>叠衣服（跨本体迁移 + 技能重组）；</li>
+    <li><b>一个模型打天下</b>：跨机器人本体、跨场景、跨任务共用同一套权重，不再"一个任务微调一个模型"。</li>
+  </ul>
+  <p class="src">架构（公开报道）：Gemma3 4B VLM 骨干 + 约 4 亿参数视觉编码器 + 约 8.6 亿参数动作专家（流匹配目标），推理时由高层策略 + 轻量世界模型在线生成子目标图作为额外提示。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：卡住泛化的不是数据量，是数据里的"歧义"</h2>
+  <h3>公理一：模仿学习吃的是"条件分布"，条件一模糊，学出来就是一锅粥</h3>
+  <p>模型学的本质是 \(P(\text{动作}\mid\text{观测})\)。同一个"拿起杯子"的观测，数据里既有专家的精准示范，也有自主采集的失败重试；既有 5 秒完成的，也有 20 秒磨蹭的。这些全部映射到同一个条件下，模型只能学出一个"平均动作"——看起来哪都会一点，实际哪都不行。</p>
+  <h3>公理二：数据源的多样性恰恰是泛化的来源，扔掉可惜，硬吃会毒</h3>
+  <p>LLM 的组合泛化来自海量异构文本。机器人对应的数据源包括：多种机器人本体的数据、人类第一视角视频、各策略跑出来的自主数据。这些数据行为风格天差地别——<b>但这正是拼装新技能的原材料</b>。 naive 合并训练之前都失败了，因为公理一的歧义被数据多样性放大了。</p>
+  <h3>公理三：要同时满足"多吃数据"和"不歧义"，唯一出路是把条件写满</h3>
+  <p>把"这一次是什么风格的行为"显式写进条件里，条件分布就从多峰坍缩成单峰。这就是"可导向（steerable）"的数学含义：训练时条件标注消歧，推理时条件即旋钮。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：把提示从一句话升级成四通道"行为说明书"</h2>
+  <div class="step"><div class="t">Step 1 · 语言指令（做什么）</div><div class="d">任务级 + 子步骤级两层描述，如"pick up the oven mitt / open the drawer / fold the towel"。</div></div>
+  <div class="step"><div class="t">Step 2 · 元数据（做得怎么样）</div><div class="d">质量高低、速度快慢等标签。次优的自主评估数据打上"低质量/低速"标签后就能安全入库，把毒数据变成解歧信号。</div></div>
+  <div class="step"><div class="t">Step 3 · 控制模态标签（用什么方式动）</div><div class="d">声明该段数据是关节空间控制还是末端（end-effector）控制，让不同本体、不同控制风格的数据在同一框架下共存。</div></div>
+  <div class="step"><div class="t">Step 4 · 视觉子目标图（做到什么样）</div><div class="d">给出当前子步骤结束时画面"应该长什么样"的图片。训练时来自真值标注；推理时由轻量世界模型在线生成——这让模型拿到训练时没见过的目标外观，是跨场景/跨本体泛化的关键。</div></div>
+  <div class="step"><div class="t">Step 5 · 动作专家流匹配解码（实时生成）</div><div class="d">四通道提示与视觉观测一起送入 VLM 主干，动作专家以流匹配（flow matching）在动作块上做向量场回归，高频输出连续动作。</div></div>
+  <div class="fml">
+    <div class="name">动作专家的流匹配训练目标（π 系列通式）</div>
+    <div>\[ \mathcal{L}(\theta)=\mathbb{E}_{t,\,x_t\sim x_0+(x_1-x_0)t}\;\big\|v_\theta\big(x_t,\,t\,\big|\,o,\;\text{prompt}\big)-(x_1-x_0)\big\|^2 \]</div>
+    <div class="exp">说人话：把"噪声姿态 \(x_0\)"沿直线拖到"真动作 \(x_1\)"，途中随机取一个点 \(x_t\) 让网络猜"此刻该往哪走"（速度场 \(v_\theta\)）。答案永远是一条直线 \(x_1-x_0\)，所以学起来稳、推理快——这就是 π0.7 能实时出动作的原因。其中 \(o\) 是观测，prompt 就是上面四通道"行为说明书"。</div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：从"微调即服务"到"提示即服务"</h2>
+  <div class="box good"><b>价值一：数据侧的"垃圾变燃料"。</b>元数据标签让次优自主数据、人类视频、异构本体数据全部可入库，训练数据的获取成本大幅下降——这是所有机器人公司最痛的成本项。</div>
+  <div class="box good"><b>价值二：商业模式被改写。</b>机器人部署从"每个任务请人遥操作采数 + 微调"变成"给 API 发提示词"。Physical Intelligence 已在 2026-10 开放 Pi API beta：传数据、微调、云端推理一条龙。</div>
+  <div class="box good"><b>价值三：世界模型找到了第一个工程落点位。</b>世界模型不再只是"预测下个画面"的研究玩具，而是充当提示生成器，补上"目标长什么样"这块推理时信息。</div>
+  <div class="box bad"><b>局限与冷思考：</b></div>
+  <ol class="crit">
+    <li>官方自己说的是"组合泛化的<b>最初迹象</b>"（first signs）——叠衣跨本体这类演示仍是精选案例，不是全覆盖能力，别把 demo 当产品；</li>
+    <li>提示工程负担转移到了人身上：四通道标注（质量/速度/模态/子目标）需要在数据管线里逐条打标，标注体系本身就是新成本；</li>
+    <li>世界模型生成的子目标图若失真，会把推理"导向"错误目标——可导向是双刃剑，误差会顺着提示进动作；</li>
+    <li>开放性问题：视觉子目标能描述"终态长什么样"，但描述不了接触力学（摩擦、柔顺、双臂受力），精密装配类任务仍靠 RL 专精路线兜底。</li>
+  </ol>
+</div>
+
+<section>
+  <h2>一图速记</h2>
+  <p><b>一句话版本</b>：π0.7 用"四通道提示"把行为歧义钉死，于是异构脏数据全部能吃；吃下大数据后，VLA 第一次像 LLM 一样把旧技能拼成新任务。</p>
+  <p class="src">原始知乎文章：<a href="https://zhuanlan.zhihu.com/p/2096231611264246322">《两万字学习π0.7：从多模态输入到实时动作生成》</a> · 官方报告：<a href="https://www.pi.website/blog/pi07">pi.website/blog/pi07</a>（arXiv: 2604.15483）。本文基于公开技术报告独立拆解。</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解 · 由自动化工作流生成于 2026-10-23</footer>
+</div></body>
+</html>
