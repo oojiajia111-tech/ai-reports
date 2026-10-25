@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAF-VLA：把全身动作拆成三段去噪 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#2b3a7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#2b3a7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f5f9;font-weight:600;}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>HAF-VLA：别一次性猜全身，先站稳、再拧腰、最后动手<span class="sub">Hierarchical Action Flow Framework for Humanoid VLA Control · arXiv 2610.26584</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-10-19 · arXiv 2610.26584</div>
+    <div><b>机构</b> 北大 · 北京人形机器人创新中心 · 南开 · 西安交大</div>
+    <div><b>关键词</b> 分层动作流 · 跨阶段 KV 缓存 · 全身 Loco-Manipulation</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>全身 VLA 的老毛病不是模型不够大，而是<b>把腿、腰、手塞进同一个去噪过程一起猜</b>——脚还没站稳，手已经开始聪明，误差互相污染。HAF-VLA 只改一件事：<b>生成顺序</b>。先出腿和头，再补腰，最后双臂双手，每个阶段用干净动作的 KV 缓存把"身体已经承诺了什么"传给下一阶段。骨架权重挂载不动，只多一个阶段嵌入。六项真机任务均分 68.3%，比最强基线高 15 个百分点。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：给现成的 VLA 加一个"分阶段出动作"的骨架</h2>
+  <p>HAF-VLA 不是一个从零训的新大模型，而是一层<b>适配结构</b>：拿一个预训练好的 flow-matching 通用 VLA（会做桌面操作的那种），原封不动继承它的视觉-语言前缀编码器和动作专家（action expert）权重，只在生成动作的方式上动刀——把一个"一次性去噪整个动作块"的过程，拆成<b>三个累积阶段</b>：</p>
+  <ol>
+    <li><b>Stage 1</b>：locomotion（腿/底盘）+ 技能模式 + 头部朝向 → 先把"站在哪、看着哪"定下来；</li>
+    <li><b>Stage 2</b>：叠加 waist（腰/躯干）→ 定"身体朝向与高度"；</li>
+    <li><b>Stage 3</b>：叠加 arms + hands（双臂与手指）→ 最后才是"手怎么动"。</li>
+  </ol>
+  <p>关键在于三个阶段操作的是<b>同一个共享动作空间</b>，只是每阶段"激活"的维度不同；阶段之间靠两样东西连接：一个是可学习的<b>阶段嵌入</b>（告诉那个共享的动作专家"现在轮到哪块身体"），另一个是<b>跨阶段 KV 缓存</b>（把前一段已经定稿的干净动作，作为条件塞给下一段）。</p>
+  <table>
+    <tr><th>对照项</th><th>单阶段全身生成</th><th>HAF-VLA 三阶段</th></tr>
+    <tr><td>一次前向要猜的维度</td><td>全身所有关节</td><td>只猜当前激活的那一块</td></tr>
+    <tr><td>腿/腰/手的依赖</td><td>隐式、靠模型自己悟</td><td>显式、靠缓存递进传递</td></tr>
+    <tr><td>可执行性</td><td>手很聪明但下身飘 → 上身疯狂补偿</td><td>下身先立住 → 上肢不需要补偿</td></tr>
+    <tr><td>参数增量</td><td>—</td><td>仅阶段嵌入，专家权重共享</td></tr>
+  </table>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：这条公理链只有四步，但每一步都指向同一个结论</h2>
+  <h3>公理一：人形动作空间是"高维且强耦合"的，不存在可以独立优化的关节组</h3>
+  <p>腿一动，重心就变；重心一变，腰必须补；腰一补，手的位置全错。抓夹爪机械臂时你可以假设底座不动，人形不能——<b>每个自由度的动作都会改写其他自由度的约束</b>。这是物理，不是模型能力问题。</p>
+  <h3>公理二：把耦合变量丢进同一个去噪过程，等于让模型"同时解所有方程"</h3>
+  <p>扩散/流匹配本质是把一个高维联合分布整体去噪。维度越高、耦合越强，单次去噪要同时满足的约束越多，模型只能给出一个"平均意义上像样"的折中解。表现出来的现象论文说得很准：<b>基座与腰部略有偏差，上肢就会做出剧烈补偿</b>——手在拼命纠正腿的错。</p>
+  <h3>公理三：耦合有方向——下肢是"因"，上肢是"果"，所以顺序不能反</h3>
+  <p>这是全篇最硬的一步。既然腿决定身体在哪、腰决定身体朝哪，那么"手该伸多远"就只是前两者的<b>下游计算结果</b>。既然有因果方向，就不该联合求解，而该<b>按因果顺序逐段求解</b>。反过来做（先动手再定腿）在物理上无解。</p>
+  <h3>公理四：分段求解必须解决"忘记前面承诺"的问题，否则等于把耦合扔了</h3>
+  <p>分三段最大的风险是：第三段生成手的时候，把第一段已经定好的落脚点忘了，结果手伸出去、身体歪掉。所以必须显式地把"前一段的定稿"喂给后一段——这就是跨阶段 KV 缓存存在的唯一理由。它保证<b>分层不割裂</b>：既分开算，又不失忆。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：三张掩码、一次缓存、一个损失</h2>
+
+  <div class="step"><div class="t">Step 1 · 把动作空间切片，用"累积掩码"控制谁被激活</div><div class="d">全身动作向量按身体部位分成三组：\(G_L\)（腿 + 技能模式 + 头）、\(G_W\)（腰）、\(G_A\)（双臂 + 手）。第 \(s\) 阶段只对属于 \(\mathcal{D}_s\) 的维度做去噪，其余维度输入置零、目标速度也置零——意思是"这块现在别动，但也别忘"。</div></div>
+  <div class="fml">
+    <div class="name">公式 1 · 累积掩码：每阶段只激活自己那块身体</div>
+    <div>\[ \mathbf{m}^{(s)}_{i}=\begin{cases}1,& i\in\mathcal{D}_s=\bigcup_{k\le s}G_k\\[2pt] 0,& \text{otherwise}\end{cases}\qquad \tilde{A}^{(s)}_{t}=\mathbf{m}^{(s)}\odot A_t \]</div>
+    <div class="exp">说人话：\(\mathbf{m}^{(s)}\) 是一串 0/1 开关，第 1 阶段只开"腿+头"，第 2 阶段把"腰"也打开，第 3 阶段全开。\(\tilde{A}^{(s)}_t\) 就是"只把本阶段该管的那几个关节喂进去，其他关节按零处理"。注意是<b>累积</b>的：到第 3 阶段，前面已经定稿的维度依然是激活状态——所以后段可以<b>软修</b>前段，而不是推倒重来。</div>
+  </div>
+
+  <div class="step"><div class="t">Step 2 · 每阶段收尾时，把"干净动作"压成 KV 缓存</div><div class="d">某阶段去噪循环结束时，会得到一个干净的动作预测 \(\hat{A}^{s}\)。把它连同阶段嵌入 \(e_s\) 和视觉-语言缓存 \(\mathcal{C}_{vl}\) 再喂进共享动作专家一次，把这一趟产生的 self-attention 的 Key/Value 收起来，记作 \(\mathcal{C}_s\)。</div></div>
+  <div class="fml">
+    <div class="name">公式 2 · 跨阶段条件：后一段必须"看得见"前一段的定稿</div>
+    <div>\[ \mathcal{C}_s=\mathrm{KV}\Big(\text{ActionExpert}\big(\hat{A}^{s},\,e_s,\,\mathcal{C}_{vl}\big)\Big),\qquad v_\theta^{(s)}=v_\theta\big(A^{(s)}_t,t\;\big|\;\mathcal{C}_{vl},\;\{\mathcal{C}_{k}\}_{k&lt;s}\big) \]</div>
+    <div class="exp">说人话：\(\hat{A}^{s}\) 是第 \(s\) 阶段"定稿的动作"，\(\mathcal{C}_s\) 就是它的"记忆条"。生成第 3 阶段（手）时，模型不是只看图和语言指令，还能翻前两段的记忆条——<b>"我脚已经踩在这、腰已经拧到 30 度了，那手最多只能伸这么远"</b>。这就是分层却不割裂的机制保证，也是为什么不需要给每个身体部位单独配一个专家网络。</div>
+  </div>
+
+  <div class="step"><div class="t">Step 3 · 一个损失函数监督所有阶段的所有维度</div><div class="d">照旧是 flow matching：把噪声动作沿直线拖向真动作，让网络回归速度场。区别只在于每阶段乘上自己的掩码，并且对"本阶段不该动的维度"给出零目标速度。</div></div>
+  <div class="fml">
+    <div class="name">公式 3 · 分阶段流匹配损失（论文的核心训练目标）</div>
+    <div>\[ \mathcal{L}(\theta)=\mathbb{E}_{s,\,t,\,A_0,A_1}\left[\sum_{i}\Big\|\,\mathbf{m}^{(s)}_{i}\,v^{(s)}_{\theta,i}-\mathbf{m}^{(s)}_{i}\,(A_1-A_0)_{i}\Big\|^{2}\right],\quad A_t=(1-t)A_0+tA_1 \]</div>
+    <div class="exp">说人话：\(A_0\) 是纯噪声、\(A_1\) 是专家示范的真动作，\(A_t\) 是二者连线上随机取的一点。网络要猜的是"从这点该往哪走"，正确答案永远是那条直线 \(A_1-A_0\)。掩码 \(\mathbf{m}^{(s)}\) 起两个作用：非激活维度目标速度被压成 0（于是模型学会"现在别动它"），激活维度照常回归。<b>每个维度在每个阶段都被监督</b>——这才是后段能温和修正前段的底层原因：它一直被要求对全部维度负责，只是权重不同。</div>
+  </div>
+
+  <div class="step"><div class="t">Step 4 · 后训练时只动"噪声"，不动骨干（HAF-Steer / DSRL-DCT）</div><div class="d">离线示范跟真机总有落差，而在线 RL 微调整个大 VLA 又贵又危险。做法是利用 flow matching 的<b>可逆性</b>：把专家动作块反向穿过冻结的流场，得到它对应的"初始噪声"；用 DCT 把这个高维噪声压到低频系数，得到一个紧凑潜空间；然后在这个低维空间里跑 SAC（最大熵），加行为克隆正则项稳住训练。骨干全程冻结。</div></div>
+  <div class="fml">
+    <div class="name">公式 4 · 在噪声子空间里做 RL</div>
+    <div>\[ z=\mathrm{DCT}\big(\text{Flow}^{-1}_{\theta}(A^{\text{expert}})\big)_{1:K},\qquad J(\pi)=\mathbb{E}_{\pi}\Big[\sum_t r_t-\alpha\log\pi(z_t\mid o_t)\Big]+\beta\,\big\|\pi(z\mid o)-\pi_{\text{BC}}(z\mid o)\big\|^2 \]</div>
+    <div class="exp">说人话：\(\text{Flow}^{-1}\) 把"好动作"倒推回"它是从哪团噪声长出来的"，DCT 只留前 \(K\) 个低频系数 \(z\)——相当于把上千维的噪声压成几十维的"风格旋钮"。然后只调这些旋钮：\(r_t\) 是任务奖励，\(-\alpha\log\pi\) 是鼓励探索的熵项，最后一项 \(\beta\|\cdot\|^2\) 是"别离示范太远"的缰绳。<b>好处：既探索又不会把基座训崩，算力和真机风险都下降一个量级。</b></div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：一次"结构免费午餐"，但账单还在后面</h2>
+  <div class="box good"><b>价值一：几乎零参数成本的改造。</b>不加专家网络、不重训骨干，只加阶段嵌入和一个 KV 缓存机制，就把通用移动操作 VLA 拉到全尺寸人形平台上。这对已有基座的团队是极低成本升级路径。</div>
+  <div class="box good"><b>价值二：把"物理因果"写进了生成顺序。</b>先腿后腰再手，不是工程审美，是重力与支撑多边形的因果顺序。这类"把物理先验编码进推理结构"的思路，比再堆十倍数据更可持续。</div>
+  <div class="box good"><b>价值三：消融指向结构本身。</b>论文报告分层相比"无分层全局生成"任务成功率提升超 13 个百分点，且增益可归因于阶段顺序与跨阶段条件，而非多花的去噪步数或额外监督——这一点比总成绩更有说服力。</div>
+  <div class="box bad"><b>局限与冷思考：</b></div>
+  <ol class="crit">
+    <li><b>延迟是明账。</b>三个阶段串行去噪，推理时间自然变长，而全身控制对实时性极敏感。论文自己也把"额外去噪延迟"写进局限——真机上必须靠动作块长度或蒸馏来补。</li>
+    <li><b>统计强度不足。</b>主结果是 10 次 rollout 的均值，论文附录承认这些区间不构成显著差异证据。68.3% vs 53.3% 的 15 个百分点，需要更多试验与跨场景复现才能坐实。</li>
+    <li><b>强依赖基座的语义先验。</b>它继承的是现成 VLA 的语言-视觉理解，基座认不出的物体、听不懂的指令，分层结构救不回来。这不是"通用具身智能"，是"通用 VLA 的人形适配器"。</li>
+    <li><b>任务面窄、平台单一。</b>六到七项家庭场景长流程任务、天工平台，透明/柔性/高精度装配这些硬骨头没覆盖；DSRL 训练中还出现过因探索不安全而中止的情况——安全边界仍未解决。</li>
+    <li><b>归一化任务分不等于成功率。</b>主指标是按里程碑子目标加权的分数，比 pass/fail 更宽松；读表时别把它当成"能完成任务的比例"。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>一图速记</h2>
+  <p><b>一句话版本</b>：把"全身一起猜"改成"腿→腰→手依次猜，并把前一段定稿当记忆传给下一段"，一个冻结的通用 VLA 就学会了全身干活。</p>
+  <p><b>三句话记住</b>：① 耦合有方向，下肢是因、上肢是果，所以顺序必须是腿→腰→手；② 分段的唯一风险是失忆，KV 缓存就是防失忆的那根线；③ 后训练别碰骨干，把动作倒推成噪声、用 DCT 压成几十个旋钮再调。</p>
+  <p class="src">论文：<a href="https://arxiv.org/abs/2610.26584">HAF-VLA: Hierarchical Action Flow Framework for Humanoid Vision-Language-Action Control</a>（Langzhe Gu 等，arXiv:2610.26584v1，2026-10-19）。本文基于论文摘要与公开技术解读独立拆解；公式为依据论文所述机制（累积掩码、跨阶段 KV 缓存、分阶段流匹配损失、DCT-SAC 后训练）整理的标准表达，细节以原文为准。</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解 · 由自动化工作流生成于 2026-10-25</footer>
+</div></body>
+</html>
