@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RynnUnify：让机器人在脑子里把下一步演一遍 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);color:#0b3f7a;font-weight:600;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>RynnUnify：让机器人在"脑子里"把下一步演一遍<span class="sub">RynnUnify: Towards Unified Embodied Brain · 16B 统一具身模型 · 阿里巴巴达摩院 · arXiv 2610.32965</span></h1>
+  <div class="meta">
+    <div><b>来源</b> arXiv 2610.32965（Alibaba DAMO Academy）</div>
+    <div><b>论文发布</b> 2026-10-23 · arXiv 2610.32965</div>
+    <div><b>机构</b> 阿里巴巴达摩院 RynnUnify Team（23 位作者）</div>
+    <div><b>关键词</b> 视频-语言交错推理 · 8B+8B MoT · GSPO 路由 · 世界-动作模型</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>机器人做长任务老出错，不是"看不懂"，而是<b>想和做是两套系统</b>：高层只会用文字规划，底层看不见下一步长什么样。RynnUnify 把 8B 语言推理与 8B 视频生成塞进同一套注意力——先在脑子里把下一步<b>演成视频</b>，再拿视频特征直接回归动作；还用强化学习学会<b>什么时候值得演一遍</b>。统一不是把模块拼在一起，而是让"预测"成为"控制"的输入。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个模型包下"看懂、预演、动手"三件事</h2>
+  <p>RynnUnify 是阿里达摩院的 <b>16B 统一具身模型</b>，意义在于它把过去分属三个模型的活儿压进了一套权重：</p>
+  <ul>
+    <li><b>看懂</b>：空间推理、物理预测、可供性（哪里能抓、哪里能踩）定位，以及抓取/交互区域/轨迹的空间定位；</li>
+    <li><b>预演</b>：长程视觉规划——不只输出"下一个子任务是什么"的文字，还输出"执行这段时画面会怎么变"的视频；</li>
+    <li><b>动手</b>：世界-动作扩展（WAM），把视频特征直接接到动作头上，控制真机。</li>
+  </ul>
+  <p>架构是 Mixture-of-Transformers（MoT）：<b>8B 自回归推理器</b>（继承 Cosmos3，参数基本不动）+ <b>8B 扩散生成器</b>，两条分支参数各自独立，但通过<b>联合注意力</b>打通——生成器能看推理器的表征，推理器也能用上生成的画面。</p>
+  <p>三类评测各自拿到了什么：</p>
+  <table>
+    <tr><th>能力</th><th>基准</th><th>RynnUnify</th><th>关键对照</th></tr>
+    <tr><td>具身理解</td><td>10 项公开基准平均</td><td>57.9</td><td>Cosmos 3 Nano 53.2 / RxBrain 44.9</td></tr>
+    <tr><td>长程视觉规划</td><td>Rynn-VP overall</td><td>54.80</td><td>Cosmos 3 Nano 45.05（+9.75）</td></tr>
+    <tr><td>预期性推理</td><td>Rynn-GEU 平均</td><td>50.0</td><td>直接回答 44.0（+6.0）</td></tr>
+    <tr><td>仿真操作</td><td>RoboCasa365 Selected-20</td><td>51.5%</td><td>CMA 47.0 / Xiaomi-Robotics-1 46.0 / Cosmos3 45.0</td></tr>
+    <tr><td>真机操作</td><td>Astribot S1 三任务</td><td>46.7%</td><td>GR00T N1.7 26.7% / π0.5 25.0%</td></tr>
+  </table>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：文字规划天然是"低带宽"的，画面才是高带宽的</h2>
+
+  <h3>公理一：语言说不清"下一步该长什么样"</h3>
+  <p>"把碗端起来"这四个字，丢掉了碗在哪、手从哪个角度进、端起多高、旁边有没有别的东西。模型只能靠猜。长程任务的失败大多不是某一步错，而是<b>误差在几十个子任务里累积</b>——每一步都猜一点，最后必然偏。要压住这个误差，需要一条比文字更宽的信道。</p>
+
+  <h3>公理二：视频预测是"物理直觉"最省事的压缩形式</h3>
+  <p>想知道推一下杯子会怎样，不用写刚体动力学方程，直接预测下一帧画面就行。视频里已经隐含了重力、接触、支撑、遮挡——<b>它是物理规律的像素级隐式表达</b>。所以"会生成视频"这件事，和"懂物理"是同一件事的两种说法。</p>
+
+  <h3>公理三：但"看懂"和"生成"要的表征正好相反，硬共享参数会打架</h3>
+  <p>理解需要<b>抽象</b>——把画面压成"这是一个抽屉"；生成需要<b>细节</b>——保留木纹、光照、边缘。让一套参数同时干这两件事，等于让同一个人既当编辑又当画师，两头都别扭。解法是承认矛盾：<b>参数分开（8B+8B），信息打通（联合注意力）</b>。这就是 MoT 的第一性理由。</p>
+
+  <h3>公理四：预演不免费，所以必须学会"什么时候不该预演"</h3>
+  <p>生成一段视频的算力远高于直接吐一句话。对"这个杯子是空的吗"这种问题，演一遍纯属浪费，还容易引入幻觉；对"我把这摞盘子推过去会不会倒"这种问题，演一遍价值巨大。<b>"要不要想"本身就是一个必须学出来的策略</b>，不是写死的规则——这就引出了后面的强化学习路由。</p>
+
+  <h3>公理五：预演要对控制有用，就必须和动作对齐在同一时间尺度上</h3>
+  <p>视频特征再漂亮，不能落到 50 步的动作上就是废的。所以动作头不能只看当前图像，要<b>直接把生成器第 36 层的视频隐状态当 key/value 读进来</b>，把"未来会发生什么"变成"现在这 48 步该怎么动"。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：一套注意力、三个公式、四次接力训练</h2>
+
+  <h3>1. 让两条分支"看见彼此"</h3>
+  <p>推理器吃文本、图像、历史，输出"下一个子任务 + 这段执行时画面该怎么变 + 预计几秒"；生成器据此预测未来视频。视频用因果 VAE 编码（空间压 16×、时间压 4×），序列按下面的方式拼接——注意场景记忆是<b>整块挂在主视频前面</b>，而不是插进时间轴，避免打乱时序位置编码：</p>
+  <div class="fml">
+    <div class="name">输入序列组织（论文式 1）</div>
+    <div>\[ \mathbf{S}_t=\Big[\underbrace{\mathbf{S}_{\mathrm{AR}}}_{\text{文本与推理 token}};\underbrace{\mathbf{Z}_{\mathrm{mem}}^{(0)},\dots,\mathbf{Z}_{\mathrm{mem}}^{(3)}}_{4\ \text{帧场景记忆}};\ \mathbf{z}_t\Big] \]</div>
+    <div class="exp">说人话：模型每一帧要参考四张"老照片"——固定的第一帧、早期挑的 2 个关键帧、最近一步的参考帧。它们独立编码、整块拼在主视频前面，加上"上一段视频的连续前缀"补细节。<b>这就是机器人能记住"抽屉已经开过了"的机制</b>，也是长程任务不重复劳动的前提。训练时还会故意用不完美的记忆（self-forcing），逼模型在不干净的历史下也能续上。</div>
+  </div>
+
+  <h3>2. 视频分支：只在"该预测的位置"算损失</h3>
+  <div class="fml">
+    <div class="name">视频生成分支的流匹配损失（论文式 3）</div>
+    <div>\[ \mathcal{L}_G=\mathbb{E}\left[\frac{1}{|\Omega|}\sum_{j\in\Omega}\left\|v^{G}_{\theta}\left(\mathbf{z}_t,t,\mathbf{c}\right)_j-v^{\star}_{t,j}\right\|_2^2\right] \]</div>
+    <div class="exp">说人话：\(\mathbf{z}_t\) 是被加了噪声的视频潜变量，\(t\) 是"噪声混到几成"，\(\mathbf{c}\) 是文本与图像条件；网络要猜的是<b>速度场</b> \(v^\star\)，也就是"从噪声指向真视频的方向"。猜对了，从纯噪声走几步就能"洗"出一段符合物理的未来。\(\Omega\) 是只包含真正需要预测的主视频位置——场景记忆那几帧、条件帧都不算损失。<b>不这么做，模型会去抄条件帧偷懒，学不到"未来"。</b></div>
+  </div>
+
+  <h3>3. 学会"什么时候值得演一遍"：BCPO 双分支强化学习</h3>
+  <p>把每个问题拆成两条路：<b>直接答</b>（D）与<b>生成后答</b>（G）。同一问题各采 4 条轨迹，先在分支内比高低，再拿两个分支的平均奖励差，去教模型"该不该调用生成器"。生成器全程冻结，只训 agent。</p>
+  <div class="fml">
+    <div class="name">分支内 GSPO + 路由软目标 + 联合目标（论文式 4~7）</div>
+    <div>\[ \hat{A}_{z,i}=\frac{r_{z,i}-\mu_z}{\sigma_z+\epsilon},\qquad \mathcal{L}_{\mathrm{GSPO}}=-\mathbb{E}\Big[\min\big(\rho_{z,i}\hat{A}_{z,i},\ \mathrm{clip}(\rho_{z,i},1-\varepsilon_{\mathrm{low}},1+\varepsilon_{\mathrm{high}})\hat{A}_{z,i}\big)\Big] \]</div>
+    <div>\[ q_G(x)=\mathrm{sg}\!\left[\sigma\!\left(\frac{\mu_G-\mu_D}{T_{\mathrm{route}}}\right)\right],\qquad \mathcal{L}_{\mathrm{RL}}=\mathcal{L}_{\mathrm{GSPO}}+\lambda_{\mathrm{route}}\mathcal{L}_{\mathrm{route}}+\beta\mathcal{L}_{\mathrm{KL}}-\eta H \]</div>
+    <div class="exp">说人话：第一行是"同一路线里排队打分"。\(\hat{A}\) 是<b>归一化后的相对优势</b>——不看绝对分，只看你在同组里比平均好多少，这样奖励尺度怎么变都不影响训练。\(\rho\) 是新旧策略的概率比，外面套一个 clip 把更新幅度夹住，防止一次学太猛。<br>第二行是"要不要演"的软标签：\((\mu_G-\mu_D)/T\) 就是<b>两条路的平均分差</b>。演一遍平均分更高，这个值就大，模型就越倾向调用生成器；两条路差不多，就退化成 50/50。\(\mathrm{sg}\) 表示梯度不从这里回传——目标由数据定，不让模型自己改考卷。最后一行把三件事加在一起：路线内变强、路由选对、别跑离原始模型太远（KL 正则）同时别变得太死板（熵奖励 \(H\)）。</div>
+  </div>
+
+  <h3>4. 接上动作头：把"未来画面"变成"现在这 48 步"</h3>
+  <p>世界-动作扩展的三段式：推理器读任务指令 + 当前三路相机（左、腕、右）+ 视觉历史（最多 12 张图），输出一个<b>连续的子任务潜变量</b>；生成器用它作条件预测未来视频；动作头读生成器全部 36 层的隐状态，用 18 个 block 做交叉注意力——<b>动作 token 当 query，视频特征当 key/value</b>，每个 block 盯住生成器相邻的 2 层。</p>
+  <div class="fml">
+    <div class="name">动作头的流匹配损失与 Stage III 总目标（论文式 10~11）</div>
+    <div>\[ A_\sigma=(1-\sigma)A+\sigma\epsilon_a,\qquad \mathcal{L}_{\mathrm{act}}=\mathbb{E}_{\sigma,\epsilon_a}\Big[\mathrm{MSE}\big(E_\psi(A_\sigma,\sigma;H),\ \epsilon_a-A\big)\Big] \]</div>
+    <div>\[ \mathcal{L}_{\mathrm{III}}=\mathcal{L}_{\mathrm{act}}+0.01\,\mathcal{L}_{\mathrm{pose}}+0.005\,\mathcal{L}_{\mathrm{rel}} \]</div>
+    <div class="exp">说人话：和视频那边同一个套路，只是对象换成了动作块 \(A\in\mathbb{R}^{48\times 12}\)——真动作里混噪声 \(A_\sigma\)，网络 \(E_\psi\) 看噪声动作、噪声强度 \(\sigma\) 和<b>视频特征 \(H\)</b>，去猜"指向真动作的方向" \(\epsilon_a-A\)。\(H\) 就是关键：动作不是从图像直接猜的，而是<b>从"未来画面"里读出来的</b>。训练时还加了个相机位姿头当"几何家教"（\(L_{\mathrm{pose}}\) 绝对位姿、\(L_{\mathrm{rel}}\) 相机间相对变换），权重压得很小（0.01 / 0.005），只做辅助不抢戏。部署时一次去噪、取 48 步里的前 16 步执行；12 维动作含底盘平移、偏航、躯干高度、末端位姿、夹爪与控制模式。</div>
+  </div>
+
+  <h3>5. 四次接力训练</h3>
+  <div class="step"><div class="t">Stage 1 · 推理器微调</div><div class="d">练四样本事：时空理解、物理接地、子任务规划、视频提示词撰写（还要预测"这段该演几秒"）。关键设计是把"写提示词"和"读预测视频"拆成两轮对话来监督——先学会问对问题，再学会从答案里提取证据。</div></div>
+  <div class="step"><div class="t">Stage 2 · 生成器训练</div><div class="d">用长时程第一视角视频、机器人操作视频、具身推理视频，配场景记忆与 self-forcing，专治长序列生成越跑越糊。</div></div>
+  <div class="step"><div class="t">Stage 3 · Agentic RL</div><div class="d">22,007 道题、883 道验证，每次更新 64 题 × 8 条 rollout，奖励 = 格式合法（0/1）× 答案质量（0~1）。只更新 agent，生成器冻结。</div></div>
+  <div class="step"><div class="t">Stage 4 · 机器人适配</div><div class="d">约 1,600 小时原子任务 + 177 小时 RoboCasa365 复合任务轨迹，冻结推理器与生成器原动作输出层，只训生成器 + 新动作头 + 位姿头。</div></div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：最像"具身大脑"的一次尝试，也暴露了它的账单价</h2>
+  <div class="box good"><b>价值一：把"世界模型"从演示品变成了控制通路。</b>过去"预测未来视频"多停在展示页，RynnUnify 让动作头直接读视频隐状态——预测不再是旁白，而是决策的输入。这是"世界模型有用"最硬的工程证据。</div>
+  <div class="box good"><b>价值二：解决了统一模型的老矛盾。</b>MoT 用"参数分开、注意力打通"绕过"理解要抽象、生成要细节"的冲突，比强行共享一套权重更符合第一性。8B+8B 的组合也让两条分支各自保持专精。</div>
+  <div class="box good"><b>价值三：会"省着用"算力。</b>BCPO 用分支奖励差当软标签，让模型自己决定要不要预演。这比写死"每步都生成一段视频"务实得多，也是把世界模型推向实时可用的必要一步。</div>
+  <div class="box good"><b>价值四：全套能力放在同一个底座上评测。</b>自建 Rynn-VP（长程视觉规划）与 Rynn-GEU（预期性推理）两个基准，把"看懂—预演—动手"串成一条可测的链，比各说各话的分数更有说服力。</div>
+
+  <div class="box bad"><b>局限与冷思考：</b></div>
+  <ol class="crit">
+    <li><b>真机 46.7%，离可用还差得远。</b>三个任务里最难的 Block Swapping（交换红蓝方块）只有 <b>35.0%</b>，说明"精细对位"仍是短板——而恰恰是这类任务，视频预测提供的信息量最大。</li>
+    <li><b>"统一"未必打得过"拼装"。</b>Rynn-VP 上 54.80 分虽超过 Cosmos 3 Nano（45.05），却明显输给 <b>GPT-5.6 Terra + MiniMax-H3 的外挂组合（65.71）</b>。论文诚实列了这个数——它意味着：在纯"规划质量"上，一个通用大模型 + 一个专用视频模型，眼下仍强于单个 16B。</li>
+    <li><b>理解精度交了学费。</b>UMM 里平均分第一（57.9），但纯理解模型 RynnBrain-8B 有 61.2。把生成塞进同一个模型，理解能力要付出代价，这是 MoT 路线的隐性成本。</li>
+    <li><b>延迟与实时性的账没算清。</b>即便一次去噪，视频生成仍是重计算；论文的真机实验是桌面级、单任务、20 次试验，没有给出闭环控制频率与端到端时延。</li>
+    <li><b>路由依赖奖励设计。</b>\(\mathcal{L}_{\mathrm{route}}\) 的软标签来自"答案质量分"，而答案质量分由模型（GPT-5.6-Luna 等）判。评测裁判的水平，直接决定"该不该演"学得对不对——这是把评测偏差写进策略的典型风险。</li>
+    <li><b>作者自陈的方向性问题。</b>结论把"统一"作为未来方向，但当前数据（真机 46.7%、最长程任务仍需靠视觉历史硬记）说明：多模态统一解决了"信息通路"，还没解决"动作精度"。</li>
+  </ol>
+  <p class="src">一句话总结：RynnUnify 的价值不在于分数全面领先，而在于它把"预演"变成了控制系统里的一个可开关模块，并证明了——让模型自己决定何时预演，比让它一直预演更划算。</p>
+</section>
+
+<footer>素材：arXiv 2610.32965（2026-10-23 提交，cs.RO）· 项目页 alibaba-damo-academy.github.io/RynnUnify.github.io · 代码 github.com/alibaba-damo-academy/RynnUnify</footer>
+</div></body>
+</html>

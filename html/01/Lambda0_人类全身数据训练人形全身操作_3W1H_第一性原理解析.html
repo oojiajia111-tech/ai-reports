@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>λ₀：用人类全身数据训出人形全身操作 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);color:#0b3f7a;font-weight:600;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>λ₀：别再"买台机器人"采数据，让人自己走一遍<span class="sub">λ₀: Scaling Open-World Egocentric Human Data for Humanoid Loco-Manipulation · 阿里高德 × ATH · arXiv 2610.18950</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-25</div>
+    <div><b>机构</b> 阿里巴巴高德 × ATH（Lambda-humanoid Team）</div>
+    <div><b>关键词</b> 无本体采集 · 人机动作对齐 · 全身移动操作</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>人形机器人学不会全身干活，卡点不在算法，而在"每条示范都得先搬一台机器人到场"。λ₀ 把采集挪到人身上：头显+5 个 tracker+颈挂 GoPro 随走随采，单条示范从 100 秒压到 <b>29 秒</b>；再用"缩身对齐→离线 IK→动力学微调"三步把人的动作翻译成人形能执行的指令，末端误差从 <b>17 cm 砍到 3.8 cm</b>。数据一上规模，真机成功率跟着涨。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一套"不用机器人"的人形全身数据流水线 + 一个模型</h2>
+  <p>λ₀ 是阿里巴巴高德与 ATH 联合发布的人形机器人<b>全身移动操作（loco-manipulation）基座模型</b>。它最反常识的一点：训练它的核心数据，<b>采集过程中一台机器人都没到场</b>——全靠人戴设备在真实场景里"正常干活"。</p>
+  <p>产出有两个（缺一不可）：</p>
+  <ul>
+    <li><b>HumanVerse-500</b>：500 小时开放世界人形全身移动操作数据集，每条样本是"第一视角视频 + 同步的全身骨骼与双手动作"。场景覆盖厨房、办公室、零售、客厅，动作覆盖走、蹲、弯腰、站立变换。</li>
+    <li><b>λ₀ 模型</b>：Qwen3.5-2B 视觉-语言骨干 + 生成式动作专家。输出不是关节角，而是 64 维<b>运动 token</b>（喂给 SONIC 全身控制器）+ 双手各 6 维手势指令，合计 76 维/步，一次预测 50 步动作块。</li>
+  </ul>
+  <p>成绩单（全部<b>零样本</b>，即目标任务的机器人示范一条都不用）：在 SIMPLE 仿真基准上成功率 <b>90.0%</b>（ACT 82.8 / Ψ₀ 85.6 / StarVLA 86.1 / GR00T N1.6 48.9）；在 Unitree G1 真机 7 项全身与长程任务上平均成功率 <b>62.5%</b>、任务进度 80.4%。</p>
+  <p class="src">注：公众号原文是 10 月 26 日晚讲座的预告（主讲人姜一铭，北航博士、λ₀ 核心贡献者），正文较短；本篇解析以该讲座指向的技术报告 arXiv 2610.18950 与开源仓库为主要素材，确保机制与数字可核对。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：人形机器人的瓶颈是一道"采集成本"的算术题</h2>
+
+  <h3>公理一：动作能力的上限 = 监督信号的数量 × 与本体的一致性</h3>
+  <p>机器人学动作只有一条路——看足够多的"这个画面下该这么动"。所以能力上限被两个量死锁：能拿到多少条示范，以及示范里的动作和目标机器人有多一致。想让它会一百种活，就得有一百种活的示范。</p>
+
+  <h3>公理二：传统采集把"数量"这一项锁死了</h3>
+  <p>整机遥操作要求：有一台空闲机器人、有位会操作的师傅、每次失败还得人工把场景复位。这三件事都不随人力扩张而变便宜。结果就是——<b>数据规模的天花板 = 公司有多少台机器人 × 每天能用几小时</b>。这是个物理约束，靠调参破不了。</p>
+
+  <h3>公理三：人的第一视角视频便宜到几乎免费，但它天生"缺半截身体"</h3>
+  <p>第一视角视频满大街都是，可市面上大量 VLA 只从视频里恢复<b>手腕和手指</b>轨迹。这在"站着不动拧螺丝"够用，在"走过去、蹲下、把箱子从地上搬起来"完全不够——因为撑起这个动作的是<b>腿、腰、重心的位移</b>，而手腕轨迹里看不到这些。要全身，就必须同步记录位移、姿态、双手三样东西。</p>
+
+  <h3>公理四：跨本体别指望"动作一样"，只能指望"末端落点一样"</h3>
+  <p>人高 1.8 米、手臂 7 自由度；G1 高 1.3 米、29 个自由度、还挂在一条全身控制器下面。要求"关节角一一对应"是死路。但有一件事两者必须一致：<b>手最后要停在物体的哪个位置、以什么姿态接触</b>。所以对齐的目标函数只能是末端位姿误差，不是关节角误差——这是整个管线设计的原点。</p>
+
+  <h3>公理五：对齐不能只做几何，因为最后一公里是控制器的动力学</h3>
+  <p>就算用逆运动学把人姿态解成 G1 的关节角，真正跑起来还有惯性、延迟、足底打滑、力矩饱和。所以必须让控制器<b>实际跑一遍</b>，量出偏差，再回头改输入。相当于"先按图纸做，再按实物修"。</p>
+
+  <div class="box good"><b>五条公理合起来就是 λ₀ 的解法：</b>把采集从机器人身上挪到人身上（破公理二的锁）→ 记全身而不只是手（补公理三的缺）→ 以末端位姿为目标做三段对齐（解公理四）→ 用真实 rollout 闭环修正（处理公理五）→ 最后检验"数据变多，能力是否真的变强"（验公理一）。</div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：三件设备采数据，三道工序做翻译，三个阶段喂模型</h2>
+
+  <h3>第一层：采集——把"采数据"降级成"上班干活"</h3>
+  <div class="step"><div class="t">Step 1 · 硬件只要三样</div><div class="d">PICO 4 Ultra 头显（头手追踪）+ 5 个 PICO Tracker（双腕、腰、双踝）+ 颈挂 GoPro（高度与俯仰刻意对齐机器人头部相机）。全身 + 双手 + 第一视角画面，一次录全，50 Hz 同步，落成 LeRobot 格式。</div></div>
+  <div class="step"><div class="t">Step 2 · 动作重建</div><div class="d">重建成 SMPL 全身骨架 + 双手姿态。单只手的状态是 138 维：3D 腕位置 + 6D 旋转 + 20 个关键点 × 3 坐标。这是"人这一侧"的原始语言。</div></div>
+
+  <h3>第二层：对齐——这一步决定成败，占整篇论文的技术含量</h3>
+  <div class="step"><div class="t">Step 3 · 先对齐"眼睛"，再对齐"手"</div><div class="d">视角：同款相机模型、拍摄高度与安装位置对齐机器人头部。手臂外观：用 SAM2 把小臂和腕上的 tracker 抠掉，DiffuEraser 补背景，再把 G1 的手臂按对齐后的关节渲染回去贴到画面上。这样模型看到的是"人视角 + 机器人手臂"，人机差距被抹平在第一帧。</div></div>
+  <div class="step"><div class="t">Step 4 · 人体参考对齐（粗）</div><div class="d">人和 G1 身高差太多，手会飘到目标之外。把 SMPL 复制一份<b>等比缩放到 G1 身高</b>，只调姿态把手拉回固定目标点，再把修正量搬回原始人体动作。跑一遍控制器，得到一个"大致对得上"的参考。</div></div>
+  <div class="step"><div class="t">Step 5 · 机器人参考对齐（细）</div><div class="d">缩放后的骨架仍不是 G1 的骨架。用 G1 的运动学模型做<b>带约束的离线全身逆运动学</b>，把参考动作硬掰到机器人能到达的位置，重新编码成运动 token 再跑一遍验证。</div></div>
+  <div class="step"><div class="t">Step 6 · 动力学感知优化（闭环）</div><div class="d">几何对了，物理还差。用 rollout 反馈 + 响应模型估计"改这点 token 会让末端移动多少"，做梯度更新，多轮迭代。三道工序里选最好的结果入库；三道都变差，就退回未对齐的原始 rollout 兜底——<b>宁可用差的，也不能引入坏样本</b>。</div></div>
+  <p>效果（50 个任务、约 1 小时数据实测）：末端位置误差 <b>17.03 cm → 3.83 cm（↓77.5%）</b>，姿态误差 <b>36.06° → 10.85°（↓69.9%）</b>。采集效率：单条示范约 <b>100 秒 → 29 秒（≈3.4×）</b>。这两个数字就是全文的地基。</p>
+
+  <h3>第三层：训练——三段接力，每段负责一种"常识"</h3>
+  <div class="step"><div class="t">Stage I · 手部动作预训练</div><div class="d">用 EgoDex、EgoVerse、HO-Cap、HOI4D、HoloAssist、HOT3D、VITRA-1M 七个公开第一视角数据集，只让骨干网络预测"下一秒双手状态 token"。按各数据集帧数的<b>平方根</b>采样，防止大库把中小库淹没。这一段学的是"物体会怎么被手摆弄"。</div></div>
+  <div class="step"><div class="t">Stage II · 全身人类数据中训练（关键段）</div><div class="d">接上动作专家，把 HumanVerse 经上面管线的结果喂进去——人做的动作，已经翻译成 G1 的状态-动作格式，连运动 token 接口都和部署时一致。这一段学的是"整个人怎么走过去、蹲下来、把东西搬起来"。</div></div>
+  <div class="step"><div class="t">Stage III · 机器人后训练</div><div class="d">用真实 G1 示范做收尾，把前两段的"人类常识"压进本体的执行特性里。人数据与机器人数据共享同一套状态-动作格式，但各用各的域标识与投影层，靠学习到的软提示做跨域迁移。</div></div>
+
+  <div class="fml">
+    <div class="name">核心公式 · 带掩码的速度场回归（Stage II / III 共用的流匹配目标，论文式 4）</div>
+    <div>\[ \mathcal{L}_q(\tau;\theta)=\mathbb{E}_{s,\epsilon}\!\left[\frac{\sum_{h,j} m^{q}_{h,j}\left(v^{q}_{\theta,h,j}\left(x_s,s;c_\tau\right)-\left(a_{h,j}-\epsilon_{h,j}\right)\right)^2}{\sum_{h,j} m^{q}_{h,j}}\right],\quad q\in\{H,R\} \]</div>
+    <div class="exp">说人话：把真动作 \(a\) 和纯噪声 \(\epsilon\) 按比例混成 \(x_s=(1-s)\epsilon+s\,a\)，让网络看这个"半真半假的动作"猜一件事——<b>从噪声指向真动作的方向</b>，也就是 \(a-\epsilon\)。猜对了，就能从纯噪声出发，走 10 步把它"推"成一段动作。下标 \(q\) 是域标记：\(H\) 是人类数据、\(R\) 是机器人数据，同一套公式、两个数据源。掩码 \(m\) 是这套设计最实用的细节——只对"有效且待预测"的维度算损失，缺标注的、补齐的空位、以及推理时已经给定的动作前缀全部排除，否则噪声标签会把模型带偏。</div>
+  </div>
+  <p class="src">架构补充：输入是 1 张第一视角图 + 语言指令 + 44 维本体状态（G1 29 个关节角 + 双侧各 6 个手指令 + 3 维重力投影），状态离散化后拼进指令文本（沿用 π0.5 的做法），骨干逐层特征去条件化动作专家。</p>
+
+  <h3>验证：数据变多，能力真的变强了吗？</h3>
+  <p>这是全文最值得看的一节，因为它把"堆数据有用"这句话变成了可测量的曲线。<b>固定</b>骨干、模型容量、机器人示范量、Stage III 训练预算与评测配置，只变 Stage II 人类数据的比例：</p>
+  <table>
+    <tr><th>Stage II 人类数据比例</th><th>0%</th><th>5%</th><th>10%</th><th>25%</th><th>50%</th><th>100%</th></tr>
+    <tr><td>真机平均任务进度</td><td>59.9%</td><td>64.2%</td><td>67.3%</td><td>72.1%</td><td>76.4%</td><td><b>80.4%</b></td></tr>
+  </table>
+  <p>单调上涨，全程 20.5 个百分点。更狠的是消融：去掉 Stage II（全身人类中训练），真机成功率从 62.5% 直接掉到 <b>22.5%</b>；去掉 Stage I（手部预训练）只掉到 50.0%。<b>说明"全身"这段数据是不可替代的主菜，手部预训练只是前菜</b>——这正好反证了公理三：只学手腕，等于没学全身。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：把数据成本打下来，才是真本事</h2>
+  <div class="box good"><b>价值一：把采集成本从"资本支出"变成"人力支出"。</b>不用机器人、不用场地、不用复位，戴消费级设备就能采，效率 3.4×。这一步的意义不在省时间，而在于<b>数据规模第一次不再被机器人保有量锁死</b>——这是所有具身公司最贵的一项固定成本。</div>
+  <div class="box good"><b>价值二：给出了"人→机"对齐的可复用工程配方。</b>缩身对齐 → 离线 IK → 动力学闭环优化，三段各治一种误差，且带"变差就回退"的兜底。这套工序不绑定 G1，任何"人形+全身控制器"的组合都能照搬，是比模型权重更值钱的部分。</div>
+  <div class="box good"><b>价值三：把"数据 Scaling"做成了可证伪的实验。</b>固定其余所有变量、只放数据比例、给出单调曲线与消融，这在具身领域并不常见——大多数论文只报最终分数。0%→100% 的 59.9→80.4 这条线，是"人类数据路线"目前最硬的一块证据。</div>
+  <div class="box good"><b>价值四：真机零样本。</b>7 项 G1 任务、目标任务机器人示范零条，平均成功率 62.5%，SIMPLE 90.0%。对比同期 GR00T N1.6（真机 7.5%）、Ψ₀（27.5%）是量级上的差距。</div>
+
+  <div class="box bad"><b>局限与冷思考：</b></div>
+  <ol class="crit">
+    <li><b>62.5% 意味着三次里错一次多。</b>搬箱子、开冰箱这类家庭任务，90% 才勉强可用。论文里真机只是 7 项受控任务的平均，没有长时程自主运行的证据。</li>
+    <li><b>动作接口被控制器锁死。</b>模型输出的是 64 维 SONIC 运动 token，不是关节指令——它能做到的上限，等于 SONIC 控制器能做到的上限。换一套控制器，整套对齐与数据都要重做。</li>
+    <li><b>"缩身"假设了身材可比。</b>核心操作是把 SMPL 等比缩放到 G1 身高。身高差异过大、或姿态极端（深蹲、躺卧、狭窄空间）时，缩放+IK 是否仍成立，论文没有给出边界。</li>
+    <li><b>复现门槛高，数据没开。</b>开源仓库给了硬件配置、采集脚本与对齐代码，但预训练与 HumanVerse 中训练数据集<b>均未公开</b>，仅提供 4 个对齐样例；作者也自述机器人 episode 录制、视觉对齐、人机数据转换器以及完整 Stage III 流程未发布。</li>
+    <li><b>单一本体验证。</b>只测了 Unitree G1 + BrainCo Revo2 手。跨本体（不同身高、不同自由度、轮式底盘）能否复用同一套对齐理念，仍是开放问题。</li>
+  </ol>
+  <p class="src">一句话总结：λ₀ 真正的贡献不是又一个 VLA 模型，而是证明了"人类的日常动作"可以经一套可校准的翻译工序，变成人形机器人可执行、可规模化的监督信号——并且这条路的收益随数据量单调增长。</p>
+</section>
+
+<footer>素材：公众号「human five」2026-10-25 讲座预告 · 技术报告 arXiv 2610.18950 · 开源仓库 github.com/LambdaHumanoid/openlambda</footer>
+</div></body>
+</html>
