@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>云深处六篇论文：模型不必最大，中间层必须最硬 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);color:#0b3f7a;font-weight:600;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>云深处：模型不必最大，中间层必须最硬<span class="sub">六篇预印本（2026-09 ~ 10）· 世界模型 / 户外导航 / 灵巧操作 / 强化学习 / 动态记忆 / 安全评测 · 云深处科技 × 学术合作者</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-24</div>
+    <div><b>机构</b> 云深处科技（杭州）Deep Robotics</div>
+    <div><b>关键词</b> 显式结构 · 物理世界模型 · 概率信念 · 运动原子</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>这六篇论文回答的不是"模型要多大"，而是"模型和现实之间该插什么"。答案一致：<b>能规模化的交给学习，必须准确的就显式写出来</b>。给 8B 模型接上物理约束的 rollout，动作选择就压过裸跑的 32B（0.875 vs 0.859）；给 π0.5 加 1.4% 参数的运动词汇，相反指令的可区分度从 <b>18.1% 跳到 92.5%</b>。但结构不是万能药——世界若不服从那条规律，显式先验反而掉分。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：六篇论文，六个"机器人必须答对的问题"</h2>
+  <p>这是一篇综述式解读：云深处科技（做 Lite3、X30 四足和 Lynx M20 轮足的那家公司）在 2026 年 9–10 月连发六篇预印本。它不是六块互不相干的拼图——文章把它们排成了一条线：<b>一台机器人从"看清周围"到"确认自己安全"的完整决策链</b>。</p>
+  <table>
+    <tr><th>机器人要回答的问题</th><th>论文</th><th>插入的显式结构</th></tr>
+    <tr><td>周围有什么？接下来会怎样？</td><td>DR-VLA</td><td>结构化场景表征 DISR（有什么/在哪/什么关系）</td></tr>
+    <tr><td>我的身体在这片地面上会怎么动？</td><td>DR-WM</td><td>先算地面物理，再渲染画面</td></tr>
+    <tr><td>我要找的东西现在在哪？</td><td>EvolvingNav</td><td>按时间索引的概率信念</td></tr>
+    <tr><td>碰到物体后，我怎么听指令？</td><td>AMC</td><td>每臂 13 个具名运动原子</td></tr>
+    <tr><td>我怎么越练越好？</td><td>DR-APO</td><td>动作空间里的"改进目标"</td></tr>
+    <tr><td>我怎么知道这些方法真有效？</td><td>LynxScenes</td><td>密集标注 + 安全评分指标 QNS</td></tr>
+  </table>
+  <p>一个容易被忽略的背景：这六篇用的几乎都是自家机器人（M20 出现在六篇中的五篇），数据来自自家配送任务、自家园区和自家遥操作。所以它不是"在公开 benchmark 上刷分"，而是<b>拿真实车队当实验室</b>——这也是为什么它的结论带着强烈的工程气味。</p>
+  <p class="src">注：本篇解析基于公众号原文（正文约 1.5 万字，含六篇论文的对照实验与数字），并保留原文给出的实验条件与边界说明，未额外引入外部推断。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：把"看起来对"和"真的能动"分开，是这道题的全部难点</h2>
+
+  <h3>公理一：像素相似 ≠ 物理成立</h3>
+  <p>让一个视频模型想象"机器人下一秒会怎样"，它给你的画面通常"看着挺像"，但物理可能是错的：在积雪斜坡上它照样画出一条匀速直线爬坡，因为训练数据里绝大多数爬坡就是这么拍的。可真实世界的问题不是"画面像不像"，而是<b>摩擦力够不够</b>。只要评价标准还停在像素上，模型就会一直朝"像"的方向优化，而不是朝"对"的方向。</p>
+
+  <h3>公理二：真实机器人数据，永远凑不够</h3>
+  <p>这是全文最硬的一条算术题：目前最大的公开真实足式机器人数据集，每个也只有 <b>5~15 小时</b>，往往还只覆盖一座城市。而机器人要面对的是"罕见但致命"的长尾——突然横穿的行人、被挪走的药盒、雪下面那层冰。靠遥操作采集去覆盖长尾，成本随场景数线性上涨，永远追不上。</p>
+
+  <h3>公理三：互联网视频很便宜，可它和机器人"长得不一样"</h3>
+  <p>人类第一视角视频遍地都是，但拿它训机器人有两个硬伤：一是<b>视角差</b>（头顶的手机 vs 机器人身上四个低装鱼眼）；二是<b>本体差</b>（人迈一步的关节运动，四足机器人根本无法执行）。所以"把人的视频直接喂给机器人"是死路，能搬的只有中间那层"结构"。</p>
+
+  <h3>公理四：能跨本体、跨数据源对齐的，只有结构</h3>
+  <p>像素不能对齐（纹理光照全变），关节角也不能对齐（自由度数量都不同）。剩下能对齐的只有三样东西：<b>场景里有什么、在哪、彼此什么关系</b>；<b>脚下这块地的摩擦/粗糙/刚度</b>；<b>机械臂的运动方向</b>。把这三样显式抽出来，人和机器人、仿真和现实才第一次有了共同语言。</p>
+
+  <h3>公理五：显式化的真正红利是"可以被单独检验"——这正是它能赢的原因</h3>
+  <p>结构一旦写死在接口上，就能做<b>受控消融</b>：换掉预测目标、拿掉分割模块、把物理属性改成全场统一，看分数怎么动。而"模型规模"这条路做不了这种实验（你不能只把参数量的某一部分拿掉）。所以这六篇能给出"结构 vs 规模"的直接对照——不是修辞，是实验设计带来的能力。</p>
+
+  <div class="box good"><b>五条公理合起来就是这六篇的共同解法：</b>承认像素不可靠（公理一）→ 承认数据凑不够（公理二）→ 承认人和机器人不同（公理三）→ 于是只搬结构（公理四）→ 而结构可被单独打分，所以能证明它比堆参数更值（公理五）。</div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：六个接口，一处一处插进去</h2>
+
+  <h3>接口一 · DR-VLA：不搬像素，搬"场景的骨架"</h3>
+  <div class="step"><div class="t">DISR：只描述"有什么 / 在哪 / 什么关系"</div><div class="d">用 SAM 3 按固定词表做分割（有什么），用 Depth Anything 3 估相对深度（在哪，故意丢掉绝对尺度，正好消掉"人眼高度 vs 机器人相机高度"的差），再用注意力层建模帧间关系。编码器<b>完全不接收 RGB</b>——纹理、光照、相机风格从设计上就被排除了。</div></div>
+  <div class="step"><div class="t">三段式混合专家</div><div class="d">理解专家（Qwen3-VL-2B 读四路相机+路线指令）、世界专家（预测未来的 DISR）、动作专家（Flow Matching 出一秒轨迹）共享注意力但权重独立。第一段用 <b>1 万小时</b>人类第一视角视频（无动作标签）预训练，第二段用 <b>2000 段 / 17 小时</b>自家配送遥操作数据适配。</div></div>
+  <div class="step"><div class="t">关键对照：只换预测目标，分数就变</div><div class="d">用 Cosmos 的通用像素潜变量当目标 → QNS <b>0.845</b>（几乎等于不用世界专家）；V-JEPA 2.1 → 0.861；加深度的 DINO 特征 → 0.866；<b>DISR → 0.884</b>。把 DISR 里的分割、深度、关系任一块拿掉，分数都掉。这是全文最干净的因果实验：涨的不是"多了一个预测模块"，而是"预测什么"。</div></div>
+  <p>另一个漂亮的结果：人类视频从 1000 → 3000 → 1 万小时，QNS 从 0.845 → 0.862 → 0.884。<b>结构化目标让"免费数据"能持续吃到规模红利</b>——因为尺度漂移被结构吃掉了。真机端到端延迟 <b>120 ms</b>（2B 主干、只吃相机）。</p>
+
+  <h3>接口二 · DR-WM：先算物理，再画画面</h3>
+  <div class="step"><div class="t">把"一个模型干两件事"拆成两件事</div><div class="d">传统世界模型一次预测"未来状态 + 未来画面"，于是画面会把物理带偏。DR-WM 强行因子化：<b>Genesis 物理引擎</b>根据当前状态、控制指令、地形参数<b>确定性地</b>算出未来状态；视频模型只在"这条已经算好的相机轨迹"上渲染画面。两者共享同一条状态轨迹，所以视频模型<b>没有机会</b>生成与物理不一致的运动。</div></div>
+  <div class="step"><div class="t">PhyMap：给每块地面标上摩擦/粗糙/刚度</div><div class="d">冻结的 MapAnything 主干从图像重建几何，并对每个空间点预测摩擦力、粗糙度、刚度先验；再用手上机器人的真实响应记录做校准，映射成仿真器的接触参数后<b>冻结</b>。数据侧有 Physcene-Robot：<b>10 万段</b> M20/Lite3 同步片段（环视视频+双激光雷达+关节状态+控制指令），覆盖雪地、碎石、沥青、草地、泥地、石板、瓷砖、木地板、高绒地毯。PhyMap 训练用了 258 万张图。</div></div>
+  <div class="step"><div class="t">结果：只改"地形怎么建模"，误差就掉一半</div><div class="d">34 段留出视频上，相比只用几何：横滚/俯仰误差 <b>↓58.2%</b>，垂直运动误差 <b>↓54.5%</b>，基座轨迹误差 ↓18.0%。</div></div>
+  <p>最有说服力的对照在动作选择：90 个挑战场景里让 Qwen3-VL 从候选动作中挑（穿泥地还是绕行）。<b>8B + DR-WM rollout → 目标进度 0.875</b>，超过<b>不用 rollout 的 32B（0.859）</b>，六项指标赢五项。而换成通用视频模型 Wan 的 rollout，8B 模型的目标进度虽涨，<b>机身倾斜和打滑却同时变差</b>——<b>没有物理约束的想象不只是没用，它会主动把模型推向更冒险的动作。</b>这句话值得抄在本子上。</p>
+
+  <h3>接口三 · EvolvingNav：地图会过期，所以要存"信念"而不是"位置"</h3>
+  <div class="step"><div class="t">四维记忆 → 三选一概率</div><div class="d">给每个物体存带时间戳的三维观测，再用一个只有 <b>3 层、隐藏维度 128</b> 的小 Transformer 输出三种可能性的分布：还在老地方 / 搬到了别的已知位置 / 去了没建过图的地方。小到几乎不占算力。</div></div>
+  <div class="step"><div class="t">事件驱动更新：看得清才敢降概率</div><div class="d">①预测"我到达时它还在"的概率；②按<b>可见性</b>评估证据——货架清楚地空着，概率大幅下调；被挡住了，就只微调；③旧地点随时间重新获得概率。原文例子：咖啡桌上原本 0.62，机器人看清桌面空了，分布更新为（0.10, 0.59, 0.31），于是改去厨房岛台。</div></div>
+  <div class="step"><div class="t">控制器就是一个冻结的 VLM（GPT-5.6-Luna），从不微调</div><div class="d">它只负责调工具：查记忆、预测、检查、导航。这正是"结构 vs 规模"的第二个对照——把控制器换成从 Qwen2.5-VL-3B 到 GPT-5.6-Luna 五种，<b>加了信念模块后成功率一律提升 14.9~25.9 个百分点</b>。结构和规模是叠加关系，谁也不替代谁。</div></div>
+  <p>数字：EvoWorld-Bench（54 个仿真住宅、80 万个任务实例、约 23.9 万次物体移动）上，首次检查成功率 <b>45.3% → 61.3%</b>，整体搜索成功率 <b>71.9% → 86.2%</b>；M20 真机 64 次试验，成功率 <b>48.4% vs 26.6%</b>（"最后观测位置"基线），平均路程 56.2 m → 43.8 m。同一模块可直接挪到 X30、Lite3。</p>
+
+  <h3>接口四 · AMC：给每条机械臂一套"运动词汇表"</h3>
+  <p>它先问了一个很刺人的问题：<b>图像和机器人状态都不变，只改语言指令，末端真的会照着指令反方向动吗？</b>对微调过的 π0.5，答案基本是"不会"——要求左移和右移时，只有 <b>18.1%</b> 的情况能正确区分单轴相反指令，双轴指令只有 8.1%。说白了，模型在<b>背场景</b>，不是在<b>读指令</b>。</p>
+  <div class="step"><div class="t">13 个运动原子 × 2 条臂</div><div class="d">沿 x/y/z 正负平移 6 个 + 绕三轴正负旋转 6 个 + 保持不动 1 个 = 13。三个设计让词汇真正有控制意义：①标签来自<b>正向运动学几何计算</b>，不是文字描述（措辞不会泄漏进监督）；②训练初期<b>屏蔽图像</b>，只给语言+状态，逼模型真学"方向"而不是"复现常见动作"；③运动坐标通过零初始化的交叉注意力作用到 π0.5 全部 18 个 Action Expert 上。腕部力反馈再做<b>有界修正</b>，每次都按原指令重算，避免误差累积。</div></div>
+  <p>代价与收益：新增约 <b>4696 万参数 = 主干的 1.4%</b>；7520 次匹配干预中，单原子相反指令分离率 <b>18.1% → 92.5%</b>，原子组合 8.1% → 83.1%（专门做可控性的 LA4VLA、RSS 单原子最高只到 60.7%）。真机每任务 50 次：未见物体与布局的水果分拣，任务进度 60.5% → <b>87.8%</b>；抽屉/插头这类接触密集任务，AMC 59.0% + 力反馈 → <b>78.5%</b>。力反馈回路的延迟 <b>118.7 ms</b>（单张 RTX 4090），卡在控制器 333 ms 的窗口内。</p>
+
+  <h3>接口五 · DR-APO：把"变好"这件事，从策略里拆出来</h3>
+  <div class="step"><div class="t">两步：先改目标动作，再让任意策略去拟合</div><div class="d">①对实际执行的每个动作，用学到的优势估计器给出局部改进方向，沿该方向<b>有界</b>调整、再投影回合法动作空间，并按"比预期好多少"加权；②高斯策略回归改进后的均值，扩散/流策略用加噪版预测干净动作，并保留原训练损失做正则。<b>全程不算似然比，推理时也不用 Critic 挑候选</b>——这才是"与策略表征无关"的意思。</div></div>
+  <p>MuJoCo 五项任务、100 万步、5 个种子：扩散策略 10 项任务-指标里 9 项第一，流策略 10 项全第一；高斯策略"有竞争力但非领先"（SAC 平均回报仍更高，Humanoid 上差距明显）。用到自家导航：把预训练扩散策略 NavDP 后训练，仿真成功率 70.33% → <b>89.55%</b>，M20 真机 20 个场景 <b>25% → 65%</b>。</p>
+
+  <h3>接口六 · LynxScenes：把"安全"变成能被扣分的东西</h3>
+  <div class="step"><div class="t">数据规模</div><div class="d">训练有素的操作员遥操作 M20 走人行道、路口、校园、公园、斜坡、乡村道路：<b>约 10 万段 × 30 秒 = 833.6 小时、3294.7 公里</b>；每段含四路 1920×1536 鱼眼、两台 96 线激光雷达、惯性、里程计、机器人状态；人工标注 <b>2082 万个</b>带朝向的三维框（27 类）+ <b>1389 万条</b>道路结构（路缘、人行道边缘、人行横道），20 类行为指令分三层并对齐未来轨迹。</div></div>
+  <div class="step"><div class="t">QNS：六项子指标合成一个分数</div><div class="d">无碰撞 / 在可走区域（非横道不越路缘）/ 碰撞时间 / 与行人的安全间距 / 任务进度 / 指令遵循。它和 DR-VLA 用的是同一套尺子——所以六篇论文的结论能横向比。</div></div>
+  <p>为什么要这套尺子，看参考值就懂：<b>一台原地不动的机器人，碰撞项满分，QNS 只有 0.149</b>；匀速直冲 0.716；十种导航/VLA 策略里最好的 NaVILA 0.843；<b>人类操作员 0.946</b>。那约 0.10 的差距，就是学习型户外导航离人还有多远的具体刻度。</p>
+
+  <h3>三个对照实验：小模型 + 结构，赢过大模型</h3>
+  <table>
+    <tr><th>实验</th><th>小模型 + 显式结构</th><th>大模型或纯基线</th></tr>
+    <tr><td>DR-WM 动作选择（90 场景）</td><td>Qwen3-VL-8B + DR-WM rollout：目标进度 <b>0.875</b></td><td>Qwen3-VL-32B 无 rollout：0.859</td></tr>
+    <tr><td>AMC 相反指令分离率</td><td>π0.5 + 4696 万参数：<b>92.5%</b></td><td>微调 π0.5（33.5 亿参数）：18.1%</td></tr>
+    <tr><td>EvolvingNav 搜索成功率</td><td>加概率信念：五种控制器 <b>一律 +14.9~25.9 点</b></td><td>同一控制器用"最后观测位置"</td></tr>
+  </table>
+
+  <h3>但结构什么时候会失效？——文章自己写的答案</h3>
+  <p>这是全文最有价值的一节，因为它是<b>可证伪</b>的。EvolvingNav 造了三组成对的世界，场景和查询完全相同，只改物体移动的规律：</p>
+  <table>
+    <tr><th>世界类型</th><th>EvolvingNav</th><th>最后观测位置基线</th><th>结论</th></tr>
+    <tr><td>物体规律地移动（符合日常习惯）</td><td><b>60.9%</b></td><td>38.5%</td><td>结构大赚 +22.4 点</td></tr>
+    <tr><td>物体从不移动</td><td>82.2%</td><td><b>84.4%</b></td><td>结构白干，小幅落后</td></tr>
+    <tr><td>物体随机移动（频率同，无规律）</td><td>30.1%</td><td>31.4%（普通 Transformer）</td><td>结构反噬</td></tr>
+  </table>
+  <p>真机同样复现：环境不变时基线 68.8% 赢 62.5%；一旦物体按规律变化，EvolvingNav 领先 <b>50 个百分点</b>（68.8% vs 18.8%）。DR-WM 也呈现同构现象：引入物理信息本身收益巨大，而让物理属性在一个场景内<b>空间变化</b>只多赚约 4.8%（9.6 秒时域轨迹误差 1.267 m vs 1.242 m）——因为场景<b>之间</b>的接触差异本来就大于场景<b>内部</b>。</p>
+  <div class="box good"><b>所以真正的问题不是"选结构还是选规模"，而是：现实里哪一条规律，稳定到值得被写进系统？</b>结构的收益，等于它所编码规律的稳定程度。</div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：一份"该往哪里插接口"的地图</h2>
+  <div class="box good"><b>价值一：给出了一个可复用的判据。</b>"让可扩展的部分去学习，让必须准确的部分显式化"——这句话可以直接拿去审自己的系统：哪一环的误差是致命的、且规律是稳定的？那一环就该显式化，而不是塞进更大的网络里。</div>
+  <div class="box good"><b>价值二：把"结构 vs 规模"做成了对照实验，而不是口号。</b>三组对照都控制得干净（只换预测目标、只加一个模块、只换控制器），这在具身领域很少见——大多数论文只报最终分数。</div>
+  <div class="box good"><b>价值三：自有车队 = 数据闭环。</b>Physcene-Robot 10 万段、LynxScenes 833.6 小时/3294.7 公里、EgoLynx-Robot 的配送遥操作，全部来自同一批硬件，且 M20 出现在六篇中的五篇。这意味着算法结论能直接回到同一平台复验，而不是"论文好看、上车就废"。</div>
+  <div class="box good"><b>价值四：结构很便宜。</b>DR-VLA 端到端 120 ms（2B 主干）；AMC 力反馈回路 118.7 ms（单卡 4090，窗口 333 ms）；EvolvingNav 的信念模块只有 3 层/128 维；AMC 只加 1.4% 参数。这不是"用算力换能力"，是"用设计换算力"。</div>
+
+  <div class="box bad"><b>局限与冷思考：</b></div>
+  <ol class="crit">
+    <li><b>"结构的收益有边界"这件事，文章自己承认了，但没说边界在哪。</b>我们只知道规律稳定时赚、随机时亏，却没有一个先验指标能在部署前告诉你"这个世界属于哪一类"。这是这套方法论最要命的空白：赌错了，结构就是负资产。</li>
+    <li><b>DR-VLA 没有闭环证据。</b>原文明确写：评测用开环指标和非交互式数据回放，大规模闭环部署留待未来。开环 0.884 的 QNS 很漂亮，但户外导航的失败往往发生在闭环的第五分钟，不在第一秒。</li>
+    <li><b>DISR 依赖伪标签，且不能零样本迁移。</b>标签由现成模型（SAM 3、Depth Anything 3）生成、类别词表固定；表征建立在图像平面上，人机之间剩余视角差仍要机器人数据去弥合——所以它并不是"免数据"，只是"少数据"。</li>
+    <li><b>DR-WM 的"物理"是有效参数，不是真物理。</b>PhyMap 的属性目标来自语言模型先验构建的类别—属性查询表，再用机器人行为校准。校准出来的是"能复现机器人运动的仿真参数"，不是真实摩擦系数。换一种地面、换一台机器人，校准要重做；而且生成帧会参与下一轮地形更新，长 rollout 会累积误差。</li>
+    <li><b>DR-APO 的真机证据偏薄。</b>M20 上只有 20 个真实场景（25% → 65%），原文自己说"是有希望的信号，但不足以形成确定结论"。而且它改进的是外部模型 NavDP，不是自家 DR-VLA——最自然的那个实验还没做。</li>
+    <li><b>AMC 的运动原子只描述"趋势"。</b>抓取姿态和精细动作仍归学习的 Action Expert；力反馈只调整运动，并不显式控制力—力矩，也不保证接触稳定。所谓"语言真的控制动作"，准确说是"语言控制了粗方向"。</li>
+    <li><b>LynxScenes 的评测与世界模型研究还没接上。</b>它的世界模型评测只看视觉质量与真实性，不检查生成的运动是否遵循控制指令——而这正是 DR-WM 在解决的问题。两块拼图天然互补，却还没被放在一起评。</li>
+    <li><b>六篇各自的结论，还没有一个把它们串起来的系统。</b>DISR 的表征、PhyMap 的地形、信念的记忆、AMC 的运动坐标、DR-APO 的改进目标、QNS 的尺子——都是"插在同一个模型上的不同接口"，但论文层面仍是六条独立管线。串起来会不会互相打架，未知。</li>
+  </ol>
+  <p class="src">一句话总结：这六篇真正的贡献不是六个 SOTA 分数，而是一张"哪里该插接口"的地图——以及一个诚实的提醒：接口值不值钱，取决于现实肯不肯配合。</p>
+</section>
+
+<footer>素材：公众号「human five」2026-10-24《从真实机器人数据到策略优化：云深处科技的研究进展》· 六篇预印本（2026-09~10）· 项目页 developer.deeprobotics.cn/research</footer>
+</div></body>
+</html>

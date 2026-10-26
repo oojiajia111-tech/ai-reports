@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ViT-H：让机器人"跑一遍"来给视频生成的动作用打分 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);color:#0b3f7a;font-weight:600;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>ViT-H：别猜机器人怎么动，让它跑一遍再打分<span class="sub">ViT-H: Generative Video-To-Humanoid Control with Motion Tracking Feedback · 北京大学 × 北京通用人工智能研究院 · arXiv 2610.32966</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 北京大学 / 北京通用人工智能研究院（BIGAI）</div>
+    <div><b>论文发布</b> 2026-10-23 · arXiv 2610.32966</div>
+    <div><b>关键词</b> 扩散动作生成 · 跟踪反馈 · Diffusion-DPO · Unitree G1</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>用人视频教人形机器人，老路是"重建人体 → 重定向到机器人 → 跟踪"三步串行：每步都在猜，误差单向累积，最后交出一段"看着像、跑不动"的参考动作。ViT-H 把前两步直接删掉——扩散模型从视频<b>一步</b>生成 G1 的动作序列；再让跟踪器<b>真跑一遍</b>给动作打分，用 DPO 把"跑得动"这件事训回生成器。G1 上纯视频集跟踪成功率 <b>74.8% → 80.0%</b>，在线遥操作端到端 <b>&lt;300 ms</b>。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个"生成 + 跟踪"的闭环，把执行结果变成训练信号</h2>
+  <p>ViT-H 解决的是一个看起来很直白的问题：<b>给一段人做动作的单目视频，让 Unitree G1 复现出来</b>。它把这个任务拆成两半——</p>
+  <ul>
+    <li><b>生成器 \(\pi_{\text{gen}}\)</b>：视频条件的人形动作扩散模型。输入是视频帧里抽出来的四样东西（相对相机朝向、人体二维框、二维关键点、图像特征），输出直接就是 G1 的动作序列：根节点速度、全局朝向、29 个关节的 6D 局部旋转、相机相对尺度与位移、以及手脚的"是否静止"概率。</li>
+    <li><b>跟踪器 \(\pi_{\text{track}}\)</b>：从 SONIC（通用人形动作跟踪器，PPO 训练）微调而来，负责把参考动作变成关节力矩。另有一个"特权版" \(\pi^{\text{priv}}_{\text{track}}\)，它的 actor 能额外看到"机器人相对参考动作的全局位姿偏移"。</li>
+  </ul>
+  <p>核心创新在两者之间的那条<b>反向箭头</b>：跟踪器不只是执行者，还是<b>裁判</b>。它把生成器采样出的多个候选动作挨个跑一遍，跑得好不好就构成"偏好"，再用 DPO 把这个偏好灌回生成器。整个过程<b>不需要任何真值动作</b>——所以那些没有动作标注的互联网视频也能参与后训练。</p>
+  <p>还有一个在线版本：把生成器改成自回归逐段生成，就能用一台固定的 RealSense D455（只用 RGB，640×480@30 Hz）做<b>实时视频遥操作</b>。真机演示覆盖搬箱子、擦桌子、踢球、坐下站起、绕圈走、深蹲、打拳、挥手。</p>
+  <p class="src">成绩单（跟踪成功率，越高越好）：EMDB 90.2%（重定向真值 91.0%）、RICH 100%、纯视频测试集离线 80.0% / 在线 63.8%；对应最强基线的成绩是 61.7%~73.0% 与 46.7%~51.7%。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：三步串行的流水线，注定"看着像、跑不动"</h2>
+
+  <h3>公理一：能规模化的动作监督，只有"人怎么动"这一种</h3>
+  <p>要让人形机器人会跳舞、会体操、会打球，靠遥操作一条条采集是不现实的。而人类动作视频的规模与多样性，是动捕数据集永远追不上的。所以这条路的方向没问题——问题全在"怎么翻"。</p>
+
+  <h3>公理二：任何中间表示都是一次有损翻译，而且误差只往前传、不往回补</h3>
+  <p>传统管线的三步是：先重建出"人体参数"（SMPL 那套），再重定向成"机器人关节角"，最后交给跟踪器。关键在于——<b>人体不是机器人</b>：身高、肢体比例、自由度、关节限位、质量分布全不同。第一步为"像人"优化的结果，到第三步可能恰恰是"机器人做不到"的。更糟的是，上游一旦把视觉证据压缩掉了，下游<b>再也拿不回来</b>。这是串行结构的天生缺陷，不是某一环做得不够好。</p>
+
+  <h3>公理三：真正的目标函数是"跑得动"，而它在下游才出现</h3>
+  <p>论文反复强调一个词：<b>executability（可执行性）</b>。一段参考动作好不好，判据不是它和真值差几毫米，而是跟踪器能不能稳稳跑完。这个判据只有在执行之后才存在——所以在串行管线里，它永远只能用来"事后打分"，没法用来"事前生成"。</p>
+
+  <h3>公理四：既然目标在下游，就让下游的信号反向流回来</h3>
+  <p>这是整篇的关键跳跃。既然跟踪器能判好坏，那就把它当奖励函数：采样多条候选动作 → 各自跑一遍 → 按跑的结果排出"哪条更好" → 用偏好学习（DPO）改生成器。这样做还有个额外红利：<b>偏好不需要真值</b>，只需要"这两条里哪条跑得好"，所以无标注视频也能训。</p>
+
+  <h3>公理五：实时性不是一个工程参数，而是一条"因果"约束</h3>
+  <p>要做遥操作，就不能看未来帧。这意味着生成器必须<b>只用过去</b>——于是必须自回归、逐段生成、段间重叠。这不是把离线模型"加速一下"，而是换了一个信息约束更强的设定。论文也确实承认：在线版在根节点平移精度上不如离线版（因果设定的代价），但局部动作精度仍优于所有基线。</p>
+
+  <div class="box good"><b>五条公理合起来就是 ViT-H 的解法：</b>承认人视频是唯一可扩展来源（公理一）→ 承认中间表示必损（公理二）→ 那就删掉中间表示，直接生成机器人动作（绕过公理二）→ 承认"跑得动"才是真目标，就让它反向当监督（公理三、四）→ 要实时就换成因果生成（公理五）。</div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：一个扩散生成器、一次真机打分、一轮偏好回灌</h2>
+
+  <h3>第一层：把视频直接翻译成人形动作</h3>
+  <p>生成器是一个 Transformer 扩散模型（16 层、16 头、隐层 1024，共 <b>224.7M</b> 参数；另外还有 49.9M 和 114.6M 两个小/中号做规模实验），带 RoPE 位置编码。四类条件各自过 MLP 编码后，与加噪的动作序列拼接送进主干。训练数据是 AMASS、BONES-SEED、BEDLAM、BEDLAM2.0、Human3.6M 的混合，总计 <b>383.8 小时</b>；只含人体动作的数据先用自己的 GMR 重定向器转成 G1 动作。</p>
+
+  <div class="fml">
+    <div class="name">公式一 · 加噪与去噪目标（论文式 1–2）</div>
+    <div>\[ q(X_n\mid X_{n-1})=\mathcal{N}\!\left(X_n;\sqrt{1-\beta_n}\,X_{n-1},\ \beta_n I\right) \]</div>
+    <div>\[ \mathcal{L}_{\text{diffusion}}=\mathbb{E}_{n\sim\mathcal{U}[1,N],\,X_n\sim q(X_n\mid X_0)}\left\|X_0-\pi_{\text{gen}}(X_n,n,C)\right\|_2^2 \]</div>
+    <div class="exp">说人话：先给一段真实动作一点点掺噪声，掺 \(N\) 步之后它变成纯噪声——这就是式 1，\(\beta_n\) 是每一步掺多少。然后让网络看这个"掺了 \(n\) 步噪声的动作 \(X_n\)"，加上视频条件 \(C\)，去猜<b>没掺噪声之前的那个干净动作 \(X_0\)</b>，猜错多少就罚多少（式 2，均方误差）。这就是所谓 \(X_0\)-prediction：不猜噪声、直接猜答案。训练好后，从一团纯噪声出发，反复"猜干净动作、去掉一点噪声"，走 \(N\) 步就吐出一段完整动作。\(C\) 就是那四样视频条件——所以<b>视频决定"该做什么动作"，扩散决定"具体怎么动"</b>。</div>
+  </div>
+
+  <p>除了扩散损失，还挂了几路辅助损失：根相对关节位置、根相对顶点位置（在 G1 表面用最远点采样预选 384 个顶点，手脚处更密）、全局根平移、手脚"是否静止"的二分类，以及三路二维重投影损失。这些损失的作用是把"几何上真的对"和"投影回画面也真的对"一起约束住——不然扩散模型很容易生成"数值上像、投影出去歪"的动作。</p>
+
+  <h3>第二层：让跟踪器当裁判——打分怎么变成"偏好对"</h3>
+  <p>对每个视频条件，从生成器采样 \(M\) 条候选动作，用 \(\pi_{\text{track}}\) 和 \(\pi^{\text{priv}}_{\text{track}}\) 各跑一遍，得到实际执行出来的动作（记为 \(\bar X\)）。然后按三类奖励打分，全部先把误差换成 \([0,1]\) 的分数：</p>
+
+  <div class="fml">
+    <div class="name">公式二 · 误差转分数 + 挑出"最悬殊的一对"（论文式 3、9）</div>
+    <div>\[ \rho_k(X,X')=\exp\!\left(-E_k(X,X')/s_k^2\right)\in(0,1] \]</div>
+    <div>\[ (i^\star,j^\star)=\arg\max_{(i,j)\in\mathcal{P}}\ w^{\top}\!\left(r^{(i)}-r^{(j)}\right),\qquad \text{s.t. } r^{(i)}-r^{(j)}\succeq\delta \]</div>
+    <div class="exp">说人话：式 3 是"误差换算成分数"——误差 \(E_k\) 越小，分数越接近 1，衰减速度由 \(s_k\) 控制（不同指标量纲差很多，所以各自配一个尺度）。\(k\) 可以是根平移、根朝向、关节位置、关节旋转。然后把这几个分数按权重拼成奖励向量 \(r^{(i)}\)，比如局部奖励只看"动作像不像"，全局奖励还看"有没有跑偏到别处去"。式 9 是在所有合格配对里挑<b>差距最大</b>的那一对：必须每条指标上都赢过 \(1-\delta\) 才行，而且"赢家"还必须被两个跟踪器都成功跑完。挑最悬殊的一对，是因为 DPO 的学习信号强度就跟这个差值成正比——差距太小的对，等于白给。<b>注意：这一整套都不需要真值动作</b>，只需要"哪条跑得更好"。</div>
+  </div>
+
+  <p>六种可用奖励里，前三路（局部、全局、双跟踪器成功一致性）完全不依赖真值，后三路在有真值时才启用。这就是"能吃到无标注互联网视频"的技术入口。</p>
+
+  <h3>第三层：把偏好灌回生成器（Diffusion-DPO）</h3>
+
+  <div class="fml">
+    <div class="name">公式三 · 扩散版 DPO + 与 SFT 的合并目标（论文式 10–12）</div>
+    <div>\[ \ell_{\pi}(X,X_n,n,C)=\left\|X-\pi(X_n,n,C)\right\|_2^2 \]</div>
+    <div>\[ \mathcal{L}_{\text{DPO}}=-\mathbb{E}\left[\log\sigma\!\left(\beta_{\text{DPO}}\Big[\ell_{\pi_{\text{gen}}}(X^-,X^-_n,n,C)-\ell_{\pi^{\text{ref}}_{\text{gen}}}(X^-,X^-_n,n,C)\Big]-\beta_{\text{DPO}}\Big[\ell_{\pi_{\text{gen}}}(X^+,X^+_n,n,C)-\ell_{\pi^{\text{ref}}_{\text{gen}}}(X^+,X^+_n,n,C)\Big]\right)\right] \]</div>
+    <div>\[ \mathcal{L}_{\text{post-train}}=\lambda_{\text{DPO}}\mathcal{L}_{\text{DPO}}+\lambda_{\text{SFT}}\mathcal{L}_{\text{SFT}} \]</div>
+    <div class="exp">说人话：先看 \(\ell\)——就是"猜干净动作猜错多少"。DPO 那行看着吓人，其实在算一件事：<b>对于赢家 \(X^+\) 和输家 \(X^-\)，模型相对于"原始冻结模型"的进步幅度，谁更大？</b>方括号里是"当前模型损失 − 参考模型损失"，这个差值变小说明"当前模型在这条上比原始模型更擅长"。DPO 要求：赢家的进步幅度 要大于 输家的进步幅度，然后过一层 sigmoid 取对数，把它当成一个二分类问题来训。\(\beta_{\text{DPO}}\) 是"允许偏离原始模型多远"的刹车——太大就忘了预训练学到的东西，太小就学不动新偏好。最后式 12 把它和普通的重建损失（SFT，直接学赢家 \(X^+\)）加起来：<b>一路学"什么是好动作"，一路学"别忘了怎么生成动作"</b>。同一个扩散步 \(n\) 和同一份噪声 \(\epsilon\) 被赢家输家共享，这样两者才可比。</div>
+  </div>
+
+  <h3>第四层：在线版——把"看未来"改成"只看过去"</h3>
+  <div class="step"><div class="t">自回归分段生成</div><div class="d">固定段长 \(T\) 帧，相邻段重叠 \(L\) 帧。生成第 \(s\) 段时，把加噪输入的前 \(L\) 帧<b>直接替换成上一段的最后 \(L\) 帧</b>（这就是把历史当条件注入）。微调时会随机丢掉"上一段"，否则模型会丧失生成第一段的能力。</div></div>
+  <div class="step"><div class="t">部署细节（很能说明工程含量）</div><div class="d">离线用 DDIM 50 步；在线只用 <b>4 步</b>降延迟。相机固定在地面 1.2 m、视线与地面平行，所以干脆不估相机朝向。初始化约 10 秒生成第一段，之后每次只看前 \(T-5\) 帧、新生成 5 帧，插值到 50 fps 再喂给跟踪器。跟踪器需要 10 帧未来参考，就用"重复当前帧"顶上，避免额外等待。最终<b>平均端到端延迟 &lt;300 ms</b>，再预留 100 ms 余量，稳在 <b>&lt;400 ms</b>。</div></div>
+
+  <h3>验证一 · 动作质量：全面压过"重建+重定向"</h3>
+  <table>
+    <tr><th>方法（EMDB 数据集）</th><th>MPJPE ↓</th><th>PA-MPJPE ↓</th><th>抖动 ↓</th></tr>
+    <tr><td>GVHMR + GMR（SOTA 管线）</td><td>73.3</td><td>54.4</td><td>18.4</td></tr>
+    <tr><td>GEM + GMR</td><td>62.3</td><td>38.4</td><td>19.6</td></tr>
+    <tr><td>ViT-H（离线，未后训练）</td><td>52.9</td><td>34.0</td><td>11.2</td></tr>
+    <tr><td>ViT-H（离线，后训练）</td><td><b>53.3</b></td><td><b>34.3</b></td><td><b>10.6</b></td></tr>
+  </table>
+  <p>注意这里有个反直觉的细节：<b>后训练让 MPJPE 略微变差（52.9 → 53.3），但抖动和自穿透明显变好</b>。这不是退步——它正好印证了"目标不是更像真值，而是更跑得动"。纯视频集上（无真值）也是同一趋势：抖动 10.6 → 9.5，自穿透 1.0 → 0.9，2AFC 人评里 41.3% 的人偏好未后训练版本、其余偏好后训练版本（含并列/无法判断）。</p>
+
+  <h3>验证二 · 可执行性：这才是真正的分数</h3>
+  <table>
+    <tr><th>方法</th><th>EMDB 跟踪成功率</th><th>RICH</th><th>纯视频集</th></tr>
+    <tr><td>重定向真值 + GMR（参考上限）</td><td>91.0</td><td>100.0</td><td>—</td></tr>
+    <tr><td>GVHMR + GMR</td><td>61.7</td><td>90.3</td><td>50.3</td></tr>
+    <tr><td>GEM + GMR</td><td>73.0</td><td>90.3</td><td>51.7</td></tr>
+    <tr><td>ViT-H 在线（未后训练 → 后训练）</td><td>76.9 → <b>88.5</b></td><td>87.5 → <b>98.2</b></td><td>49.6 → <b>63.8</b></td></tr>
+    <tr><td>ViT-H 离线（未后训练 → 后训练）</td><td>89.5 → <b>90.2</b></td><td>100.0 → <b>100.0</b></td><td>74.8 → <b>80.0</b></td></tr>
+  </table>
+  <p>三个观察：①离线版在 EMDB 上 <b>90.2% 已经贴住"重定向真值"的 91.0%</b>——换句话说，生成出来的动作比"用真值重定向出来的动作"还好跑一点点；②后训练在纯视频集上收益最大（在线 <b>+14.2 点</b>），因为那里没有真值可供过拟合，收益只能来自"跑得动"这个信号；③<code>Trk. MPJPE</code>（参考动作 vs 实际跑出来的动作）在后训练后甚至比真值还低——跟踪器跟它比跟真值跟得更紧。</p>
+
+  <h3>验证三 · 消融：增益到底来自哪个跟踪器？</h3>
+  <p>这是全文最诚实的一处设计。奖励分两路：只用可部署的 \(\pi_{\text{track}}\)（它看不到全局偏移），以及再叠加特权版 \(\pi^{\text{priv}}_{\text{track}}\)。</p>
+  <table>
+    <tr><th>纯视频集跟踪成功率</th><th>未后训练</th><th>只用可部署跟踪器</th><th>+ 特权跟踪器</th></tr>
+    <tr><td>离线生成器</td><td>74.8%</td><td>75.8%（+1.0）</td><td><b>80.0%</b>（+5.2）</td></tr>
+    <tr><td>在线生成器</td><td>49.6%</td><td>61.5%（+11.9）</td><td><b>63.8%</b>（+14.2）</td></tr>
+  </table>
+  <p>为什么加了特权版涨这么多？因为可部署跟踪器的 actor 看不见"我整体跑偏了多少"，它跑出来的动作里，<b>生成器的轨迹错</b>和<b>跟踪器自身的漂移</b>是混在一起的——拿它当奖励，等于用一个带噪声的尺子量东西。特权版能直接看到偏移，于是把这两类误差分开了。这个细节说明：<b>当裁判的人自己得先搞清楚状况。</b></p>
+  <p>另外两个有意思的结论：①后训练数据里"同分布真值数据 : 纯视频数据"的比例<b>并非越多越好</b>——最佳点是 <b>1 : 2</b>（同分布数据只有纯视频的一半），再加反而掉分；②16 层 Transformer 里<b>只微调最后 8 层</b>最好，少调、或者全调 16 层，都更差。</p>
+
+  <h3>验证四 · 规模与跨跟踪器泛化</h3>
+  <p><b>规模</b>：生成器 49.9M → 114.6M → 224.7M，离线与在线的成功率、轨迹误差都单调变好；预训练数据 25% → 50% → 100%，同样单调，且<b>收益最大的一段是 50% → 100%</b>（说明还没到饱和）；后训练数据规模同向。</p>
+  <p><b>跨跟踪器</b>：换三个<b>没参与过后训练</b>的跟踪器——Humanoid-GPT、ScaleBFM、HoloMotion——后训练后成功率都涨、跟踪误差都降。这直接排除了一种最糟糕的解释（"DPO 只是把生成器调成某个特定跟踪器的口味"），说明它学到的是<b>动作本身的可执行性</b>。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：把"能不能跑"变成训练信号，这一招可以搬走</h2>
+  <div class="box good"><b>价值一：删掉中间层，比优化中间层更彻底。</b>别人在改进重建、改进重定向，ViT-H 直接把这两步删了，让扩散模型在目标本体空间里生成。误差不再有"上游污染下游"的通道——这是结构性收益，不是调参收益。</div>
+  <div class="box good"><b>价值二：建立了一条"下游当裁判、上游受训"的闭环。</b>跟踪器本来是执行末端，这里变成奖励来源。这个范式不限于人形机器人：任何"生成 → 执行 → 有客观成败"的链路都能照搬（比如抓取轨迹生成 + 抓取成功判定、导航路径生成 + 到达判定）。</div>
+  <div class="box good"><b>价值三：偏好不需要真值，所以能吃无标注视频。</b>这是它数据效率的真正来源——把互联网上无穷无尽的动作视频，从"只能做预训练"升级成"能参与后训练"。而且作者验证了增益能迁移到三个未见跟踪器，说明学到的是共性而非特例。</div>
+  <div class="box good"><b>价值四：离线生成已贴住"真值重定向"的上限。</b>EMDB 90.2% vs 91.0%，RICH 100% vs 100%。这意味着"用真值动作重定向"这条路，作为参考动作来源已经没有优势了——视频直生成在工程上更划算。</div>
+
+  <div class="box bad"><b>局限与冷思考：</b></div>
+  <ol class="crit">
+    <li><b>它仍然依赖一个"重定向器"——只是把它挪到了训练数据准备阶段。</b>那些纯人体动作数据集（AMASS、Human3.6M 等）必须先用自己的 GMR 重定向成 G1 动作才能当监督。所以"绕过重定向"这句话要打个折：<b>推理时绕过了，训练时没有</b>。GMR 的重定向偏差仍会以"训练标签"的形式渗进生成器。</li>
+    <li><b>整套方法的前提是"有一个足够好的通用跟踪器"。</b>跟踪器是裁判，裁判不行，偏好就是噪声。而且跟踪器本身是从 SONIC 微调的，SONIC 能做到的动作类别就是这套系统的能力边界。换一个弱一点的跟踪器，DPO 学到的可能是"讨好那个弱跟踪器"。</li>
+    <li><b>掩码式的"可执行性"仍是被动指标。</b>成功/失败由终止判据给出，奖励是几个误差的指数衰减。它能表达"跟得紧不紧"，却表达不了"这个动作是否安全、是否省力、是否自然"。真机上摔一跤和差 3 厘米在奖励里可能是同一档。</li>
+    <li><b>在线版的代价被轻描淡写了。</b>论文自己承认根节点平移精度在因果设定下明显更差（在线 8.3 → 6.4 的 RTE，对比离线 2.5），这意味着<b>长距离位移会漂</b>。遥操作场景下人可以随时纠偏，但自主长程任务里这是致命项。另外初始化要 10 秒、每次只出 5 帧、跟踪器还得用"重复当前帧"来凑 10 帧未来输入——这些都是实时性上的妥协。</li>
+    <li><b>评测严重依赖"重定向真值"这一把有偏的尺子。</b>EMDB 和 RICH 的真值本身就是"人动作 → G1"重定向出来的，而方法的核心主张是"不要走重定向"。用一个以重定向为准的尺子去证明"比重定向好"，逻辑上成立但有循环风险：它最多能证明"比重定向更可执行"，不能证明"更接近人类意图"。</li>
+    <li><b>真机验证是演示级的，不是统计级的。</b>八类动作有视频、有真机，但论文没有给出真机上的成功率、重复次数、失败模式分析。仿真里 90% 的跟踪成功率，到真机上还剩多少，读者无法判断。</li>
+    <li><b>"数据比例 1:2 最优"这个结论很脆。</b>它只在纯视频测试集上成立，且依赖所选的同分布数据集（BEDLAM、Human3.6M 等）。换一批数据、换一个测试集，最优点很可能移动。把它当成普适配方会踩坑。</li>
+  </ol>
+  <p class="src">一句话总结：ViT-H 真正的贡献不是又一个视频驱动的人形控制器，而是把"能不能跑"从一句评价变成了一个<b>可优化的目标</b>——而且这个目标不需要标注，只需要让机器人真的动一下。</p>
+</section>
+
+<footer>素材：arXiv 2610.32966《ViT-H: Generative Video-To-Humanoid Control with Motion Tracking Feedback》（北京大学 / BIGAI，2026-10-23）· 项目页 awfuact.github.io/vit-h</footer>
+</div></body>
+</html>
