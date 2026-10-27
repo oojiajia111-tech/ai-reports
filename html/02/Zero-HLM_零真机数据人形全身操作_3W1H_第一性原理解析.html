@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero-HLM：一条真机数据都不采，反而比采真机更强 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:18px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);color:#0b3f7a;font-weight:600;}
+  td.num{font-variant-numeric:tabular-nums;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>Zero-HLM：一条真机数据都不采，反而比采真机更强<span class="sub">Zero-HLM: Generalizable Humanoid Loco-Manipulation without Real Robot Data · 北京理工大学 × BIGAI × 清华大学 × Delta Intelligence · arXiv 2610.35075</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 北京理工大学 / 北京通用人工智能研究院（BIGAI）/ 清华大学</div>
+    <div><b>论文发布</b> 2026-10-26 · arXiv 2610.35075</div>
+    <div><b>关键词</b> 真→虚→真 · 全身 loco-manipulation · 场景校正 · Unitree G1</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>人形全身操作的瓶颈不是"真机太贵"，而是"<b>真机只覆盖一个世界</b>"——100 条演示里桌子永远一米高、杯子永远在右边。Zero-HLM 让人用手机把房间拍一圈，重建成"看着对、撞得上"的仿真场景，再用 45 条源演示滚出 <b>4,800 条通过物理校验</b>的全身数据。结果反直觉：GR00T N1.7 纯仿真训练三个 G1 任务平均 <b>66.7%</b>，同等规模真机数据只有 <b>46.7%</b>；泛化场景 <b>23% → 69%</b>。数据的关键不是"真不真"，是"覆盖多宽 + 物理上合不合法"。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个"不用真机数据"的人形全身操作数据工厂</h2>
+  <p>Zero-HLM 是一套 <b>real→sim→real</b> 框架：输入端是一段手机录像 + 少量仿真里遥操作出来的"源演示"，输出端是一个可以直接零样本部署到 Unitree G1 的全身 loco-manipulation 策略。中间那一步——把仿真数据"滚"成上万条可用示范——才是全文的重心。</p>
+  <table>
+    <tr><th>环节</th><th>做法</th><th>规模 / 指标</th></tr>
+    <tr><td>场景重建</td><td>高斯溅射（Gaussian Splatting）+ 智能体式物理场景搭建（Blender MCP + IsaacLab）</td><td>重建几何误差（对称 Chamfer）<b>5.517 cm</b>；无高斯引导 11.689 cm</td></tr>
+    <tr><td>重建成本</td><td>手机拍摄 → 可用数字孪生</td><td><b>7 小时 13 分</b> / <b>$22.82</b>（含算力）</td></tr>
+    <tr><td>源演示</td><td>仿真内遥操作，每任务 15 条</td><td><b>45 条</b>（3 任务 × 15）</td></tr>
+    <tr><td>数据生成</td><td>源锚定动作合成 → 物理 rollout 校验 → 执行后修正，闭环重试</td><td><b>4,800 条</b>物理合法示范，平均 <b>1.8×</b> 采集加速</td></tr>
+    <tr><td>真机结果</td><td>Unitree G1，零样本部署，3 个长时序任务</td><td>仿真训练 <b>66.7%</b> vs 真机数据 <b>46.7%</b></td></tr>
+    <tr><td>泛化结果</td><td>5 种配置（换物体/换目标/换桌面…）合并</td><td><b>23% → 69%</b>，不加一条真机演示</td></tr>
+  </table>
+  <p>三个任务分别是：移动抓取放置、低姿态戴帽（squat-pick + carry + 放到柜面）、腿辅助搬运篮子（用大腿顶住篮子）。共同点是<b>都需要全身协同</b>——蹲、走、伸手、顶、放，任何一段脱节整条任务就废，这也是"只调手臂"的 VLA 玩不转的地方。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：真机数据的真正问题不是贵，是"只见过一个世界"</h2>
+
+  <h3>公理一：策略学到的是"观测→动作"的映射，映射的宽度由数据覆盖的观测决定</h3>
+  <p>真机采 100 条演示，物理上无比真实，但它只覆盖了<b>一张桌子、一种杯子位置、一档光照</b>。模型在这条窄带上可以做得很好，一旦桌子高 5 厘米、帽子偏左 10 厘米，观测落到了分布外，映射就失效。所以"真实"带来的不是泛化，而是<b>保真度</b>；泛化只能靠<b>覆盖</b>来买。</p>
+
+  <h3>公理二：仿真的瓶颈有两个，缺一个都白干</h3>
+  <p>仿真天然便宜、天然可扩展，但一直卡在两点：① <b>场景不像</b>——纯 mesh 拼出来的房间，视觉一塌糊涂，策略在仿真里学到的视觉特征到真机直接崩；② <b>动作不可执行</b>——人形全身动作要在接触约束下真的站得住、抓得着，随手生成的动作 90% 物理上跑不通。Zero-HLM 的两个核心模块，正好一对一打这两个瓶颈。</p>
+
+  <h3>公理三：物理合法性可以"筛"，不必"训"</h3>
+  <p>关键的观念转变在这里：与其训练一个策略去学会"别摔倒"，不如<b>让每条候选动作先跑一遍，跑不通就丢掉或修一下场景</b>。这样数据生成就变成了一个"生成—校验—修正"的流水线，而不是一个奖励设计的玄学问题。论文里也确实没有奖励函数——用的是任务成功 / 稳定 / 无违规碰撞三类<b>接受判据</b>。</p>
+
+  <h3>公理四：当动作总是差一点时，改环境比改策略便宜</h3>
+  <p>这是全文最聪明的一刀。如果一条参考动作每次都在"差 3 厘米没抓到"上失败，你当然可以重训策略；但更便宜的做法是<b>把物体挪 3 厘米</b>——因为这 3 厘米本来就来自重建误差。把手够不到的原因归因于"环境摆错了"，而不是"策略不行"，数据生成的成功率就上来了。后面公式卡里的 SE(2) 修正就是这个思想。</p>
+
+  <div class="box good"><b>推到底的一句话</b>：真机数据买的是"保真"，仿真数据买的是"覆盖"。当一个任务需要的是覆盖（换物体、换位置、换姿态），而保真可以用视觉对齐补上时，纯仿真训练超过真机训练就不是反常，而是<b>必然</b>。</div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：拍一遍房间，滚出一万条能跑的动作</h2>
+
+  <div class="step"><div class="t">Step 1 · 高斯引导的智能体式实到虚重建</div><div class="d">手机拍一圈 → 高斯溅射出视觉模型 G → 智能体（Blender MCP + IsaacLab）照着重建成带碰撞体的物理场景 E。视觉和碰撞几何必须对齐，这是后面所有"差 3 厘米"能被修的前提。对称 Chamfer 距离做到 5.517 cm，比不用高斯引导的 11.689 cm 好一倍。</div></div>
+  <div class="step"><div class="t">Step 2 · 采源演示（只有 45 条）</div><div class="d">在仿真里遥操作，每个任务 15 条。这 45 条是"种子"，不是训练集——它们的角色是提供"动作骨架"和"成功的交互几何"。</div></div>
+  <div class="step"><div class="t">Step 3 · 源锚定全身动作合成</div><div class="d">给定新的目标位姿，先按距离挑最像的那条源演示，再把源演示里"手—物相对关系"整体搬到新位姿上，最后用逆运动学解手臂，并让段与段之间平滑过渡（不然换段瞬间手会瞬移）。</div></div>
+  <div class="step"><div class="t">Step 4 · 物理落地校验（SONIC）</div><div class="d">合成出的动作交给 SONIC 控制器在仿真里真跑：编码成 64 维 latent，解码成关节目标，PD 执行。跑完按"任务成功 / 稳定 / 无违规碰撞"三类判据验收，通过的才入库。</div></div>
+  <div class="step"><div class="t">Step 5 · 执行后修正（三种刀法）</div><div class="d">没过但有救的，按失败类型分别修：机器人平面位姿偏了 → 整体平移场景；物体抓/放偏了 → 挪物体或挪目标；竖直方向腕高差 → Z 轴补偿。修完回到 Step 4 再跑，直到通过。</div></div>
+  <div class="step"><div class="t">Step 6 · 训练 + 零样本上真机</div><div class="d">策略 π<sub>θ</sub> 吃观测（第一视角 RGB + 34 维本体状态：29 关节 + 3 维重力投影 + 2 维手开合）和语言指令，一次吐出 H 步的 66 维动作块；50 Hz 执行，RTC 异步推理。仿真里用 z-buffer 掩码把机器人自身手臂遮掉一部分做混合渲染，让第一视角更像真机。</div></div>
+
+  <h3>公式一：源锚定重定向——把"手和物的相对关系"整体搬家</h3>
+  <div class="fml">
+    <div class="name">式 1 · 手部目标变换 + 段间平滑（论文 Eq. 2 / Eq. 4）</div>
+    <div>\[ \widetilde{T}_{e,t}=T_o\,\big(T_o^{\text{src}}\big)^{-1}T_{e,t}^{\text{src}},\qquad
+    p_{e,t}^{\text{blend}}=\widetilde p_{e,t}+\lambda_t\big(p_e^{\text{in}}-\widetilde p_{e,t_0}\big) \]</div>
+    <div class="exp">说人话：第一式是"相对搬家"。\(T_o^{\text{src}}\) 是源演示里物体的位姿，\(T_{e,t}^{\text{src}}\) 是那一刻手的位置。先把源里的手换算成"相对于物体"的位姿 \(\big(T_o^{\text{src}}\big)^{-1}T_{e,t}^{\text{src}}\)，再乘上新位置里物体的位姿 \(T_o\)——等于说"不管物体挪到哪，手和它的相对姿势保持不变"。这就是为什么一条源演示能适配几十个新摆位。第二式是"接缝处理"：\(\lambda_t\) 从 1 衰减到 0，让手从上一段的结束位置 \(p_e^{\text{in}}\) 平滑滑到新轨迹上——不这么做，换段那一帧手会瞬移，物理校验必然炸。</div>
+  </div>
+
+  <h3>公式二：SE(2) 场景与物体修正——rollout 的反馈用来改环境，而不是改策略</h3>
+  <div class="fml">
+    <div class="name">式 2 · 机器人位姿引导的场景修正 + 物体残差修正（论文 Eq. 5 / Eq. 6）</div>
+    <div>\[ x_j^{+}=x' + R_2(\psi'-\psi)\,\big(x_j-x\big),\quad \psi_j^{+}=\psi_j+\psi'-\psi;\qquad
+    \Delta e_{xy}=e_{xy}^{\text{cand}}-e_{xy}^{\text{src}} \]</div>
+    <div class="exp">说人话：第一式（Eq. 5）是"整间屋子跟着机器人一起转"。原本期望机器人站在 \((x,\psi)\)，实际跑完停在 \((x',\psi')\)，那就把每个场景物件 \(x_j\) 绕机器人位置做一个平面旋转 + 平移，把这点偏差抹平——注意改的是<b>场景</b>，机器人动作一个字节都没改。第二式（Eq. 6）是"东西放歪了就挪东西"：\(\Delta e_{xy}\) 是这次 rollout 与成功源演示在抓取/释放那一刻的平面误差差多少，直接把这个差值补到物体或目标位置上。这一步在消融实验里最狠：Task A 上去掉机器人 SE(2) 修正，成功率从 <b>61.0% 掉到 16.0%</b>。</div>
+  </div>
+
+  <h3>公式三：动作被压成 66 维——为什么人形全身能用一个小接口驱动</h3>
+  <div class="fml">
+    <div class="name">式 3 · SONIC latent 动作空间与策略输出（论文 Sec. 3.3）</div>
+    <div>\[ a_t=(z_t,g_t)\in\mathbb{R}^{66},\quad z_t=E(\mathcal{R}_t)\in\mathbb{R}^{64},\quad g_t\in[0,1]^2;\qquad
+    \big(\hat z_{t:t+H-1},\hat g_{t:t+H-1}\big)=\pi_\theta(o_t,\ell) \]</div>
+    <div class="exp">说人话：人形机器人有 29 个关节，直接回归关节角既抖又难学。这里把"一段参考运动" \(\mathcal{R}\) 交给编码器 \(E\) 压成 64 维 latent \(z_t\)，再加两只手的开合量 \(g_t\)（2 维），一共 66 维——策略只需要预测这么点东西。真正把 latent 翻译成关节力矩的是解码器 \(D(z_t,h_t)\) 和底层的 PD 控制器，它同时看着本体感知历史 \(h_t\) 来保持平衡。好处很直接：<b>策略负责"想做什么"，控制器负责"别摔倒"</b>，两件事解耦，数据生成和策略学习才能各自独立地规模化。</div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：把"数据从哪来"变成了一个可算的工程题</h2>
+  <div class="box good"><b>价值一：真机数据的必要性被实质性削弱了一次。</b>同等规模下 66.7% vs 46.7%，泛化场景 23% → 69% 且不加一条真机演示。这不是"仿真也有点用"，而是"在需要覆盖的任务上，仿真数据已经更划算"。</div>
+  <div class="box good"><b>价值二：真机采集的门槛被压到"一部手机"。</b>7 小时 13 分、$22.82 就能把一间屋子变成可训练的数字孪生。对中小团队，这等于把"必须有台机器人和一支采集团队"变成了"先拍个视频看看"。</div>
+  <div class="box good"><b>价值三：给了仿真数据一个可验证的质量门。</b>三类接受判据 + 闭环修正，让"4,800 条"这个数字有了明确含义——不是随手生成 4,800 条，而是 4,800 条<b>跑通过的</b>。相比只报"生成了多少条"，这套验收标准更值得被复用。</div>
+  <div class="box good"><b>价值四：顺手做了个基准。</b>9 个技能阶段阶段、统一协议、每模型每任务 100 次仿真试验：GR00T N1.7 69.7%、DiT4DiT 64.0%、π<sub>0.5</sub> 59.0%、Diffusion Policy 2.7%——这组数字本身就有参考价值。</div>
+  <div class="box bad"><b>局限与冷思考：</b></div>
+  <ol class="crit">
+    <li><b>视频里没有的，仿真里也不会有。</b>重建只忠实于手机拍到的那一间屋子和那批物体。真要泛化到新物体，仍得重新拍、重新重建——"零真机数据"换来的是"零成本采集"，不是"零成本场景"；</li>
+    <li><b>5.5 cm 的重建误差，就是策略精度的天花板。</b>抓取能容忍几厘米，但插拔、旋拧、薄片抓取这类任务，5 cm 足以致命。这套方法目前更适合"移动 + 搬运 + 放置"，不适合精密装配；</li>
+    <li><b>三个任务、一个本体，样本太少。</b>66.7% 的均值背后只有 3 个任务，且失败率仍有 1/3；泛化配置里也出现过基线接近 0 的情况，方差需要看原文细节；</li>
+    <li><b>没有奖励函数意味着没有"变优"的驱动力。</b>整套流程是"模仿 + 验收 + 修场景"，能保证数据合法可用，但不保证数据<b>最优</b>——它复制的是源演示的行为风格，源演示不行，扩出来的一万条也不行；</li>
+    <li><b>视觉对齐依赖渲染技巧。</b>用 z-buffer 掩码做混合渲染来模拟第一视角里"自己的手臂"，这是很聪明的工程手段，但也说明 sim-to-real 的最后一公里仍然靠人工调渲染；</li>
+    <li><b>结论的边界要说清：</b>它证明的是"在需要覆盖的全身 loco-manipulation 上，仿真数据可以超过小规模真机数据"，不等于"真机数据没用了"。真机数据在触觉、力控、柔性物这些仿真难建模的维度上仍然不可替代。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>一图速记</h2>
+  <p><b>一句话版本</b>：真机数据买"保真"，仿真数据买"覆盖"。Zero-HLM 用手机把房间拍成能撞的数字孪生，用 45 条种子演示滚出 4,800 条跑得通的全身动作，并在动作跑不通时<b>改场景而不是改策略</b>——于是纯仿真训练的人形策略，第一次在真机上打赢了真机数据训练的策略。</p>
+  <p class="src">论文：<a href="https://arxiv.org/abs/2610.35075">Zero-HLM: Generalizable Humanoid Loco-Manipulation without Real Robot Data</a>（arXiv 2610.35075，2026-10-26）· 项目主页：<a href="https://young-bit.github.io/zero-hlm/">young-bit.github.io/zero-hlm</a>。本文基于论文与项目页独立拆解。</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解 · 由自动化工作流生成于 2026-10-27</footer>
+</div></body>
+</html>

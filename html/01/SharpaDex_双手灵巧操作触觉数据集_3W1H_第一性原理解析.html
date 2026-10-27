@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SharpaDex：让"接触"变成可测的标签 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:18px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);color:#0b3f7a;font-weight:600;}
+  td.num{font-variant-numeric:tabular-nums;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>SharpaDex：别让机器人用眼睛去猜"捏得够不够紧"<span class="sub">SharpaDex v1.0：一只 22 自由度灵巧手的真实双手操作数据集（约 300 小时 / 28,993 episodes）· Sharpa · 公众号发布 2026-10-22</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-22</div>
+    <div><b>关键词</b> 双手灵巧操作 · 指尖六轴力/力矩 · 触觉视频 · 接触即监督</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>拧瓶盖时，眼睛看不见指腹的压力——高自由度双手操作的瓶颈不是"看不清"，而是"摸不着"。SharpaDex 把每只 22 自由度手的 44 个关节角、十个指尖的六轴力/力矩、触觉视频与 4 路 RGB，全钉在同一条 30 FPS 时间轴上。于是<b>接触</b>不再是模型从像素里猜的隐变量，而是与动作并列的一路<b>可测监督信号</b>。近 3 万条真实 episode，卖的不是数据量，是把"手感"写成了字段。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：给"手感"建档的双手操作数据集</h2>
+  <p>一句话：<b>SharpaDex v1.0 是 Sharpa 发布的一套真实机器人双手灵巧操作数据集</b>，硬件是两只 22 自由度 Wave 灵巧手 + 两条 7 自由度机械臂，把所有能测的东西同步录在同一条时间轴上。</p>
+  <table>
+    <tr><th>项目</th><th>规格</th></tr>
+    <tr><td>Episodes</td><td class="num">28,993 条</td></tr>
+    <tr><td>总帧数</td><td class="num">32,396,172 帧 @30 FPS（约 300 小时）</td></tr>
+    <tr><td>任务数</td><td class="num">59 项</td></tr>
+    <tr><td>动作维度</td><td class="num">58 维有效（其中双手 22×2 = 44 维是手指关节）</td></tr>
+    <tr><td>触觉通道</td><td class="num">10 个指尖 × 六轴力/力矩 = 60 维 + 两路触觉视频</td></tr>
+    <tr><td>视觉通道</td><td class="num">4 路 RGB（无深度）</td></tr>
+    <tr><td>语言标注</td><td class="num">任务级 28,993 条 + 子任务片段 224,087 段 + 45 类技能标签</td></tr>
+  </table>
+  <p>它有三个刻意的设计选择，值得单独拎出来：</p>
+  <ul>
+    <li><b>接触是录进来的，不是推出来的。</b>指尖 wrench（力/力矩）与视频、动作同帧对齐，模型可以直接从"接触发生的那一刻"学，而不是靠像素反推"大概碰到了"；</li>
+    <li><b>硬件决定了示范的上限。</b>22 自由度人手尺度的手，才能做出手内旋转、多点接触、拇指对掌这些动作——两指夹爪只有一个开合变量，这些动作在物理上就表达不出来；</li>
+    <li><b>标注保留了长时序的骨架。</b>224,087 个子任务片段覆盖约 89.3% 的帧，让"阶段条件策略""分层策略""分段评估"这三类实验第一次有共同的地基。</li>
+  </ul>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：操作的本质是"隔着接触面传力"，而相机只看得见几何</h2>
+
+  <h3>公理一：机器人改变世界，唯一通道是接触面</h3>
+  <p>不管任务是拧瓶盖、插排线还是叠衣服，机器人和物体之间所有的力、所有状态的改变，都只通过那几个指甲盖大小的接触面传递。<b>视觉看到的是"手指和瓶盖的相对位置"，接触面看到的是"抓力够不够、有没有打滑"</b>——这是两个物理量，不是同一个东西的两种精度。</p>
+
+  <h3>公理二：看不见的量只能靠猜，猜错会在时间里复利</h3>
+  <p>如果触觉缺失，策略就得用图像去推断"我现在捏住没有"。单帧猜错的代价很小，但操作是时序任务：滑移一旦开始，姿态偏差每帧放大一点，等到视觉上明显看出来（物体已经歪出画面），纠正窗口早就关掉了。这就是为什么纯视觉策略常在"看起来还行"的时候突然崩盘。</p>
+
+  <h3>公理三：要让一个量可学，先得让它可测——而且要跟动作同帧</h3>
+  <p>把触觉传感器装上只是第一步。若力信号的时间戳和视频、动作差几十毫秒，模型学到的就是错位的因果；采样率不一致同样致命。SharpaDex 的价值就落在"<b>同一条 30 FPS 时间轴</b>"这一件事上：接触、画面、动作三者在同一帧上互为因果，监督信号才成立。</p>
+
+  <h3>公理四：数据集的稀缺不是帧数，是"接触时长"</h3>
+  <p>300 小时听起来很多，但拆开看：约 195 小时至少有一个指尖在接触，约 55 小时（约 18%）是双手同时接触。剩下三分之一基本是伸手、找位、收回——触觉通道在这段里几乎是噪声。<b>所以一个触觉数据集的有效容量，应该按"接触小时"算，而不是按"总小时"算。</b></p>
+
+  <div class="box good"><b>推到底的一句话</b>：双手操作的难点不是感知精度不够，而是<b>关键状态不可观测</b>。把接触从"隐变量"变成"显式字段"，等于把一道靠猜的题改成了有标准答案的题。</div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：从人手动作到一条可学的数据流</h2>
+
+  <h3>第一段：示范是怎么"翻译"出来的（5 个环节，每环都会掉保真度）</h3>
+  <div class="step"><div class="t">Step 1 · 测人手</div><div class="d">Manus 数据手套采指尖位置，VIVE 追踪器采手腕位姿——得到的是"人的意图"。</div></div>
+  <div class="step"><div class="t">Step 2 · 重定向（retargeting）</div><div class="d">用差分逆运动学把人手映射到 Wave 的 22 个关节上。人和机器人的关节轴、连杆长度、活动范围都不同，这一步必然有损。</div></div>
+  <div class="step"><div class="t">Step 3 · 限位与碰撞约束</div><div class="d">砍掉机器人做不到的姿态，同时也会砍掉一部分操作者的原始想法。</div></div>
+  <div class="step"><div class="t">Step 4 · 底层跟踪</div><div class="d">低通滤波 + 级联 PID，控制环 300 Hz。手的抖动、个人习惯会顺着这条通道渗进示范轨迹。</div></div>
+  <div class="step"><div class="t">Step 5 · 同步记录</div><div class="d">所有模态落同一条 30 FPS 时间轴。注意：传感器硬件最高支持 180 FPS，公开数据集只用 30 FPS——为的是和视频对齐。</div></div>
+  <p class="src">这段流程来自 Sharpa 的 T-Rex 遥操作实现，是目前对 Wave 遥操作讲得最清楚的一份公开说明。</p>
+
+  <h3>第二段：动作的两种说法，触觉的两种分辨率</h3>
+  <ul>
+    <li><b>关节空间</b>：把 4 路相机 + 本体感知 + 触觉历史映射到 58 个关节目标，端到端策略走这条路；</li>
+    <li><b>末端空间</b>：记录 TCP 位姿，支持"手腕一个模块、手指一个模块"的分层控制。</li>
+  </ul>
+  <p>关键细节：数据集<b>同时</b>记录了"指令 TCP"和"实测 TCP"。两者之差就是跟踪误差，它提醒所有做模仿学习的人一件事——<b>遥操作数据里的 action 是控制指令，不是执行结果</b>。把指令当 ground truth 直接回归，等于把控制器的误差一起学进策略里。</p>
+  <div class="fml">
+    <div class="name">跟踪误差（用两路 TCP 相减即可算出，论文未单列公式，这是最朴素的定义）</div>
+    <div>\[ e_t=\big\|p_t^{\text{cmd}}-p_t^{\text{obs}}\big\|_2,\qquad \bar e=\frac{1}{T}\sum_{t=1}^{T}e_t \]</div>
+    <div class="exp">说人话：\(p^{\text{cmd}}\) 是"我让它去哪"，\(p^{\text{obs}}\) 是"它实际到了哪"，两者的距离就是"它有多听话"。这个数大，说明示范动作本身就没被忠实执行——你再怎么训策略，也只能学到一段"歪掉的动作"。</div>
+  </div>
+  <p>触觉同样给了两种分辨率，而且这两种分辨率对应两种完全不同的任务需求：</p>
+  <table>
+    <tr><th>表示</th><th>信息量</th><th>擅长什么</th><th>代价</th></tr>
+    <tr><td>10 指尖六轴 wrench（60 维）</td><td>紧凑、低带宽</td><td>接触检测、力回归、滑移检测、区分"视觉相同但接触不同"的阶段</td><td>丢失空间分布：不知道碰在指尖哪里、接触面多大</td></tr>
+    <tr><td>触觉视频（每帧两路高分辨率）</td><td>保留形变与接触区域</td><td>薄片抓取、精细局部对齐、表征学习</td><td>解码/存储/编码器开销大；原始图带固定传感器纹理与压缩伪影，容易被模型"抄近路"</td></tr>
+  </table>
+  <p>两者录自<b>同一批示范</b>，这才是真正值钱的地方：研究者可以在完全相同的 episode 上做模态消融——纯 RGB / RGB+wrench / RGB+触觉视频 / 三模态全上，模型容量、训练预算、数据增强全部锁死，然后回答一个此前只能靠嘴争的问题：<b>哪些任务真的需要空间触觉，哪些只要 60 维力信号就够了？</b></p>
+
+  <h3>第三段：300 小时的骨架长什么样</h3>
+  <p>59 个任务的数据量差了两个数量级：<code>iron_garment</code> 228 万帧（约 21 小时），<code>deal_playing_cards</code> 207 万帧（约 19 小时），而 <code>collect_toys_into_basket</code> 只有 8.6 万帧（约 48 分钟）、<code>pry_nails_from_board</code> 2.1 万帧（约 12 分钟）。仅最大的两项就占了全数据集约 13%。</p>
+  <div class="fml">
+    <div class="name">长尾任务的采样折中（temperature sampling，文中给出的默认建议）</div>
+    <div>\[ P_i=\frac{n_i^{\,\alpha}}{\sum_{j}n_j^{\,\alpha}},\qquad \alpha\in[0,1] \]</div>
+    <div class="exp">说人话：\(n_i\) 是第 \(i\) 个任务的帧数。\(\alpha=0\) 就是每个任务权重一样（12 分钟的任务和 21 小时的任务同权，小任务直接被过拟合）；\(\alpha=1\) 就是按帧数硬采（熨衣服和洗牌统治梯度）。把 \(\alpha\) 调到 0 和 1 中间，等于"多给稀有任务一点话语权，但不让它翻盘"。</div>
+  </div>
+  <p>还有一个容易踩的坑：<b>划分数据集不能随机打帧</b>。相邻帧、同一天采的 episode 共享同一套光照、桌面和操作者习惯，随机划分会让这些信息同时落进训练集和测试集，指标虚高。正确做法是按采集季/任务类别/物体条件切分。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：把"接触"变成一个可研究的对象</h2>
+  <div class="box good"><b>价值一：触觉第一次可以被"计量"。</b>过去说触觉有用是信仰，现在可以在同一批示范上做 A/B：Sharpa 自己的 HTT 工作在玩具拧螺丝任务上，用预训练触觉 embedding 成功率 95%，而直接喂原始 wrench 只有 50%——<b>同一种信号，换个编码方式，成功率接近翻倍</b>。这说明"有触觉"和"用好触觉"是两件事，而数据集提供了检验二者的实验台。</div>
+  <div class="box good"><b>价值二：双手耦合有了数据基础。</b>55 小时的双手同时接触，对应的是"两只手围绕同一个物体共享约束"这类最难建模的问题。这是目前真实机器人数据集里相当可观的一笔。</div>
+  <div class="box good"><b>价值三：给遥操作质量提供了可诊断的字段。</b>DexTeleop-0 的思路是把人的动作当"名义指令"，再用指尖力、接触力矩、关节限位、变化率做优化修正——仿真球体装配第三阶段成功率从 4% 提到 97%，真实齿轮啮合从 11.43% 提到 57.14%。SharpaDex 让"接触建立后手指姿态怎么变、受力是否与物体旋转对应"这类问题第一次能在示范数据里被直接验证。</div>
+  <div class="box bad"><b>局限与冷思考：</b></div>
+  <ol class="crit">
+    <li><b>30 FPS 对"滑移起始"这类毫秒级事件是欠采样的。</b>硬件能到 180 FPS，数据集只用了 30 FPS 来对齐视频。想研究滑移的起始瞬间，这个采样率可能刚好错过关键那几帧；</li>
+    <li><b>300 小时 ≠ 300 小时有效触觉。</b>约三分之一的时间在伸手和重新定位，触觉通道信号很弱；双手同时接触只占约 18%。训练时不加接触感知采样，大量算力会花在"没摸到东西"的帧上；</li>
+    <li><b>场景覆盖窄。</b>任务类型很全（搬运/装配/插拔/工具/清洁/包装/柔性物/长时序），但环境基本集中在工作台，房间级、移动级、户外场景都没有；</li>
+    <li><b>action 是指令，不是结果。</b>加上公开文档尚未明确 TCP 的参考坐标系、单位与旋转表示，"拿来就用"之前必须先把这些约定对齐，否则坐标变换会静默出错；</li>
+    <li><b>没有深度。</b>Sharpa 自家的 WM-Craftnet 依赖深度信息，要在这套数据上复现就得先估深度或改架构；</li>
+    <li><b>触觉视频有"抄近路"风险。</b>原始传感器图带固定纹理与压缩伪影，模型很可能学到的是传感器外观，而不是真正的接触物理；</li>
+    <li><b>标注描述的是"阶段"，不是"物理状态"。</b>子任务文本相似或边界有偏时，模型学到的可能是时间相关性而非真实状态——可用"标注为抓取的片段是否真的始于首次接触"来检验。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>一图速记</h2>
+  <p><b>一句话版本</b>：双手操作的瓶颈是"关键状态不可观测"；SharpaDex 把十个指尖的力和触觉形变钉进同一条时间轴，让接触从猜出来的隐变量变成可测、可当监督的字段——数据集真正卖的是这个转换，而不是那 300 小时。</p>
+  <p class="src">原文：公众号 human five《从 SharpaDex 看触觉双手操作》（2026-10-22）。本文基于该文独立做 3W1H 第一性原理拆解，数据均引自原文。</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解 · 由自动化工作流生成于 2026-10-27</footer>
+</div></body>
+</html>
