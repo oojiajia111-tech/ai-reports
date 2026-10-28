@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HexaShell：让机器人自己写工具 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>HexaShell：别给机器人装技能库，让它自己写工具<span class="sub">A Thin Harness for Exploring the Limits of VLM Agents as Robot Coding Agents · 六角未来 Hexa Future · arXiv 2610.23479</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-21</div>
+    <div><b>机构</b> 六角未来（Hexa Future）</div>
+    <div><b>关键词</b> Physical Coding · 工具自迭代 · RoboDojo 榜首</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>机器人学得慢，不是模型不够聪明，而是<b>学到的东西全存进了又贵又慢的权重里</b>。HexaShell 把"经验"换个地方存——存进<b>代码</b>。模型只负责在图上点中目标，工具负责把这一像素算成三维坐标；失败了就读日志改代码、补测试、原地重跑，好用的工具留下来给下个任务用。于是能力可以在<b>不改一个权重、不加一条示教</b>的前提下长大。把框架做薄到只剩"连接、执行、反馈"，不是偷懒，是把上限还给模型。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个"只负责接线"的壳，加上会写工具的 Agent</h2>
+  <p>HexaShell-Preview 是六角未来（Hexa Future）沿 "Physical Coding" 思路做的第一个工程原型。它的结构简单到有点反常识：<b>不做技能库、不做专用感知模块、不为任务写死逻辑</b>，整套 Harness（外壳）只干三件事——把命令可靠地送到机器人、把结果可靠地取回来、把失败如实告诉 Agent。</p>
+  <ul>
+    <li><b>一条命令行接口 <code>robo</code></b>：接收命令、校验、转成运动；返回三路 RGB（头部 + 左右腕部）、机械臂状态、执行结果；</li>
+    <li><b>9 条基础工具</b>：覆盖"观察 / 手臂运动 / 夹爪控制 / 等待与回合结束"四类，够用即可，不预置任何任务套路；</li>
+    <li><b>两个 Coding Agent 分工</b>：执行智能体（Acting Agent）用现有工具干活；优化智能体（Optimizer Agent）在失败后读记录、定位原因、写新工具或修旧工具，并补上测试；</li>
+    <li><b>工具库会生长</b>：通过验证的工具沉淀成可复用代码，供后续任务直接调用——能力积累发生在<b>可读、可测、可回滚的代码</b>里，而不是参数里。</li>
+  </ul>
+  <p>官方评测（RoboDojo 全部 42 项任务、每项 50 回合）：<b>成功率 46.9%、进度得分 53.2</b>，位列 RoboDojo-Agent 榜首，领先第二名 <b>7.5 个百分点</b>。细看两项：<b>Memory 81.0%</b>（领先第二名 17.3 点）、<b>Open 55.3%</b>（领先 7.8 点）。</p>
+  <p class="src">"Open" 是 8 项没有专属工具的任务——Agent 必须现场把此前攒下的工具重新组合起来；"Memory" 要求把历史观察真正用上。这两项恰好是"工具积累"和"现场判断"的直接体检。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：机器人系统的瓶颈，卡在"经验存在哪"这件事上</h2>
+  <p>把这套设计剥到只剩物理与逻辑，会得到一条四节的公理链。</p>
+
+  <h3>公理一：能力要能积累，必须落在某种载体上；载体不同，代价差几个数量级</h3>
+  <p>模型权重和代码都是载体。改权重需要成千上万条示教、几十张卡、几小时训练，还会"学了新的忘了旧的"；改代码只需要一次失败、一段日志、一个下午。既然机器人每天遇到的都是<b>新布局、新物体、新干扰</b>，那么把经验写进最便宜的那个载体，是唯一能跑得动的复利方式。</p>
+  <div class="step"><div class="t">推论 1</div><div class="d">如果经验写进代码，那么"变强"就不必等下一轮训练——它可以在一次任务失败后的十分钟内发生。</div></div>
+
+  <h3>公理二：会思考的模型早就有了，缺的是把"想"接到"动"上的那根轴</h3>
+  <p>VLM 能看懂画面、能写程序、能规划步骤。但从"我知道杯子在左上角"到"机械臂该往哪走"之间，隔着一件很硬的事：<b>把二维像素变成三维坐标</b>。这一步不能靠语言模型"猜"，只能靠相机标定 + 几何。HexaShell 的分工正是照这条缝切的：<b>模型选目标（语义），代码算位置（几何）</b>。</p>
+
+  <h3>公理三：任何为模型预设的中间层，都在抬高下限的同时封死上限</h3>
+  <p>手写技能库、专用感知模块、逐任务定制流程，本质是把人类的先验塞进中间层。基座模型弱的时候这是脚手架，模型变强之后它就是天花板——因为模型的规划能力被"只准调这几个技能"限制住了。所以 Harness 越薄，模型能力上涨时越能 1:1 地转化成执行力。</p>
+
+  <h3>公理四：没有闭环反馈的"经验"只是故事，能通过测试的才是资产</h3>
+  <p>失败 → 读命令记录与每帧画面 → 定位原因 → 改代码 → <b>补测试</b> → 同一布局重跑验证 → 有效则入库。这一圈里"补测试"最关键：它让工具从"这次碰巧能用"变成"下次还能用"，也让工具库不至于被一次偶然成功的坏代码污染。</p>
+  <div class="box good"><b>公理链收口：</b>载体便宜（公理一）+ 语义与几何分家（公理二）+ 中间层做薄（公理三）+ 改完必须过测试（公理四）= 一个不训练、不加数据，却能持续变强的机器人系统。</div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：三层结构，一个循环</h2>
+
+  <h3>第一层：极简 Harness——只保证"作用得上"，不决定"怎么作用"</h3>
+  <p>Harness 的唯一职责是把 Agent 的意图<b>可靠地</b>落到物理世界：命令校验、运动转换、三路画面 + 状态 + 反馈回传。它刻意不提供"抓取技能""导航技能"这类高层封装。原文那句话说得直白：<b>Harness 的价值是让模型能可靠地作用于物理世界，而不是替模型决定如何完成任务。</b></p>
+
+  <h3>第二层：9 条基础工具 + 会生长的工具库</h3>
+  <table>
+    <tr><th>类别</th><th>作用</th><th>为什么必须在这一层</th></tr>
+    <tr><td>观察</td><td>取三路 RGB、读状态</td><td>感知是 Agent 的眼睛，不能由框架代看</td></tr>
+    <tr><td>手臂运动</td><td>末端位姿增量移动</td><td>最低层的物理自由度，越原始越通用</td></tr>
+    <tr><td>夹爪控制</td><td>开合</td><td>同上，原始动作才可组合</td></tr>
+    <tr><td>等待 / 回合结束</td><td>时序与终止</td><td>物理世界有惯性，必须能"等一等"</td></tr>
+  </table>
+  <p>在这 9 条之上，所有高层工具（比如"用标定参数 + 多视角测出物体三维位置再对齐抓取"）都是 <b>Agent 自己写、自己修、自己测</b>出来的。这就是它敢在 Open 类任务上领先的原因：没见过的任务，不是"无工具可用"，而是"现场拼一个"。</p>
+
+  <h3>第三层：两个 Agent 的迭代循环</h3>
+  <div class="step"><div class="t">① 执行智能体</div><div class="d">读头部 + 双腕画面、夹爪位姿、执行反馈 → 在图上选目标 → 调用现有工具 → 跑"观察—行动—检查结果"的循环。</div></div>
+  <div class="step"><div class="t">② 判定与取证</div><div class="d">失败后不做模糊自责，而是取证：每条命令、每帧画面、执行轨迹、当前工具源码，一起交给优化智能体。</div></div>
+  <div class="step"><div class="t">③ 优化智能体改代码</div><div class="d">定位是"看错了"还是"算错了"还是"动错了" → 写新工具或改旧工具 → 补测试 → 通过检查后，用新工具在<b>同一布局</b>重跑验证。</div></div>
+  <div class="step"><div class="t">④ 资产入库</div><div class="d">验证有效的工具保留进工具库，成功经验一并记录，供后续任务调用。整个循环<b>不新增示教数据，也不更新基座权重</b>。</div></div>
+
+  <h3>关键一环：像素怎么变成坐标</h3>
+  <p>这是"能用"和"能准"的分水岭。Agent 在图像上点中一个像素，工具结合相机标定参数把该像素<b>反投影成空间中一条射线</b>——但一条射线只能确定方向，定不了距离，还需要第二个约束。HexaShell 用两种：</p>
+  <ul>
+    <li><b>平面高度法</b>：先测出桌面/物体表面的高度，再求射线与该平面的交点。桌面操作里这是最省事的解法；</li>
+    <li><b>双视角三角测量</b>：两个相机看到同一点时，两条射线交会即得三维坐标。对应点可由模型直接指定，也可由工具内部的图像匹配算出；单视角看不清时，机器人会主动移动腕部相机拿第二个视角。</li>
+  </ul>
+  <div class="fml">
+    <div class="name">反投影（像素 → 射线）与三角交会</div>
+    \[ \mathbf{d}=R\,K^{-1}\begin{bmatrix}u\\v\\1\end{bmatrix},\qquad \mathbf{p}=\mathbf{o}+t\,\mathbf{d},\quad t=\frac{h-o_z}{d_z} \]
+    <div class="exp"><b>大白话：</b>\(K\) 是相机内参、\(R\) 是相机朝向，\((u,v)\) 是你在图上点的那个像素。第一个式子把像素翻译成"从镜头出发的一束方向"；第二个式子沿着这束方向走 \(t\) 米就落到物体上。要走多远？用"桌面高度 \(h\)"这个已知条件反解出来——这就是平面高度法。两个相机各给一条射线时，取两条线最近的那个交点，就是三角测量。</div>
+  </div>
+
+  <h3>Sim to Real：一套工具两边通用</h3>
+  <p>它的感知工具吃的是 <b>RGB + 标定参数 + 机械臂状态</b>——这三样在仿真和真机之间语义完全一致；执行工具则在每次调用时<b>根据当前观测重新定位目标</b>并现算动作。所以工具不是"针对某个场景录好的流程"，而是"每次现场重算的函数"。布局一变、上真机了，都不用重排流程。这也解释了那条核心优势：模型能力一涨，新能力可以通过同一个物理接口直接变成新的执行力。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：方向对得很准，但还没到"通用"</h2>
+
+  <h3>真正的贡献：把"学习"从权重里搬到了代码里</h3>
+  <ul>
+    <li><b>零训练成本的能力增长</b>：不加示教、不更新权重，靠失败驱动改代码。这是与 VLA 微调路线正交的一条路，而且是目前唯一能在"一次任务内"变强的路；</li>
+    <li><b>可解释、可审计</b>：机器人为什么这么动，答案在源码里，不在黑箱参数里。工业落地时这一点比多几个点成功率更值钱；</li>
+    <li><b>抗杂乱能力强</b>：Generalization 类任务在桌面额外加 13–18 个干扰物后，仍保留约 <b>82%</b> 的整洁场景成功率，明显高于学习式策略——因为它是"现场测量"而不是"模式匹配"；</li>
+    <li><b>架构上的减法</b>：证明薄 Harness + 强基座模型可以打赢厚工程栈。这对整个具身智能的工程范式是一个方向性提示。</li>
+  </ul>
+
+  <h3>必须泼的冷水</h3>
+  <ul class="crit">
+    <li><b>46.9% 的绝对成功率还不高。</b>榜首是真的，但一半以上的任务仍然失败。它对标的还是"Agent 可多回合尝试"的设定，与"一次成功"的学习式策略并非同一把尺子，7.5 个点的领先不宜直接换算成"更聪明"；</li>
+    <li><b>只有 RGB，没有力/触觉。</b>插入、拧、按压这类靠接触反馈的任务，视觉几何给不出关键信息。文章主打的正是抓放、插入、倾倒，但"插进去多深"这件事，相机很难说了算；</li>
+    <li><b>强依赖基座模型与接口质量。</b>Harness 做薄的代价是：模型不够强、命令行设计不够干净，整个系统就退化。它探索的是"当前最强 VLM 的上限"，不是"普适方案"；</li>
+    <li><b>工具库会膨胀和过拟合。</b>按任务长出来的工具越多，检索与复用越难，还可能出现"为这个桌面写死"的坏工具。文中用测试来把关，但测试本身也是 Agent 写的，存在自证风险；</li>
+    <li><b>迭代成本转移到了推理侧。</b>每次失败都要多轮读图、改码、重跑，真机时间与 token 消耗换来的省下的训练成本，账要算清；</li>
+    <li><b>评测口径需谨慎。</b>42 项 × 50 回合是官方榜，复现细节（允许重试几次、优化智能体预算多少）会显著影响数字。</li>
+  </ul>
+
+  <div class="box bad"><b>一句话结论：</b>HexaShell 不是在教机器人"多会几招"，而是在换一条积累路径——把智能写进可执行、可检验的代码。这条路的上限由基座模型决定，下限由几何与测试守住。它现在还不通用，但它指出的方向（薄框架 + 代码化经验 + 现场测量）大概会比又一个更大的 VLA 权重更耐用。</div>
+
+  <p class="src">延伸阅读：论文 arXiv 2610.23479 · Blog hexafuture.ai/blog/hexashell · 代码 github.com/HexaFuture/HexaShell</p>
+</section>
+
+<footer>3W1H × 第一性原理 · 具身智能知识库 · 解析自公众号「human five」2026-10-21</footer>
+
+</div></body>
+</html>
