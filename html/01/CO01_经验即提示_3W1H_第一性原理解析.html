@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CO01：经验即提示，把"教一次"的成本砍掉两个数量级 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top;}
+  th{background:var(--brand-bg);font-weight:700;}
+  td.num{font-variant-numeric:tabular-nums;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>CO01：把"经验"当提示词，而不是当训练数据<span class="sub">Experience is the Prompt · 可可矩阵 COCO Matrix · 上下文学习路线的机器人版本</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-27</div>
+    <div><b>机构</b> 可可矩阵 COCO Matrix</div>
+    <div><b>关键词</b> 经验提示 · 会话式训练 · 统一视觉主干</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>机器人适配新任务的成本，从来不是"模型不够聪明"，而是<b>每换一件事就得重新喂足够多的数据</b>。微调路线的账是：一个任务 180 条示范、9 小时；任务无限，成本就无限。CO01 换的不是算法，是<b>经验进入系统的通道</b>——把经验当成上下文塞进去，而不是当成梯度灌进去。同一段示范，1 分钟就能用 → <b>准备时间差 460 倍</b>。而它真正下功夫的地方在格式：经验必须按"会话"串成有前因后果的序列，失败、重试、被纠正都在里面——否则模型学不会"什么情况下该参考什么"。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个"看一遍就能干"的机器人模型</h2>
+  <p>可可矩阵发布的 <b>CO01</b>（读作 /kuːl/），核心主张一句话：<b>经验可以直接放进模型上下文，不用为当前任务重新训练。</b>他们把这条路径叫"经验提示"（Experience is the Prompt）。</p>
+  <p>能当"经验"用的东西有四类，覆盖面比"一段演示视频"宽得多：</p>
+  <ul>
+    <li><b>示范</b>：人的第一视角、侧面录像，或者其他机器人的录像；</li>
+    <li><b>自身尝试</b>：包括失败的尝试——它记得自己刚才试过哪边、怎么倒的；</li>
+    <li><b>即时指导</b>：人中途的一句指点、一个手势、放下一个杯垫；</li>
+    <li><b>目标图像</b>：告诉它"做完应该长这样"。</li>
+  </ul>
+  <p>文章开头那几组数字是全文的骨架：</p>
+  <table>
+    <tr><th>场景</th><th>不給经验</th><th>给经验（CO01）</th></tr>
+    <tr><td>换用功能相近的替代工具</td><td class="num">14%</td><td class="num"><b>52%</b></td></tr>
+    <tr><td>训练中完全没见过的技能</td><td class="num">6%</td><td class="num"><b>43%</b></td></tr>
+    <tr><td>五次尝试机会内的累计成功率（真机）</td><td class="num">56%（无历史）</td><td class="num"><b>84%（带自身历史）</b></td></tr>
+    <tr><td>准备工作量（达到同等成功率）</td><td class="num">180 条示范 / 约 9 小时</td><td class="num"><b>1 段示范 / 约 1 分钟</b></td></tr>
+  </table>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：不是模型学得慢，是经验走错了门</h2>
+  <h3>公理一：适配成本 = 数据获取成本，而它随任务数线性增长</h3>
+  <p>微调的数学形式是 \(\theta'=\arg\min_\theta \mathcal{L}(\theta; \mathcal{D}_{\text{新任务}})\)——要让参数为这件事变一次，你就必须先有一批 \(\mathcal{D}_{\text{新任务}}\)。于是"每个新任务都要采一批数据 + 训一次"成了硬约束：任务有 N 个，成本就是 N 倍。这不是效率问题，是<b>计量单位</b>问题。</p>
+  <h3>公理二：人学新活，从来不重训大脑</h3>
+  <p>人学一个新手艺：看一遍、试一下、被指正一句，就会了。变的不是神经元连接，是<b>当前脑子里装的那几段经历</b>。也就是说，经验在人这里是以"情境片段"进入工作记忆的，而不是以权重更新的形式进入。机器人之所以慢，是因为它被设计成只认权重这一个入口。</p>
+  <h3>公理三：既然只认权重，那就把"经验"也做成一种条件</h3>
+  <p>策略本质是在算 \(P(a_t \mid o_t)\)。把经验 \(S\) 塞进条件，变成 \(P(a_t \mid o_t, S)\)，就得到了一条零权重的适应通道：</p>
+  <div class="fml">
+    <div class="name">两条适应路线的成本对比（本质区别在"改不改 θ"）</div>
+    <div>\[ \underbrace{\text{微调：}\;\theta^\star=\arg\min_\theta \mathcal{L}\big(\theta;\mathcal{D}\big)\;\Rightarrow\;\text{成本}\propto|\mathcal{D}|\times\text{训练时长}}_{\text{每个新任务重来一次}} \qquad \underbrace{\text{ICL：}\;a_t\sim p_\theta\big(a_t\mid o_t,\,S\big)\;\Rightarrow\;\text{成本}\propto|S|}_{\text{只多读一段上下文}} \]</div>
+    <div class="exp">说人话：上面那条要动模型参数，所以每换一个任务就得重新采数据、重新训练；下面那条参数一动不动，只是把"这次的参考资料 \(S\)"多喂进上下文。实测差距：1 分钟 vs 9 小时，<b>约 460 倍</b>。注意这不是"同一件事做得更快"，是"两件成本结构完全不同的事"——所以别把它当成对微调的优化，它是在绕开微调。</div>
+  </div>
+  <h3>公理四：但上下文给什么，决定它学会什么</h3>
+  <p>只给一段成功示范，模型能学到"做什么"，学不到"上次那样干会失败"。而真实任务里，最关键的信息往往藏在失败里：试管插不进孔，是因为试了左边；盒盖盖不上，是因为角度偏了。<b>所以经验不能是单条视频，必须是有时间顺序、带成败标记的会话。</b>这就是 CO01 最核心的工程决策。</p>
+  <h3>公理五：上下文有天花板，所以终点不是"永不训练"</h3>
+  <p>上下文长度有限，长任务里误差还会累积。真正的终局是分工：<b>当天的适应靠上下文（快），长期的固化靠轨迹回炉（稳）</b>。原文结尾那句"从即时适应走向持续学习"，讲的就是这个。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：四类经验 + 两个系统 + 一种训练单位</h2>
+
+  <h3>① 四类经验，四条不同的学习路径</h3>
+  <div class="step"><div class="t">示范：跨本体也能学</div><div class="d">可以从人的第一视角、侧面录像、其他机器人的录像里学。插线任务里，它<b>沿用了示范中的换手步骤</b>，但抓取方式和运动路径按自己的夹爪调整——学到的是"意图与顺序"，不是"逐帧复刻"。更妙的是两个反向实验：把搭积木的录像<b>倒放</b>，它就学会拆积木；只练过单次折叠的模型，看人<b>连折两次</b>毛巾，就依次完成两次折叠。<br>有效性怎么验？保持场景和起始状态不变，只改毛巾折法 / 按钮顺序：<b>96% 的按钮操作遵循示范顺序，92% 的毛巾操作采用示范折法</b>——说明它真的在看示范，不是在瞎蒙。</div></div>
+
+  <div class="step"><div class="t">自身尝试：失败也是有价值的上下文</div><div class="d">试管能不能放进孔里，动手才知道。保留先前尝试的那一侧，试过左右两边后，第三次放进了蓝色架子；不保留历史的那一侧，在同一个架子上试了两次，试管倒了。手机盒也一样：带历史的一侧第四次盖好，不带历史的一侧反复放歪。<br>真机累计成功率：首次 33% → <b>带自身历史五次内 84%</b>；不带历史 56%；只带<b>其他任务</b>的失败记录 58%。这组对比很关键——它说明"相关的失败"才是有效信息，随便塞些失败经历帮助有限。</div></div>
+
+  <div class="step"><div class="t">即时指导：动作中途也能改</div><div class="d">机器人正把杯子送向杯架，人中途放下一个杯垫，它就改变了落杯位置。更狠的一个：人先用手势指定"哪个杯子配哪个杯垫"，然后<b>打乱杯垫位置</b>；没有新提示，它仍按刚才教的配对关系摆放——说明这条指导没有当场用完就丢，而是留在了上下文里。<br>机制上做了分层：执行中的指导留在 <b>System 1</b> 的上下文，继续影响后续动作；跨任务的偏好由 <b>System 2</b> 保存，在后续任务里重新提供。</div></div>
+
+  <div class="step"><div class="t">跨机体：仿真里的技能接力</div><div class="d">双臂机器人先把碎屑扫进簸箕 → 轮式机器人以这段录像为示范完成任务 → 人形机器人再向轮式机器人学习。目标和步骤传了下去，但三台机器人拿工具的方式各不相同。这是"经验可迁移"最直观的演示，也是这条路线最有想象力的地方：<b>一个人学会的事，可以沿着录像在网络里传下去。</b></div></div>
+
+  <h3>② 两个系统：一个管"想参考什么"，一个管"怎么动"</h3>
+  <table>
+    <tr><th></th><th>System 2（组织经验）</th><th>System 1（生成动作）</th></tr>
+    <tr><td><b>职责</b></td><td>规划、记忆、调用工具、检查进度</td><td>结合参考经验、实时画面、机器人状态做决策</td></tr>
+    <tr><td><b>关键动作</b></td><td>为当前子任务<b>挑选</b>该用哪段示范、哪次先前尝试、哪张目标图像</td><td>持续接收执行中的指导，实时输出动作</td></tr>
+    <tr><td><b>训练目标</b></td><td>—</td><td>同时预测后续画面与动作；<b>部署时只输出动作</b></td></tr>
+  </table>
+  <p>注意 System 1 训练时也预测未来画面、部署时却只出动作——预测是"逼表征学会物理"的手段，不是目的。这和最近另一条研究线（把未来预测当辅助监督）在结论上是一致的。</p>
+
+  <h3>③ 会话式训练：这是全文最硬的工程决策</h3>
+  <p>CO01 以「<b>会话</b>」（Session）为训练单位，<b>按时间顺序</b>保留同一任务里的示范、失败、重试和指导，让模型学会"利用此前发生了什么，来预测下一段动作"。单个执行记录也参与训练，用来保住已有技能不退化。</p>
+  <p>训练时还做了几件很讲究的事，目的都是防空转：</p>
+  <ul>
+    <li>把相关示范与先前尝试放在一起，<b>有时故意混入无关经验</b>——逼模型学会分辨"什么值得参考"，而不是默认上下文里的东西都该照抄；</li>
+    <li><b>随机丢弃部分元数据标签</b>，避免模型学会"靠标签作弊"；</li>
+    <li>改变上下文长度与经验组合，让模型适应"参考资料多、少、乱"的各种情况。</li>
+  </ul>
+  <p>数据来源是采集 + 已有录像整理：不同来源的记录按任务与步骤对齐，经 VLM 辅助标注、人工审核，再用仿真和视频生成扩展物理条件、场景与视角。</p>
+
+  <h3>④ 统一视觉主干：5 万小时，顺手把感知也包了</h3>
+  <p>视觉主干用人的第一视角视频、多种机器人记录、手持夹爪记录、仿真与筛选后的网络视频预训练，累计约 <b>5 万小时</b>。除了预测后续画面，同一套权重还学深度、表面法线、分割、光流、人体与手部骨架、相机运动。</p>
+  <p>结果是：<b>8 项感知基准中 5 项优于专用模型</b>，深度估计基本持平；但相机位姿与光流的原始误差分别高约 <b>19%</b> 和 <b>18%</b>（原文明确提示：归一化得分不等于误差变化比例，别误读）。这里的意义不在"打败专用模型"，而在于——<b>能读懂示范里的空间关系与动作变化，是把视频当经验用的前提</b>。感知不行，看点视频也学不到东西。</p>
+
+  <h3>⑤ 规模的两个旋钮：数据量与任务多样性，都要拧</h3>
+  <p>这两个结论对做具身数据的人很重要：</p>
+  <ul>
+    <li><b>数据量</b>：预训练数据越多，ICL 与微调都持续变好。5 万小时时，800 条示范微调 87%，单示范 ICL 53%——<b>ICL 打不过大力出奇迹的微调，但它的成本是千分之一量级</b>。</li>
+    <li><b>任务多样性</b>：ICL 训练覆盖 <b>3,543 种任务</b>时，单示范在未见任务上达到 <b>53%</b>；只给语言指令是 <b>18%</b>。这条更本质——<b>它见过多少种"不同的活"，决定了它举一反三的能力</b>。堆同一任务的重复数据，不如堆任务种类。</li>
+  </ul>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：换了一条成本曲线，但没到终点</h2>
+  <div class="box good"><b>价值一：把适配成本重新定义了一次。</b>460 倍不是调参调出来的，是"经验走上下文、不走梯度"这个架构决定的。它带来的实际变化是：新任务可以<b>先现场试、再决定要不要训</b>——这直接把"要不要接这个活"从投研决策降级成试一下。</div>
+  <div class="box good"><b>价值二：失败第一次成为一等公民。</b>大多数机器人数据集里，失败的轨迹是被扔掉的。CO01 把失败、重试、被纠正全部按会话顺序保留，而且证明有效（84% vs 56%）。这条经验对所有做数据采集的团队都成立：<b>别只存成功的</b>。</div>
+  <div class="box good"><b>价值三：示范的接口比示范的质量更值钱。</b>人的第一视角、侧面录、其他机器人录、甚至倒放的视频都能用。倒放学拆解这个例子说明它抓的是"步骤结构"，不是"动作纹理"——这大大降低了采数门槛。</div>
+  <div class="box good"><b>价值四：跨机体传递打开了另一条路。</b>技能沿着录像接力传播，意味着将来可能不需要每个本体都重新采一遍数据。</div>
+  <div class="box bad"><b>局限与冷思考：</b></div>
+  <ol class="crit">
+    <li><b>53% 就是 53%。</b>单示范 ICL 在未见任务上是 52%~53%，微调 800 条能到 87%。所以这不是"微调可以扔了"，而是"先用 1 分钟试到 50 分，再决定要不要花 26 小时做到 87 分"。把它宣传成"不用训练了"是过度解读。</li>
+    <li><b>上下文有硬上限，长任务会累积误差。</b>原文最后自己列了两个待办：减少长任务误差累积、提高选择经验的准确性。也就是说，<b>"该参考哪段经验"这件事现在还挑得不够准</b>——而挑错了，比不给参考更危险（上下文污染）。</li>
+    <li><b>数据规模的比较不完全公平。</b>5 万小时里包含了网络视频、仿真、其他机器人数据，这些数据的"任务多样性"本身就远高于"同一任务 800 条示范"。所以 53% vs 87% 的差距里，混杂了"多样性"这个变量，不能全算成 ICL 与微调的算法差距。</li>
+    <li><b>感知主干的短板被轻描淡写。</b>相机位姿误差高 19%、光流误差高 18%，这两项恰恰和"从示范里推断动作变化"强相关。文中用了"原始误差"与"归一化得分"两套话术，读者容易只看"5 项领先"。</li>
+    <li><b>真机验证的规模有限。</b>每条件 100 次试验，五次机会、部分任务首次成功率只有 33%。样本量支撑得起趋势结论，支撑不起"通用可靠"。</li>
+    <li><b>"持续学习"仍是计划而非结果。</b>现在新技能主要靠上下文适应，跨任务偏好由 System 2 保存；"用使用中积累的数据回炉"这条飞轮，原文只给出了方向（主动求教、跨场景复用），没有闭环实验数据。</li>
+    <li><b>最该警惕的读法：</b>把"经验即提示"当成"机器人可以自学成才"。它自学的每一分都来自人给的示范、人的指点、以及它自己的失败——<b>上下文里没有的东西，它一点也变不出来</b>。这条路线更准确的定位是：把人类的教，变得极其便宜。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>一图速记</h2>
+  <p><b>一句话版本</b>：CO01 把经验从"训练数据"改成"上下文"，于是同一段 1 分钟的示范就能干到 52%，而微调要 180 条 / 9 小时；关键设计是<b>按会话保留成败的前因后果</b>，让失败、重试、被纠正都变成可用信息；它的天花板也很清楚——上下文有限、经验挑选还不够准，所以终局仍是"上下文快速适应 + 轨迹长期固化"。</p>
+  <p><b>三个可以直接拿走的判断</b>：① 评估这类模型别看平均成功率，看"首次尝试成功率"和"五次内累计成功率"的差值——差值大说明经验复用真的在工作；② 做数据采集时保留失败轨迹和指导记录，这是 ICL 路线的燃料，扔了等于自断一臂；③ 判断路线成本时，别比"训练多快"，比"从零到能用一个任务要多久"——这里差的是两个数量级。</p>
+  <p class="src">原文：<a href="https://mp.weixin.qq.com/s/NP2Ht7B6xvctpfeIzXkS5g">《可可矩阵COCO Matrix发布 CO01 模型：言传身教，让机器人边做边学》</a> · 公众号 human five · 2026-10-27 · 技术博客 <a href="https://www.ccmtrx.com/research/co01">Experience is the Prompt: Introducing CO01</a>。本文基于该文公开数据独立拆解，数字均取自原文。</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解 · 由自动化工作流生成于 2026-10-28</footer>
+</div></body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>世界模型预测监督：成功率涨了，泛化没跟上 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);font-weight:700;}
+  td.num{font-variant-numeric:tabular-nums;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>世界模型让成功率涨了，可它没解决泛化<span class="sub">未来视频预测作为辅助监督的受控消融 · FastWAM / OpenWAM / π0.5</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-27</div>
+    <div><b>方法</b> 视频预测损失消融 + 轨迹聚类 + 分布偏移测试</div>
+    <div><b>关键词</b> World Action Model · 辅助监督 · 迁移边界</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>"预测未来画面"对机器人是<b>免费的额外监督</b>：它逼着视觉表征去编码"我的动作会让世界怎么变"，而不只是"这一帧长什么样"。所以动作确实变准了——已见任务成功率最高涨 72.91 个百分点。但<b>"成功率"是个把两件事混在一起的糊涂数</b>：走不同的路，和同一条路走得更稳。把成功率拆开看，涨的主要是后者。而一旦环境换个配置，这点收益立刻归零——因为模型学到的是<b>训练分布里的物理</b>，换分布等于换物理。结论很硬：预测监督是好用的训练工具，不是泛化能力的替代品。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一次只改一个变量的"体检报告"</h2>
+  <p>这类模型叫 <b>World Action Model（WAM）</b>：一边预测机器人该做什么动作，一边预测画面接下来会变成什么样。问题在于，过去大家只报一个数字——任务成功率。成功率涨了，就宣称"世界模型有用"，但没人说得清<b>涨在哪</b>、<b>能撑多久</b>。</p>
+  <p>这篇论文做的事很朴素：在两个现成的 WAM 系列（FastWAM、OpenWAM）内部，<b>把未来视频预测损失这一项的权重从 0 调到非 0，其他全部冻结</b>——架构、初始化、训练数据、训练步数一模一样。这样涨的每一分，都只能归因于"有没有这项监督"。</p>
+  <table>
+    <tr><th>测试条件</th><th>含义</th></tr>
+    <tr><td>Seen + Clean</td><td>任务见过、环境标准 → 考"熟练度"</td></tr>
+    <tr><td>Unseen + Clean</td><td>任务没见过、环境标准 → 考"举一反三"</td></tr>
+    <tr><td>Seen / Unseen + Randomized</td><td>环境配置被打乱 → 考"扛不扛折腾"</td></tr>
+  </table>
+  <p class="src">训练数据统一来自 RoboTwin 2.0 双臂操作仿真：40 个任务 × 45 条示范，另留 5 条验证；被标记为 Unseen 的任务完全排除在训练集外。实验 1 用 10 个 Seen 任务、3,200 次 rollout；实验 3 扩到四种条件组合、共 19,200 次 rollout。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：三个层次的问题被一个数字盖住了</h2>
+  <h3>公理一：模仿学习学的是"看到什么就怎么动"，而"动完会怎样"从来没被显式要求过</h3>
+  <p>纯行为克隆只优化 \(P(\text{动作}\mid\text{观测})\)。它不需要理解物理，只要记住"这种画面下人类是这么动的"。这在见过的画面附近很好用，一旦画面稍微偏出训练分布，模型就不知道后果，只能瞎猜——误差还会一步步累积（compounding error）。</p>
+  <h3>公理二：要它理解物理，最直接的办法是逼它预测"下一秒长什么样"</h3>
+  <p>这是一个额外的、<b>稠密到每一帧都有</b>的监督信号。你让它预测未来画面，它就必须在内部表征里装下"手碰到杯子，杯子会滑"这类因果。表征变厚了，动作自然更准。这是预测监督真正的作用机制——<b>它改的是表征，不是动作头</b>。</p>
+  <h3>公理三：但"成功率"是个加总后的标量，它把"选路"和"走路"混成了一个数</h3>
+  <p>成功率上升有两种完全不同的来源：策略换了一批轨迹模式（走了别的路），或者策略在同样的路线上走得更稳（同一条路少摔跤）。只看总成功率，你永远分不清是哪一种。所以必须把它拆开：</p>
+  <div class="fml">
+    <div class="name">成功率的可分解形式（论文 4.2 节的核心工具）</div>
+    <div>\[ P(\text{成功}\mid\lambda)=\sum_{m}\;\underbrace{\pi_\lambda(m)}_{\text{模式 }m\text{ 出现的频率}}\cdot\underbrace{q_\lambda(m)}_{\text{模式 }m\text{ 内部的成功率}} \]</div>
+    <div class="exp">说人话：把总成功率拆成"各条路线各占多少比例"乘以"每条路线自己走成的概率"，再全加起来。其中 \(\lambda\) 是视频损失权重（0 或非 0）。如果收益来自"换了路"，你会看到 \(\pi\) 系统性地变；如果来自"同一条路走得更好"，你会看到 \(\pi\) 几乎不动而 \(q\) 明显涨。论文用轨迹数值特征做聚类（不看模型身份、不看成功标签），就是为了让这个拆分不带偏见。</div>
+  </div>
+  <h3>公理四：分布内变好 ≠ 分布外能行，因为两者要的是不同东西</h3>
+  <p>预测监督教的是"这个分布里的物理规律"。环境随机化换的是分布本身（光照、位置、材质）。你把一本物理教材背得再熟，换一个星球重力变了，照样摔。所以"已见任务变好"根本推不出"泛化变强"——这不是模型弱，是<b>目标不同</b>。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：一次消融，三层证据，外加一个反向设计验证</h2>
+
+  <div class="step"><div class="t">Step 1 · 只动一个旋钮：视频损失开 / 关</div><div class="d">在两个 WAM 系列内部分别跑 \(\lambda_{\text{video}}=0\) 与 \(\lambda_{\text{video}}>0\) 两组。作者特意澄清：设成 0 只是关掉<b>显式</b>预测损失，世界模型的架构和视觉表征还在——所以这是"监督项"的消融，不是"世界模型"的消融。</div></div>
+
+  <div class="step"><div class="t">Step 2 · 先看熟练度：已见任务涨了多少</div><div class="d">10 个 Seen + Clean 任务、配对比较。FastWAM 从 14.97% 涨到 39.34%（<b>+24.38pp</b>）；OpenWAM 从 7.00% 涨到 79.91%（<b>+72.91pp</b>）。两个系列都涨，说明不是某一套实现的偶然。但也有反例：FastWAM 在 <i>put bottles dustbin</i> 掉 3.44pp、<i>rotate qrcode</i> 掉 2.50pp——<b>监督不是万能增益</b>。</div></div>
+
+  <div class="step"><div class="t">Step 3 · 再拆行为：涨的是频率还是簇内成功率</div><div class="d">把每个任务里两种设置产生的轨迹合在一起聚类，比较各模式占比与簇内成功率。结果是<b>后者涨，前者基本不动</b>：<br>· <i>stack blocks two</i>：模式 M0 在两种设置下都占约 90%，成功率却从 50.2% → 89.5%；<br>· <i>place object stand</i>：两个主要模式各占约 50%，成功率 67.8% → 77.7%、84.5% → 97.3%；<br>· <i>open laptop</i>：这次频率也变了（69/31 → 47.1/52.9），同时成功率 22.7% → 78.4%、22.9% → 94.4%。<br>即：预测监督主要让"同样的动作序列执行得更靠得住"。</div></div>
+
+  <div class="step"><div class="t">Step 4 · 然后换分布：收益还在不在</div><div class="d">四条件交叉测试，答案是<b>大面积失效</b>：<br>· 未见任务：FastWAM 只 +0.28pp（等于没涨）；OpenWAM 仍 +23.38pp，但收益高度集中在三个任务（place container plate +52.50、open microwave +71.88、press stapler +73.44），其余几乎没动甚至微降；<br>· 随机化环境：两个模型绝对成功率都低到 ≤3.22%，加入预测损失后变化全是负的（FastWAM −0.13 / −1.62pp，OpenWAM −0.25 / −2.75pp）。严重地板效应下，这些负值既不能证明监督有害，也证明不了它有用——<b>只是没信号</b>。</div></div>
+
+  <div class="step"><div class="t">Step 5 · 反向验证：这笔收益值不值得买大模型</div><div class="d">把未来预测当成"训练期辅助作业"塞进现有的 π0.5，推理时整条预测分支直接拆掉。两种装法：<br>· <b>轻量版</b>：随机初始化的 6 层 Transformer（8 个 attention head），2048→512 维投影，在冻结的 Wan2.2 VAE 潜空间里做 flow matching；<br>· <b>重型版</b>：预训练的 Wan2.2-TI2V-5B DiT（VAE 与 T5 冻结）。<br>结果：原始 π0.5 <b>82.94%</b> → 轻量版 <b>89.19%</b>（+6.25pp，95% CI [2.31, 10.31]）→ Wan 版 <b>86.97%</b>（+4.03pp，CI [0.16, 8.22]）。两个区间都排除 0，说明都有真实收益。</div></div>
+
+  <div class="box good"><b>最反直觉的一条：轻量版赢了，但作者自己不敢下结论。</b>轻量版点估计比 Wan 版高 2.22pp，可这个差值的 95% 置信区间是 [−5.63, 1.25]，<b>跨过零</b>。所以只能说"没证明大模型有优势"，不能说"小模型更好"。而且轻量版的预测目标仍然来自冻结的 Wan2.2 VAE 潜空间——<b>它没完全不依赖预训练视频表征，只是不依赖那个 5B 的生成骨干</b>。这个限定很关键，很多二手解读会漏掉。</div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：把"世界模型有没有用"这个问法换掉</h2>
+  <div class="box good"><b>价值一：给出了一个可复用的评估模板。</b>成功率必须拆成 \(\sum \pi \cdot q\)，否则你分不清模型是"学会新策略"还是"把旧策略练稳了"。这个分解对任何带模式选择的策略评估都成立，不限于 WAM。</div>
+  <div class="box good"><b>价值二：把"训练收益"和"迁移能力"正式分成两个指标。</b>以后论文只报分布内成功率就说自己泛化好，这条证据链可以直接反驳——分布偏移下两个 WAM 的成功率全部塌到 3% 以下。</div>
+  <div class="box good"><b>价值三：给工程选型省了钱。</b>如果预测只在训练期当辅助监督，那 6 层小 Transformer 就能拿到大部分收益，不必上 5B 视频生成骨干。这在算力预算上是数量级的差别。</div>
+  <div class="box good"><b>价值四：承认"预测得好"不是目的。</b>作者明确说收益来自表征被逼着编码动力学，而不是预测精度本身——这解释了为什么小预测器也够用。</div>
+  <div class="box bad"><b>局限与冷思考：</b></div>
+  <ol class="crit">
+    <li><b>单种子训练。</b>WAM 每种配置只训了一次。rollout 几千次能压低评估噪声，但压不掉"换个随机种子结果就变"的风险。这是本文最实的一处硬伤。</li>
+    <li><b>地板效应让结论失去分辨力。</b>随机化环境成功率不到 3.22%，此时"监督无效"和"模型本来就扛不住"在数据上完全等价。作者自己也承认无法区分。</li>
+    <li><b>聚类不等于策略类别。</b>簇是按数值轨迹特征分的，有些簇其实反映的是场景几何差异，不是不同的控制方式。所以这只是"行为统计描述"，不能当因果机制的证据。论文也没测动作精度、力控或运动学指标。</li>
+    <li><b>重型版比较不公平。</b>轻量分支和 Wan 分支在架构、初始化、条件输入路径、损失加权上全都不同，2.22pp 的差距无法归因到"模型规模"这一个变量。严格说这是补充实验，不是消融。</li>
+    <li><b>全在仿真里。</b>RoboTwin 2.0 双臂任务，40 个任务 / 45 条示范。换到真实机器人、换更大数据规模，这些结论能不能站住，论文自己划为开放问题。而且没有比较训练成本、显存、推理延迟——参数量小不等于真的更省。</li>
+    <li><b>最该警惕的读法：</b>把 +72.91pp 当成"世界模型很神"。它是在 OpenWAM 基线只有 7.00% 的情况下涨起来的，基数极低时相对提升天然夸张；同时同一系列里也有任务在掉。这是个"有效的训练工具"，不是"通用解法"。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>一图速记</h2>
+  <p><b>一句话版本</b>：预测未来画面是在给视觉表征加一门"物理课"，动作确实变准（已见任务 +24~73pp），但把成功率拆开看，涨的是"同一条路走得更稳"而非"找到新路"；一换环境就归零——因为学的是训练分布里的物理。顺带证明：这门课不必请 5B 的大模型来教，6 层小 Transformer 就够。</p>
+  <p><b>三个可以直接拿走的判断</b>：① 看到"成功率提升 X 个百分点"，先问分布内还是分布外；② 看到"泛化变强"，要求给出随机化环境下的绝对值，别接受相对提升；③ 看到"必须用大世界模型"，先问它到底在训练期用还是推理期用——只在训练期用的话，小预测器往往就够。</p>
+  <p class="src">原文：<a href="https://mp.weixin.qq.com/s/GIXMmx37aHhYuubWTOwifA">《世界模型提升了成功率，却没有解决泛化》</a> · 公众号 human five · 2026-10-27。本文基于该文公开数据独立拆解，数字均取自原文。</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解 · 由自动化工作流生成于 2026-10-28</footer>
+</div></body>
+</html>
