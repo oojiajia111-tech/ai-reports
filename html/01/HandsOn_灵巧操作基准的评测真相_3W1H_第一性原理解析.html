@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HandsOn：29.1% 这个数字，到底测了什么 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>HandsOn：29.1% 这个数字，到底测了什么<span class="sub">HandsOn · 大规模双手灵巧操作仿真基准的元评测 · 清华 × 自然意志 Nature Will × 北邮 × 北大</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-28</div>
+    <div><b>关键词</b> 评测协议 · 时间预算 · 双手协同</div>
+    <div><b>一句话</b> 榜首 29.1% 是测量结果，不是物理量；换一种计时，排名就换人</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>所有人都在追<b>分数</b>，却很少有人问分数是<b>怎么被量出来的</b>。成功率不是一个物理量，它是一个"协议 × 题目集 × 判定方式"的三重乘积——不改一行代码，只把时间预算从专家时长的 1 倍放宽到 3 倍，28 组模型配对里就有 12 组<b>排名互换</b>。更关键的是，成功率是个"合取"指标：能到达、能守住、双手能配合、能听懂指令，任何一环掉链子，结果一律归零；于是榜首和榜尾的差距，可能只是"有没有提前点击鼠标"这一件事。29.1% 不是终点，是一份体检报告的封面。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么拆</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个双手灵巧操作基准，和一篇"拆自己台"的分析</h2>
+  <p><b>HandsOn 本身</b>是一个大规模的双手灵巧操作仿真基准，由清华大学联合自然意志（Nature Will）、北京邮电大学、北京大学的研究者推出。规模上是认真堆过的：</p>
+  <ul>
+    <li>可组合仿真平台，支持 <b>5 种机械臂 × 6 种灵巧手 × 约 200 种物体资产</b>；</li>
+    <li><b>18,000 条</b>人类遥操作示范、累计约 <b>56 小时</b>、覆盖 <b>66 项</b>经人工验证的任务；</li>
+    <li><b>Core-50</b> 用于策略训练与执行评测，<b>Transfer-16</b> 专门测泛化（未见过的物体关系、技能组合、柔性物体）；</li>
+    <li>论文在双 7 自由度机械臂 + 双 20 关节灵巧手的配置下，系统评测了 <b>8 个 VLA / WAM 多任务策略</b>，共 <b>40,000 条 rollout</b>（50 项任务 × 100 episode × 8 个策略）。</li>
+  </ul>
+  <p>榜单结果：最好的训练策略 <b>OpenWAM 在 Core-50 上 29.1%</b>，FastWAM 26.4%，π0.5 24.9%，DM0.5 21.4%，LingBot-VLA 19.7%，HY-Embodied 18.9%，Motus 18.1%，Spatial Forcing 12.4%。</p>
+  <p><b>而这篇要拆的，是这串数字本身。</b>它的做法很聪明：不重跑任何实验，只用论文公开的<b>逐任务结果表、Bootstrap 置信区间、阶段级检查器日志、更短时间限制下的成功率曲线</b>，对这同一批 40,000 条 rollout 反复"换个角度重新计分"。用作者的话说——"正是这种透明度，使我们能够进一步拆解一个看似简单的总体成绩"。</p>
+  <p class="src">全文围绕四个连环问题展开，每一个都由上一个的答案引出来：评分是否取决于评估协议？模型之间的差异有多少是真实的？一次失败究竟意味着什么？某些技能为什么容易失败？</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：成功率是被"设计"出来的，不是被"测量"出来的</h2>
+  <p>这条公理链不长，但每一节都能直接改写结论。</p>
+
+  <h3>公理一：一个分数 = 协议 × 题目集 × 判定方式，三者任一变动，分数就变</h3>
+  <p>物理量不会因为你换了把尺子就变——一米就是一米。但"成功率"会。给它多少时间、考哪 50 道题、什么算"成功"，每一个都是<b>人为选择</b>，每一个都会挪动排名。所以"29.1%"必须连着它的协议一起读，否则它什么也没说明。</p>
+  <div class="step"><div class="t">推论 1</div><div class="d">只报一个点（one number）的排行榜，本质上是在报"某个协议下的某个截面"。它是合法证据，但不是结论。</div></div>
+
+  <h3>公理二：二元成功判定是多个能力的"合取"，任何一项为 0，结果就是 0</h3>
+  <p>抓起来放对地方，实际是四件事同时成立：<b>到达目标 ∧ 到达后维持住 ∧ 两只手互相配合 ∧ 听懂了指令</b>。这在逻辑上叫合取（AND）。合取有个致命性质：<b>它把所有失败都压成同一个 0，于是你再也分不清是谁拖的后腿</b>。两个模型总分一样，可能一个是"根本抓不到"，另一个是"抓到了但提前点了鼠标"。</p>
+  <div class="step"><div class="t">推论 2</div><div class="d">合取指标的排名，不能反推任何单项能力的排名——甚至可能出现完全相反的顺序（下文 Open Laptop 就是活例子）。</div></div>
+
+  <h3>公理三：排名的不确定性主要来自"考了哪些题"，不是"每题抖了多少"</h3>
+  <p>这项基准每项任务跑 100 个 episode，任务级平均后 episode 噪声只有约 1 个百分点。但 50 道题是<b>从无限任务空间里挑出来的</b>——换一批题，平均分就变。所以只重采样 episode 得到的置信区间（±2.1）严重低估了真实不确定性；必须<b>同时对任务和 episode 重采样</b>，区间一下撑到 13 个百分点宽。</p>
+  <div class="step"><div class="t">推论 3</div><div class="d">"差 2 个百分点所以更强"这种话，在任务重采样面前基本站不住。要比较模型，必须以任务为单位做<b>配对</b>。</div></div>
+
+  <h3>公理四：延长时间只能救"还在动"的 episode，而绝大多数超时是"原地抽搐"</h3>
+  <p>延长预算听起来稳赚不赔——多给点时间总能多成功几个。但前提是<b>那个 episode 还在往目标推进</b>。实测：65%–83% 的超时 episode 属于"停滞"状态，也就是超过专家时长 1 倍之后，任务检查器<b>再也没有记录到任何新状态</b>；这些 episode 里手指每 10 秒还在反转方向 3–4 次，但运动范围不断缩小。<b>它们不是"快成功了"，是卡住了。</b></p>
+  <div class="step"><div class="t">推论 4</div><div class="d">时间预算是把双刃剑：它奖励的是那约 14% 仍在持续取得进展的 episode，对另外 70% 只是把失败拖长。<b>所以"三倍专家时长"测的不是能力上限，是耐心。</b></div></div>
+
+  <div class="box good"><b>公理链收口：</b>分数依赖协议（公理一）+ 成功率是合取（公理二）+ 不确定性来自题目集（公理三）+ 延长时间只救少数（公理四）= <b>看到 29.1%，必须先问三个问题：给多少时间？考哪些题？哪一环先断的？</b></div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：四个动作，把一个数字拆成一张体检表</h2>
+
+  <h3>动作一：把"时间限制"当超参数，扫一遍</h3>
+  <p>HandsOn 给每项任务的物理时间上限设成<b>示范轨迹时长第 75 百分位数的 3 倍</b>——所有方法共用，评估前就固定。这是严谨的协议设计，但它依然是人为选择。于是作者只做了一件事：<b>回到同一批 rollout，把"成功"的时间截点从 3 倍收紧到 1 倍，重新计分。</b></p>
+  <table>
+    <tr><th>评分口径</th><th>第一名</th><th>π0.5 的位置</th><th>发生了什么</th></tr>
+    <tr><td>专家时长 <b>1 倍</b>内成功</td><td>π0.5（14.6%）</td><td><b>第 1</b></td><td>OpenWAM 掉到第 6（8.3%）</td></tr>
+    <tr><td>专家时长 <b>3 倍</b>内成功（官方）</td><td>OpenWAM（29.1%）</td><td>第 3（24.9%）</td><td>官方榜</td></tr>
+    <tr><td>1–3 倍曲线下<b>面积</b></td><td>OpenWAM（22.1）</td><td>第 2（21.3）</td><td>前三名差距<b>不到 1 个百分点</b></td></tr>
+  </table>
+  <p><b>同一批数据，一次都没有重跑，排名就换了人。</b>28 组检查点配对中，<b>12 组</b>在两种标准下发生排名互换。原因也不玄：三个 WAM（World Action Model）边预测动作边预测未来观测，成功 episode 的中位耗时是专家时长的 <b>1.13–1.27 倍</b>；四个用 30 步 Action Chunking 的 VLA 只要 <b>0.88–0.99 倍</b>。WAM 更"慢"但更"能磨"，VLA 更快但更容易卡死。</p>
+  <p>那哪个排名是对的？<b>两个都对，因为它们回答的不是同一个问题</b>：一个问"能以多高频率按专家节奏完成"，另一个问"最终能不能完成"。作者提出更合适的框架是<b>生存分析</b>——每个 episode 最终以三种方式结束（成功 / 提前不可恢复失败 / 时间耗尽），三者互相竞争，时间上限是个"右删失"点。所以天然该报的统计量是<b>随时间的成功累积发生率</b>。</p>
+  <div class="fml">
+    <div class="name">用一个面积代替一个点（结构示意）</div>
+    \[ A \;=\; \int_{T_{\exp}}^{3T_{\exp}} S(t)\,\mathrm{d}t \;\;\approx\;\; \sum_{k} S(t_k)\,\Delta t_k, \qquad S(t_k)=\Pr\bigl(\text{在 } t_k \text{ 前成功}\bigr) \]
+    <div class="exp"><b>大白话：</b>\(S(t)\) 是"到第 \(t\) 秒为止已经成功的比例"，它随时间只增不减。只看一个点，等于只取这条曲线上的一个高度；算面积，等于把"早成功"和"晚成功"的差别都记进去。<br>为什么这不是迷信：面积确实缓解了"截点敏感"，但它<b>没有解决根本问题</b>——积分的终点仍是 3 倍专家时长，换个终点面积照样变。而且实测 OpenWAM 在 2 倍到 3 倍之间成功率<b>又涨了 5.1 个百分点</b>，说明 3 倍远不是渐近上限。<b>真正的答案是公开整条曲线。</b></div>
+  </div>
+
+  <h3>动作二：把不确定性拆成"题目"和"运气"两部分</h3>
+  <p>这是全文方法论最硬的一节。<b>只重采样 episode</b>，OpenWAM 的 95% 区间是 [28.0, 30.1]，宽 2.1 个百分点——看着很稳。<b>同时对任务和 episode 联合重采样</b>，区间变成 <b>[22.8, 36.0]，宽 13.2 个百分点</b>。八个检查点全是同一个模式。结论很清楚：<b>大部分不确定性来自"这 50 道题是哪些题"。</b></p>
+  <p>但"大家都变宽"不等于"分不出来"。作者做了 4,000 次联合重采样，记录每次的完整排名：OpenWAM 在 <b>92%</b> 的抽样里排第一，Spatial Forcing 在<b>所有</b>抽样里垫底；而 DM0.5 / LingBot-VLA / HY-Embodied / Motus 四家的排名<b>交叠在第 4 到第 7 名</b>，根本分不开。论文自己的配对检验也印证了这点：HY-Embodied 只在 61% 的抽样中领先 Motus。</p>
+  <p>更狠的是方差分解：把 50 任务 × 8 模型的成功率表拆成三块，<b>任务身份解释 75% 的方差，模型身份不到 5%，任务×模型的交互占 20%</b>。而交互效应是模型主效应的<b>三到四倍</b>，二项噪声只能解释其中约九分之一。换三种设定（原始百分比 / 反正弦方差稳定化 / 剔除成功率低于 5% 的 8 个任务）结论都不变。精确检验也给了一刀：1,400 组"模型对 × 任务"比较里，<b>293 组</b>达到 p < 0.001；如果全是随机，预期只有约 <b>1.4 组</b>。</p>
+  <div class="box good"><b>一句话翻译：</b>"你跑哪个模型"只决定 5% 的差距，"你考哪道题"决定 75%。所以榜首之争远没有"这个模型会什么、不会什么"重要。</div>
+
+  <h3>动作三：把"一次失败"解剖成能力缺口（这是全文最精彩的部分）</h3>
+  <p>因为 HandsOn 记录了每个 episode 的原生检查器状态，失败可以被"切片"。三个案例，三种完全不同的病：</p>
+
+  <div class="step"><div class="t">病例一：到达目标，不代表维持目标</div><div class="d"><b>Open Laptop</b>：把屏幕扳到指定角度。Spatial Forcing 到过目标的次数 <b>73</b> 次，略高于 OpenWAM 的 <b>71</b> 次；但任务结束时屏幕仍保持在目标角度的次数是 <b>23 vs 67</b>。<br>按"是否曾经到达"排名，Spatial Forcing 赢；按"是否守住"排名，OpenWAM 接近它的三倍。<br>机制也查清了：154 个丢失目标角度的 episode 里，<b>148 个是"过度打开"</b>，中位超出 <b>31.5°</b>，而且每次过度打开时<b>手都还压在屏幕上</b>——到了目标还在继续施力，一路推过去。</div></div>
+
+  <div class="step"><div class="t">病例二：每只手都成功了，双手配合没成功</div><div class="d"><b>Set Dual Knobs</b>：两个旋钮必须同时停在各自目标的 ±5° 内。800 个 episode 里左旋钮到达 411 次、右旋钮 416 次，两只手"都曾在某一刻到达"的有 219 个——如果两手完全独立，预期约 <b>214</b>。<br><b>219 ≈ 214，意味着两只手之间几乎没有可测量的协同</b>，就是两个各跑各的控制器。<br>而真正同时进入 ±5° 的只有 <b>38 个</b> episode，最终成功 <b>5 个</b>。更刺眼的是：当第一只手到达目标时，第二只手离目标的中位数还有 <b>64°</b>；随后第一只手在 608 个相关 episode 里 <b>570 次</b>离开目标范围，其中 <b>505 次</b>是越过目标。<br>缺的不是"动作时间重叠"（另一个任务里 398 个 episode 有 306 个确实重叠了），缺的是<b>"在另一只手干活时，把已经完成的状态守住"</b>这种能力。</div></div>
+
+  <div class="step"><div class="t">病例三：抓握动作触发了它本不该触发的功能</div><div class="d"><b>Move and Click Mouse</b>：800 个 episode 里 <b>443 个</b>在鼠标还没放到垫子上之前就点击了，其中 <b>297 个</b>甚至在鼠标完全没移动之前就点了。原因朴素得可笑：<b>负责抓鼠标的手指，恰好压在了鼠标按键上</b>。<br>而只要"先进入准备状态、不提前点击"，成功率就是 <b>54%</b>（362 个里成功 196 个）。OpenWAM 与 π0.5 的 44% vs 16% 差距，很大一部分就来自这个：前者提前点击 16 次，后者 <b>67 次</b>。</div></div>
+
+  <p>还有第四种病，也是最要命的：<b>策略根本没听懂指令</b>。在 Place Cup on Plate 里，把提示词中的球名换掉，HY-Embodied 和 LingBot-VLA 一秒后的预测手掌位置只移动了 <b>7–9 cm</b>（和用正确提示词重新采样时的变化幅度相当）；而 π0.5 和 DM0.5 会移动 <b>15–17 cm</b>。即使名字被替换，前两者仍有 <b>57% 和 71%</b> 的情况朝原来那颗球去。再看一眼初始布局能不能透露答案：<b>训练一个分类器猜目标球，准确率 53%，多数类基线 52%</b>——基本等于瞎猜。所以对一个忽略指令的策略来说，它的"放置成功率"很大程度上是在衡量<b>猜运</b>。</p>
+  <p class="src">顺带一个反直觉的数据：41 项共享重置种子的任务里，至少被一个检查点成功过的场景占 62.4%；若各模型失败完全独立，应该是 64.0%——几乎一样。模型两两之间"哪些场景会失败"的一致性中位数只有 κ = 0.03。<b>说明失败不是由一小撮"大家都搞不定的场景"驱动的</b>，而是高度随机，或者每个模型各有各的短板。（作者也诚实指出：共享种子并不保证物理状态一致，任何场景错配都会把 κ 拉向 0；要定论得让同一模型从验证过的同一初始状态重复跑。）</p>
+
+  <h3>动作四：追问"是不是数据不够"，然后发现问不出答案</h3>
+  <p>这里有两个看起来互相矛盾的结果，放在一起才有意义。</p>
+  <p><b>任务内部，数据量非常有用。</b>对 π0.5 在 Place Ball in Bowl 上做单任务微调，轨迹从少加到约 440 条，成功率从 <b>7% 提到 83%</b>；Squeeze Scissors 上从 <b>1% 提到 44%</b>。即使从 200 条加到全部，还分别涨了 18 和 26 个百分点，<b>没看到平台期</b>。（注意口径：这是单任务微调，不是榜上的 50 任务多任务训练。）</p>
+  <p><b>跨任务看，数据量几乎没解释力。</b>用技能类别、示范数的对数、专家时长的对数去回归 50 项任务的平均成功率，示范数的系数是 <b>−0.8 个百分点 / 对数单位，95% CI [−5.1, 5.4]</b>——完全跨过 0。而技能类别的差距非常稳定：工具使用、精密装配、手内重定向、手指独立驱动，<b>普遍比抓取与放置低 20–25 个百分点</b>。</p>
+  <p>但作者马上自己拆自己：<b>这个回归不足以支撑"数据量无用"</b>。每项任务的示范数从 46 到 463 条，跨度约 2.3 个对数单位，在这个范围内置信区间允许 −12 到 +12 个百分点的变化——<b>这么大的效应足以解释一半的技能差距</b>。而只有 50 个任务却要估 10 个参数，系数必然估不准。<b>"不显著"不等于"等于零"。</b></p>
+  <p>真正有说服力的是论文自己的分层比较：<b>示范数配额都是 500 条</b>的任务里，4 项精密装配平均成功率 <b>2.8%</b>，8 项抓放 <b>37.8%</b>——用设计固定住了数据量，技能差距依然在。不过它没控制时长：精密装配的专家中位耗时 14.7 秒，抓放只有 8.2 秒。这就引出了整个第四节最麻烦的变量：<b>执行时长</b>。它与成功率的相关系数是 ρ = −0.71（在能复原时长的 18 项任务上是 −0.78）。而这里有两种机制会产出同一条相关线——<b>错误累积</b>（每多一秒就多一份出错机会）和<b>技能本身更难</b>（所以专家也要更久）。原始数据分不开这两者；控制时长会吸收掉一部分技能效应，所以"调整后仍有 20–25 个百分点差距"这个数字，<b>可能低估了真实差距</b>。</p>
+
+  <h3>最后落地成一张七条的检查清单</h3>
+  <ol>
+    <li>报<b>不同时间限制下的成功率曲线与曲线下面积</b>，而不是一个截点；</li>
+    <li>报<b>基于任务配对、任务重采样</b>的置信区间和排名区间，而不是一个固定排行榜；</li>
+    <li>报<b>任务级排名反转</b>，或挑少量高信噪比任务做深入分析（实测：<b>12 项</b>任务就能复现 96% 的模型两两排序，<b>24 项</b>能复现全部）；</li>
+    <li>用<b>重复随机种子</b>，把"场景难"和"执行随机"分开；</li>
+    <li>把成功率拆成<b>到达 / 到达后维持 / 准备后成功</b>三个条件概率（且必须按联合事件算，不能拿互不相关的边际概率乱除）；</li>
+    <li>对所有"由语言指令决定目标物体"的任务，做<b>指令替换探测</b>；</li>
+    <li>归因于技能或数据之前，先用<b>对照明确的实验设计</b>，而不是跨任务回归。</li>
+  </ol>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：这是评测领域的"方法论整改通知"</h2>
+
+  <h3>为什么这篇值得认真读</h3>
+  <ul>
+    <li><b>它把"评测"从打分变成了归因。</b>排行榜告诉你谁第一，"哪一环先断"才告诉你下一步该改什么。三个病例（守不住 / 不配合 / 误触发）是三种完全不同的问题，需要的技术方案也完全不同——一个是终止判据，一个是双手协调，一个是抓取点与触发时序；</li>
+    <li><b>不动一行代码、不重跑一次实验。</b>全部结论都建立在论文已公开的逐任务表、CI、检查器日志、短时限曲线上。这意味着<b>任何做得透明的基准都可以被这样审计</b>，这是一个可复制的方法论模板；</li>
+    <li><b>它给出了可执行的替代方案</b>，不是只批评：曲线下面积、任务配对 CI、12 项高信噪比任务、条件成功率、指令探测。这套东西拿去改任何机器人 benchmark 都能用；</li>
+    <li><b>顺手暴露了学界一个空白</b>：Transfer-16 上<b>所有训练 checkpoint 合计在 6,232 个 episode 里只成功了 13 次</b>。也就是说"未见物体关系 / 新技能组合 / 柔性物体"这块，现有 VLA 和 WAM 基本是<b>从零开始</b>。这比"29.1% 不够高"严重得多。</li>
+  </ul>
+
+  <h3>必须泼的冷水</h3>
+  <ul class="crit">
+    <li><b>它是"元分析"，不是新实验。</b>所有二次统计都受限于论文只公开了 <b>4 个时间截点</b>——所以"曲线下面积"只能用这 4 个点近似。想真正解决，只能靠基准方公开完整曲线；</li>
+    <li><b>κ = 0.03 这个结论站得不稳。</b>作者自己承认：共享种子不保证相同物理状态，场景一错配，κ 就会自动趋向 0。要定论得让同一模型从验证过的同一初始状态重复跑——这个实验还没人做；</li>
+    <li><b>指令探测的样本面很窄。</b>离线分析、只覆盖 1 个任务、且用的 checkpoint 和被评估的 checkpoint 训练更新数相差不超过 6,000 次。它能给"这两个模型在这一个任务上的行为"提供强证据，<b>但不能推广到所有任务</b>；</li>
+    <li><b>跨任务回归的统计功效不足是硬伤。</b>50 个任务估 10 个参数，作者自己说"过于宽泛，不能据此认定效应为零"。换句话说，"数据量跨任务无用"这个结论<b>现在还只能算"未证实"，不能算"已证伪"</b>；</li>
+    <li><b>"技能 vs 时长"这对共线变量没被拆开。</b>ρ = −0.71 的相关里混着两种机制，而所有能复原时长且专家耗时超过 12 秒的任务，恰好都来自低成功率类别。这是观察性数据的天花板，作者也明说了；</li>
+    <li><b>所有结论都长在仿真上。</b>29.1%、时间预算、检查器状态，全是仿真里的事情。真实世界的"成功"更模糊、更难判定，也更容易被物理噪声劫持；这套审计方法能不能迁到真机基准，是另一个问题；</li>
+    <li><b>它没回答"那该怎么办"里的模型部分。</b>清单开到第七条，全是"怎么报"，没有"怎么让双手学会配合"。诊断很到位，药方还空着。</li>
+  </ul>
+
+  <div class="box bad"><b>一句话结论：</b>这篇的真正贡献不是"揭穿"某个模型，而是把<b>评测的可信度问题从"精度"拉到了"效度"</b>——问题不在于测得准不准（episode 噪声只有 1 个点），而在于<b>测的是不是你以为的那件事</b>。当"考哪道题"能解释 75% 的方差、"哪一环先断"能改写排名时，一个孤零零的 29.1% 更像是一份体检报告的封面：它证明你检查过了，但它没告诉你哪儿有病。</div>
+
+  <p class="src">原文：《HandsOn：灵巧操作的真实能力差距》（公众号「human five」2026-10-28）· 基准：HandsOn（清华 × 自然意志 Nature Will × 北邮 × 北大）· 涉及 8 个 VLA / WAM 策略、40,000 条 rollout</p>
+</section>
+
+<footer>3W1H × 第一性原理 · 具身智能知识库 · 解析自公众号「human five」2026-10-28</footer>
+
+</div></body>
+</html>

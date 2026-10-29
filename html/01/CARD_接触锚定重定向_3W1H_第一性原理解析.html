@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CARD：别抄手的姿势，抄"碰哪儿、往哪推、多大力" · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>CARD：别抄手的姿势，抄"碰哪儿、往哪推、多大力"<span class="sub">Contact-Anchored Retargeting for Dexterous Manipulation · 接触锚定重定向</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-28</div>
+    <div><b>关键词</b> 动作重定向 · 手部-接触表征 · 触觉跟踪</div>
+    <div><b>一句话</b> 不用仿真器、不用物体模型，也能把人的灵巧手动作搬上机器人</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>人手的动作搬不上机器人，不是因为动作没学会，而是因为<b>我们抄错了东西</b>。抄关节角、抄指尖位置，抄的只是"实现方式"；人手和机器人手差几毫米，这点误差在接触任务里就会变成悬空、打滑、压碎三种完全不同的结局。真正该抄的是<b>"哪个部位、碰哪儿、往哪推、用多大力"</b>——这四件事绑在手的表面上，天生跟本体无关。CARD 做的就是这件事：把示范翻译成 16 个手部区域的接触力目标，再让机器人去满足它。目标定对了，剩下的只是解一道几何题。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：把"人的示范"翻译成"接触指令"，而不是"关节角度"</h2>
+  <p>灵巧操作最缺的是数据。但采数据这件事有个死结：<b>遥操作、动觉示教、可穿戴外骨骼，全都要求人手去迁就机器人的接口</b>。你一戴上外骨骼，你的手就不再是那只灵活的手了——采到的上限，就是你戴着设备能做出的动作上限。</p>
+  <p>绕开这个死结的办法是<b>动作重定向（Retargeting）</b>：让人该怎么做就怎么做，事后再把"人手动作"翻译成"机器人动作"。但现有重定向基本只翻译<b>运动学</b>——指尖在哪、关节转多少。CARD 说这不够，于是提出了三样东西：</p>
+  <ul>
+    <li><b>接触锚定重定向</b>：把优化目标从"指尖位置对得上"换成"接触位置、推力方向、力大小对得上"。<b>不需要仿真器，不需要物体网格，不需要物体位姿估计</b>；</li>
+    <li><b>统一的手部-接触表征</b>：所有数据源都转成同一套接口——一段 MANO 手部网格序列 + 16 个语义手部区域（每指 3 段共 15 个，加 1 个掌心），每个区域每帧最多挂一个接触力目标；</li>
+    <li><b>触觉跟踪控制器</b>：重定向只给出"应该用多大力"，真机上还得有人去把这个力<b>杠住</b>。这个控制器专门干这件事。</li>
+  </ul>
+  <p>因为接触目标绑在"手表面区域"上，所以<b>换手只需要改一张映射表</b>：22 自由度的 SHARPA Wave、Wuji Hand 2、Unitree Dex3-1、甚至两指平行夹爪，都能跑同一套目标。</p>
+  <p class="src">"开环"在这里是有意为之：回放时不用物体位姿、不用学出来的策略，唯一的反馈回路只负责维持指尖力。作者想干净地量出"重定向本身准不准"，而不是被策略的学习误差搅浑。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：问题不在"像不像"，在"碰没碰上、推没推对"</h2>
+  <p>把这件事剥到只剩物理，会得到一条四节的公理链。</p>
+
+  <h3>公理一：人手和机器人手不是同一个东西，几毫米就是三个世界</h3>
+  <p>原文那句话说得极准：<b>"机器人与人类之间几毫米的本体差异，就可能决定回放轨迹时，机器人究竟会悬空、沿物体表面滑动，还是过度挤压物体。"</b>这几毫米放在走路、挥手、打招呼上毫无影响；放在"捏住一张卡片"上，它就是三种截然不同的物理结局。运动学误差不会自己消失，它只是<b>在接触的那一刻被物理放大</b>。</p>
+  <div class="step"><div class="t">推论 1</div><div class="d">只要目标还是"关节角对齐"，误差就没有出口——它一定会累积到接触面上爆炸。必须换一个"允许误差存在"的目标。</div></div>
+
+  <h3>公理二：任务的语义不在关节角里，而在接触三要素里</h3>
+  <p>拿"提起一把锤子"为例：这个任务的本质是"拇指和食指卡在柄的两侧、朝柄的轴心方向、用刚好不打滑的力"。至于是用第 3 关节还是第 4 关节转、手腕歪多少度，<b>全是实现细节</b>。关节角是可替换的，接触三要素（位置 / 方向 / 大小）是不可替换的——<b>换掉前者任务照样成立，换掉后者任务就变成另一件事</b>。</p>
+  <div class="step"><div class="t">推论 2</div><div class="d">该被优化、该被保存、该被重放的，是接触三要素。关节角只是它的一个解。</div></div>
+
+  <h3>公理三：目标一旦绑在"手表面"上，它就自动与本体无关</h3>
+  <p>这一点是整个方法能跨本体的全部秘密。接触目标不写在世界坐标里，也不写在某个手指的关节坐标里，而是写在<b>"这块手部区域上的某个点"</b>。人手有 16 个区域，机器人手也有对应的 16 个区域，做一次语义映射就够了：五个手指一一对应；手指不够的（比如三指手）就把中指、无名指、小指的目标按力大小加权合并成一块；两指夹爪就把拇指给一边、其余四指给另一边。</p>
+
+  <h3>公理四：位置控制是刚性的，力控制才是柔顺的</h3>
+  <p>这点最容易被忽略。假设重定向算得完美，关节轨迹一个数不差——<b>真机上照样会失败</b>。因为位置控制器是"必须走到这个点"的硬约束：物体稍微一偏，机器人要么够不着（悬空），要么硬顶上去（压碎）。用一个比喻：<b>闭着眼睛用手指去按一个按钮，靠的是"手伸到某个位置"，只要按钮挪了一厘米，你就按空了。</b>而人真正的方式是"感觉碰到东西了，再使劲"——那就是力闭环。</p>
+  <div class="step"><div class="t">推论 3</div><div class="d">轨迹对了只完成了一半，另一半必须由力反馈补上。这就是触觉跟踪控制器为什么不是可选项。</div></div>
+
+  <div class="box good"><b>公理链收口：</b>运动学误差必然在接触处爆炸（公理一）+ 任务的语义是接触三要素（公理二）+ 绑在手表面就与本体无关（公理三）+ 位置控制太硬、必须有力闭环（公理四）= <b>把人类示范直接变成机器人可执行数据的一条通路，且不需要仿真器和物体模型</b>。</div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：一句话定义目标，四层把它落地</h2>
+
+  <h3>第一层：把四种数据源压成同一个接口</h3>
+  <p>这是工程量最大、也最不起眼的一层。视频、触觉手套、光学动捕，三种数据的"接触信息"丰富程度天差地别，但都统一成三件东西：</p>
+  <table>
+    <tr><th>组成</th><th>内容</th><th>为什么是它</th></tr>
+    <tr><td>手部形状</td><td>一段 MANO 参数化手网格序列</td><td>给所有数据源一个共同的"手"</td></tr>
+    <tr><td>语义区域</td><td>15 个指段区 + 1 个掌心区</td><td>本体无关的"地址系统"，换手只改映射</td></tr>
+    <tr><td>接触目标</td><td>压心位置 + 单位推力方向 + 力大小</td><td>这就是要被优化和被重放的东西</td></tr>
+  </table>
+  <p>触觉手套直接给力，最省事；动捕只有姿态，力靠抓取平衡关系<b>反推合成</b>；单目视频连接触都没有，得先跑一个模型猜出来——那就是 Vid-HACO。</p>
+
+  <h3>第二层：每帧解一道"接触够不够得着"的几何题</h3>
+  <p>先用闭式方法（不优化）把人的关节角直接映到机器人骨架上，再平移手腕让指尖对齐，得到一个<b>确定性初值</b>顺便当热启动。然后每帧最小化四项：</p>
+  <ul>
+    <li><b>接触可达</b>：机器人的指腹要贴上示范给的那个接触点；</li>
+    <li><b>姿态风格</b>：没有被接触约束的自由手指，模仿人的姿势（别乱翘）；</li>
+    <li><b>动作平滑</b>：跟上一帧比不要跳；</li>
+    <li><b>不撞自己、不穿物体</b>：手指之间用胶囊体算间距；穿模用 SDF 判。没有物体网格时，就拿这一段动作里所有接触点的<b>凸包</b>当个"伪物体"。</li>
+  </ul>
+  <p>前两项里，接触那一项又被拆成三个小项，这是全篇最精妙的地方：</p>
+  <div class="fml">
+    <div class="name">接触代价的三段式（结构示意，非原文编号）</div>
+    \[ E_{\text{contact}} \;=\; \underbrace{\|\mathbf{c}-\mathbf{c}^{\star}\|^2}_{\text{够得着}} \;+\; \underbrace{\kappa\,L^{2}\bigl(1-\hat{\mathbf{n}}\cdot\hat{\mathbf{f}}\bigr)}_{\text{推得正}} \;+\; \underbrace{\bigl\|\mathbf{c}-\tilde{\mathbf{c}}_{t-1}\bigr\|^{2}}_{\text{别打滑}} \]
+    <div class="exp"><b>大白话：</b>三项分别对应三件事。<b>第一项</b>：机器人的指腹要落在那个点上，差多少扣多少。<b>第二项</b>：指腹的"正脸"方向 \(\hat{\mathbf{n}}\) 要朝着示范要求推的方向 \(\hat{\mathbf{f}}\)，两者一对齐，这个余弦就趋近 1，代价趋近 0——这就是"沿着摩擦锥中心推"，最不容易滑。<b>第三项</b>：把上一帧的接触点搬到这一帧的手指坐标系里，看它挪了多少——挪得多说明接触点在指腹上"爬"，那就是在滑。<br>最妙的是那个 \(L^2\)：它把"角度差"换算成了"等效的毫米数"。原文给了一个能记住的换算——<b>方向差 30°，大约等于位置偏 5 毫米</b>。也就是说，两件事被放到了同一把尺子上，权重才调得动。</div>
+  </div>
+  <p>还有一个细节专门防"作弊"：如果只按几何最近点匹配，机器人可能用<b>手指中段</b>去满足本该由<b>指尖</b>完成的接触。所以选点时会同时看几何距离和"人的接触偏好位置"（手触碰该指段时习惯落在掌侧哪个相对比例处），把这种不符合直觉的匹配排除掉。力大的接触还会获得更高优先级——力大，说明那个接触承担了任务。</p>
+  <p>这个目标函数不光滑，所以用<b>采样式零阶优化</b>：带退火的交叉熵方法（CEM），每帧采样一批候选构型、裁剪到可行域、并行打分、取最优的 5% 做 softmax 加权更新均值，噪声幅度逐步退火；最后用窗口 15 帧的零相位 Savitzky-Golay 滤波抹平。<b>单张 RTX 5090 上跑到 10 FPS。</b></p>
+
+  <h3>第三层：Vid-HACO——从一段视频里"猜"出接触</h3>
+  <p>视频里没有力，甚至连碰没碰上都要猜。Vid-HACO 干的就是这件事：输入 8 帧连续片段，先用 HaWoR 把手部从画面里裁出来并放到世界坐标系，再用 <b>V-JEPA 2.1 ViT-L 视频编码器 + DPT 解码器</b>提多尺度特征，两个预测头分别输出 <b>778 个 MANO 顶点的接触概率</b>和帧级"这一帧有没有接触"的二元判断。</p>
+  <p>两个关键设计值得记：<b>一是用时序</b>——单帧看不出"正在接近"还是"已经抓住"，8 帧连起来就能区分接近 / 抓取 / 松开三个阶段；<b>二是加帧级损失</b>——只做顶点级预测的模型会在手还没碰到物体时就到处标接触，机器人手指就被指挥到空气里去了。数据量是 12 个数据集、155 万帧，覆盖第一人称、第三人称和网络视频。</p>
+
+  <h3>第四层：触觉跟踪控制器——把"应该用多大力"变成"真的用了多大力"</h3>
+  <p>这层是"理论能跑"和"真机能用"的分水岭。做法是把力误差塞进一个<b>以积分作用为主的导纳环</b>：目标法向力和实测指尖法向力一减，得到一个标量"弯曲量"；这个弯曲量沿着每根手指固定的一条<b>协同运动向量</b>去闭合手指，所有手指的闭合量加起来变成关节偏移，再叠到关节目标上。因为关节本身是柔顺的，这个偏移产生的是<b>一个有上限的挤压力</b>，而不是一次刚性位移——这就是"手感"的来源。</p>
+  <div class="fml">
+    <div class="name">阻抗控制 + 前馈力（结构示意）</div>
+    \[ \boldsymbol{\tau} \;=\; K_p\bigl(\mathbf{q}^{\star}+\Delta\mathbf{q}-\mathbf{q}\bigr) \;-\; K_d\,\dot{\mathbf{q}} \;+\; \underbrace{J_{\text{tip}}^{\top}\mathbf{f}^{\star}}_{\text{前馈}} \]
+    <div class="exp"><b>大白话：</b>前两项是常规的"拉回目标位置 + 阻尼防抖"。真正让力跟得上的是最后一项：\(J_{\text{tip}}^{\top}\) 是指尖雅可比矩阵的转置，它负责把"想在指尖施加的力 \(\mathbf{f}^{\star}\)"翻译成"该给每个关节加多大力矩"。这叫<b>前馈</b>——不等误差出现才反应，而是提前把该使的劲算进去。导纳环负责细调（消除稳态误差），前馈负责打底（响应快）。<br>还有个工程细节很实在：<b>接触状态机</b>。传感器数据一丢，就冻结积分器、管好前馈的使能——不然积分项会一路攒到爆炸，一恢复就猛夹一下。</div>
+  </div>
+  <p>跨本体迁移在这里变得很朴素：接触目标的形式不随本体变化，所以换一台手，只要重写"16 个区域 → 这台手的连杆"的映射，锚点、代价分组、权重全都复用。三指手会把无名指和小指的目标按力大小加权合并；平行夹爪把拇指给一边、四指给另一边。没触觉传感的手（Dex3-1、Wuji Hand 2）就调一下抓取强度——Dex3-1 要放大 1.2 倍，Wuji Hand 2 不用，因为它内表面够软，自己会贴合。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：一个"该被抄走"的抽象，和一堆还没解决的账</h2>
+
+  <h3>真正的贡献：它换掉了"重定向"这个问题的定义</h3>
+  <ul>
+    <li><b>把"抄动作"改成"抄意图"</b>。这是范式层面的改动：以前评价重定向看指尖误差，现在看接触保真度。指标一换，路就宽了；</li>
+    <li><b>甩掉了仿真器和物体模型</b>。这两样是过去接触类方法绕不过去的地基，也是它们没法规模化的原因。CARD 直接从示范里拿接触目标，于是刚性物体、关节物体、可变形物体<b>共用一套机制</b>——布娃娃和魔方在这个框架里没有区别；</li>
+    <li><b>接触保真度是压倒性的</b>：视频 61%、手套+动捕 78%、GRAB 43%，而纯运动学基线只有 <b>3%–10%</b>，需要物体网格的 ReGrind 也只有 22.5%；接触间隙从 10–23 mm 压到 <b>1.4–3.6 mm</b>；GRAB 上的物体穿透 7.96 mm 是最低；</li>
+    <li><b>消融实验给出了最硬的证据</b>：同一条轨迹，只把位置回放换成带触觉跟踪器的回放，锤子提起 1/10 → <b>8/10</b>，杯子提起 3/10 → <b>10/10</b>，挤芥末酱 0/10 → <b>7/10</b>（合计 4/30 → 25/30）。这直接证明了公理四：<b>轨迹对了不算完成，力对了才算</b>；</li>
+    <li><b>还能反向喂给别人</b>：把 CARD 的接触目标塞进基于物理的重定向框架（CARD-physics），GRAB 上严格成功率 12% → <b>32%</b>，动捕数据 40% → <b>52%</b>。说明这套表征不是自家私货，是可移植的中间层。</li>
+  </ul>
+
+  <h3>必须泼的冷水</h3>
+  <ul class="crit">
+    <li><b>"43% vs 22.5%"里的 43% 并不好看。</b>GRAB 上过半的接触帧依然没建立接触。作者自己的分析也很诚实：接触率跟接触信号的质量强相关（手套 89% → 动捕 76% → 视频推断 61% → 几何近似 43%）。<b>换句话说，天花板是输入决定的，方法只是逼近它</b>；</li>
+    <li><b>纯开环是刻意的取舍，也是硬伤。</b>不用物体位姿、不用闭环策略，好处是能干净地量重定向质量，坏处是<b>物体被推走一大截，系统自己回不来</b>。作者把"用 CARD 生成的数据训闭环策略"列为未来工作——也就是说，现在这套还是个数据生产工具，不是能上岗的系统；</li>
+    <li><b>摩擦锥只按 45° 判。</b>这个门槛相当宽松（真实摩擦系数对应的半角常常小于 30°），"过半锚点帧满足摩擦锥"这句话的含金量要按 45° 折算，不能直接理解成"不会滑"；</li>
+    <li><b>"伪物体"用凸包，凹形会失真。</b>没有物体网格时，拿接触点的凸包当 SDF。杯子里侧、抽屉缝这类凹陷结构，凸包会把它们填平，穿透判断随之变松；</li>
+    <li><b>只重定向手，不管臂。</b>手腕位姿是"调过去对齐指尖"的结果，七个自由度的机械臂是配合着摆位，而不是被一起优化。整条臂够不够得到、会不会撞到桌面，不在这个框架的视野里；</li>
+    <li><b>10 FPS 是离线速度，不是控制速度。</b>真机 20 Hz 跑的是重定向<b>之后</b>的轨迹回放；换了新示范，得先离线算一遍。要做实时遥操作或在线重定向，这个速度还不够；</li>
+    <li><b>跨本体映射仍是手工活。</b>说"只改一张映射表"很优雅，但这张表是人写的，每来一台新手就要重新定 16 个区域的对应关系和合并规则。这不是自动化，是配置化。</li>
+  </ul>
+
+  <div class="box bad"><b>一句话结论：</b>CARD 最值钱的不是那些数字，而是它把"重定向"这个问题的<b>目标函数</b>换掉了——从"姿势像不像"换成"接触对不对"。这个抽象一旦成立，"不需要物体模型"和"跨本体只改映射"就是顺理成章的推论，而不是两个独立的技巧。它现在还是个离线的数据生产器，43% 的接触率也远谈不上可靠；但它指出的方向——<b>人类数据要能用，就得在"接触"这一层被表示，而不是在"关节"这一层被复制</b>——大概率会被后面的工作反复借用。</div>
+
+  <p class="src">原文：CARD: Contact-Anchored Retargeting for Dexterous Manipulation（公众号「human five」2026-10-28 拆解）· 相关：Vid-HACO、HaWoR、SPIDER、DIAL-MPC</p>
+</section>
+
+<footer>3W1H × 第一性原理 · 具身智能知识库 · 解析自公众号「human five」2026-10-28</footer>
+
+</div></body>
+</html>

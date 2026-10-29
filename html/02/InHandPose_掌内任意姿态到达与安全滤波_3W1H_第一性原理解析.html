@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InHandPose：把手心里的东西摆成任意姿势，还不许掉 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)'],['$','$']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>InHandPose：把手心里的东西摆成任意姿势，还不许掉<span class="sub">Pushing Dexterity and Safety for In-Hand Object Pose Reaching That Works Remarkably Well · arXiv 2610.37652 · Claire Tomlin 团队（UC Berkeley）</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-10-27 · arXiv 2610.37652</div>
+    <div><b>来源</b> Ian Chuang, Hiya Shah, Vamsi Chilamkur, Iman Soltani, Claire Tomlin（UC Berkeley）</div>
+    <div><b>关键词</b> 掌内姿态到达 · 残差安全滤波 · 摩擦课程 · 零样本 sim2real</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>灵巧手的"安全"没有复杂的定义，只有一条硬线：<b>东西别掉</b>。而"任务"是另一件事：把它摆到任意位置和朝向。这两件事的频率、视野、失败代价完全不同，硬塞进同一个奖励里调权重，只会既学不好也调不动。这篇的做法是<b>把它们拆成两个网络</b>——一个专心干活，一个专门在最后一刻拧方向。妙处在于安全层不重训任务策略，只学一个"修正量"，而且用一个旋钮 <b>w</b> 就能连续调"多怕摔"。结果是：真机连跑 4,800 个没见过的目标、13.3 小时，<b>把掉落砍掉 75%，成功率只掉 3.7 个点</b>。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：让物体在手里"想去哪去哪"，而且全程不掉</h2>
+  <p>先说清任务。<b>掌内物体姿态到达（in-hand object pose reaching）</b>要求的不是"转一圈"，而是：<b>把物体移到手指够得着的范围内几乎任意一个位置 + 任意一个朝向</b>，而且是一串目标连续做下去、中间不清手。<b>手腕朝向也可以是任意的</b>——意味着重力可能是从任何方向压过来。</p>
+  <p>这比常见任务难在哪？以往掌内工作大多只做两件事：绕某个轴旋转、或者到达某个目标朝向——<b>都不管物体的位置</b>。加了位置约束之后，手必须离开"舒服的少数几个抓法"，去用各种别扭的、指尖勉强够到的姿势，接触状态随之变得极其易碎。</p>
+  <p>系统配置：</p>
+  <table>
+    <tr><th>项目</th><th>设定</th><th>值得注意的点</th></tr>
+    <tr><td>手</td><td>LEAP 手，16 个关节，Dynamixel XC330 伺服（各带内置位置环）</td><td>改了掌心结构以稳住拇指基关节</td></tr>
+    <tr><td>指尖</td><td>硬质 3D 打印塑料 + 一层 3M 高摩擦防滑胶带</td><td><b>没用软硅胶</b>——反直觉，见下文</td></tr>
+    <tr><td>臂</td><td>UR5，只负责摆手腕朝向并测量它</td><td>策略<b>只控手、不控臂</b>，20 Hz 出关节位置目标</td></tr>
+    <tr><td>物体</td><td>刀、酒杯、灯泡、橡皮鸭</td><td>前三个形状高度非凸，灯泡还带镜面反射</td></tr>
+    <tr><td>感知</td><td>① 动捕（OptiTrack 8 相机，物体贴 10–12 个 marker）② 腕部双目深度相机（160×120）</td><td>对应两条策略：state policy / depth policy</td></tr>
+  </table>
+  <p>真机评测的量级值得单独说：<b>13.3 小时、4,800 个从未见过的随机目标、4 个物体、6 个腕部朝向</b>，每条都是连续做 50 个目标。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：安全不该是奖励里的一个权重，而是另一张网</h2>
+
+  <h3>公理一：掌内操作的"安全"只有一条硬线——别掉</h3>
+  <p>你可以把"不摔"写进任务奖励，加大掉落惩罚。但这样你就把奖励变成了一个<b>多目标问题</b>：既要够得准，又要不摔，两者冲突时靠一个权重折中。而这个权重是<b>不可解释、不可调、且每次改都要重训</b>的——一个物体的任务策略要训 28–30 小时（酒杯 42 小时），你不可能为了调"保守一点"重训一遍。</p>
+  <div class="step"><div class="t">推论 1</div><div class="d">安全和任务应该<b>分家</b>。任务策略冻结不动，安全层单独训、单独调、随时拆。</div></div>
+
+  <h3>公理二：目标不能在 SE(3) 里均匀采样——绝大多数位姿手根本拿不住</h3>
+  <p>如果随便给个位姿当目标，模型大部分时间在学"这个目标本来就做不到"。这不是难，这是<b>题目出错了</b>。正确的做法是让目标<b>从"手真的能拿住的姿势"里长出来</b>，于是采样空间本身就是可达的。</p>
+  <div class="step"><div class="t">推论 2</div><div class="d">先用抓取生成器造一个"能拿住的位姿库"，目标和初始状态都从库里抽——难题的分布必须先被约束对。</div></div>
+
+  <h3>公理三：仿真与真机的差距主要在接触，而接触的第一个变量是摩擦</h3>
+  <p>刚体动力学、重力、惯量，这些 sim2real 早就做得不错了。真正对不齐的是<b>指尖和物体之间那一层</b>：摩擦系数、接触刚度、微小滑动。而摩擦系数在真机上极难精确测量。所以与其猜一个值，不如<b>让它从"黏死"退火到"滑"</b>——先在不可能滑的环境里学会动作结构，再逐步逼近真实难度。</p>
+  <div class="step"><div class="t">推论 3</div><div class="d">课程学习在这里不是加速技巧，而是<b>跨越 sim2real 鸿沟的手段</b>。而"软指尖更好"这类经验，可能只是掩盖了摩擦没对齐。</div></div>
+
+  <h3>公理四：任务是低频规划、安全是高频反射，两者不该共用一个网络</h3>
+  <p>把物体从 A 挪到 B，需要的是"整段轨迹的意图"；而"再偏 3 毫米就要滑脱"需要的是<b>当前这一帧、这一下的即时反应</b>。一个网络同时干这两件事，等于让一个人一边下棋一边接球。</p>
+  <div class="step"><div class="t">推论 4</div><div class="d">安全层应该是<b>残差式</b>的：只输出一个小的修正量 δ，加到原动作上。这样它天然"不越权"——任务策略说什么它就微调什么，λ 小的时候几乎透明。</div></div>
+
+  <div class="box good"><b>公理链收口：</b>安全是硬边界（公理一）+ 目标必须从可达分布里出（公理二）+ 摩擦要靠课程跨过去（公理三）+ 规划与反射分网（公理四）= <b>一个不用人类数据、能在真机上连续做 4,800 个刁钻目标、并且"怕摔程度"可调的掌内操作系统</b>。</div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：四段训任务，两段训安全，最后只留一个旋钮</h2>
+
+  <h3>第一步：先造一个"能拿住"的位姿库</h3>
+  <p>没有人类示范，就自己造题目：用 <b>LightningGrasp</b> 针对改造过的 LEAP 手生成 <b>10 万</b>个手-物抓取，再按 DexterityGen 的 RRT 思路把它们扩展到 <b>50 万</b>个、让物体位姿密集覆盖掌心上方的空间，最后剔除物体与手几何体碰撞的，剩下<b>每个物体 42.2 万–45.3 万个抓取</b>。每个抓取存 16 个关节角 + 物体在手坐标系里的位姿。</p>
+  <p>这些抓取同时充当两件事：<b>目标的来源</b>，以及<b>每次 reset 的初始状态</b>（手腕朝向再随机取）。这一步等于把"题目空间"和"探索起点"一起约束到了可达区域——这是公理二的直接落地，也是这套方法能不用人类数据的根本原因。</p>
+
+  <h3>第二步：四个阶段把"特权老师"压成一个"只看腕相机的学生"</h3>
+  <div class="step"><div class="t">A1 特权强化学习（老师）</div><div class="d">用真机上拿不到的信息（真实关节角、指尖位置、物体真位姿等）训一个 PPO 老师。这是唯一"作弊"的阶段。</div></div>
+  <div class="step"><div class="t">A2 蒸馏成 state student</div><div class="d">把老师的行为蒸馏到一个只吃"动捕能给的东西"的学生上（物体位姿来自动捕）。</div></div>
+  <div class="step"><div class="t">A3 PPO 微调</div><div class="d">学生自己再 PPO 一轮，把蒸馏留下的性能损失补回来。这一版就是后面被冻结的 <b>state policy</b>。</div></div>
+  <div class="step"><div class="t">A4 DAgger 成 depth student</div><div class="d">把 A3 教成一个只看 <b>160×120 腕部深度图</b>的策略。这一版是 <b>depth policy</b>——不需要动捕、不需要外部相机，可以装在任何机械臂上当下游技能用。</div></div>
+
+  <h3>第三步：奖励只做两件"防作弊"的事</h3>
+  <p>奖励本身很朴素——稠密的目标接近项 + 几个正则。但有两个设计极关键，都是<b>为了封住 RL 最爱钻的漏洞</b>。</p>
+  <h3 style="font-size:15px;margin-top:14px">① 用"势函数差分"付钱，断掉"悬停薅分"</h3>
+  <div class="fml">
+    <div class="name">式 (5)(6)：任务奖励与势函数（原文）</div>
+    \[ r_t=\Delta t\Bigl[\,600\,\Delta\Phi^{p}_t+25\,\Delta\Phi^{R}_t+10\,\Delta\Phi^{\omega}_t+35\,\Delta\Phi^{h}_t-50\,\mathbf{1}_{\text{drop}}+0.01\,(n^{\text{tip}}_t-n^{\text{link}}_t-n^{\text{self}}_t)-0.01\|a_t-a_{t-1}\|^2-0.005\|a_t\|^2\Bigr] \]
+    \[ \Phi^{p}=-\min(e_p,\,0.1\,\text{m}),\quad \Phi^{R}=-e_R,\quad \Phi^{h}=h/h^{\text{req}},\quad \Phi^{\omega}=\begin{cases}-\min(e_\omega,1.5) & e_p<\tau_p \text{ 且 } e_R<\tau_R\\ -1.5 & \text{否则}\end{cases} \]
+    <div class="exp"><b>大白话：</b>关键在 \(\Delta\Phi_t=\Phi_t-\Phi_{t-1}\)——<b>它给的是"进步量"，不是"当前有多好"</b>。往目标挪，加分；往反方向挪，扣分（扣得一样多）；<b>贴着目标原地不动，一分没有</b>。<br>为什么要这样？如果按"离目标多近"付钱，模型会发现<b>悬停在目标旁边 5 厘米处最划算</b>——每步都有分，还不用承担最后那一下的风险。差分式势函数把这个漏洞物理性地堵死了。<br>几项权重读起来很直白：位置 600（厘米级精度最值钱）、朝向 25、保持 35、扭转 10；掉落罚 −50；接触项 \(0.01(n^{\text{tip}}-n^{\text{link}}-n^{\text{self}})\) 是在<b>鼓励用指尖碰、抑制用手指中段碰、更抑制自己撞自己</b>。最后两项罚动作变化率和幅度，是为了动作别抖。</div>
+  </div>
+
+  <h3 style="font-size:15px;margin-top:14px">② 用"保持计数器"付钱，断掉"路过就算到"</h3>
+  <p>这是我认为全篇最容易被忽略、但最重要的一处工程巧思。<b>判定目标完成，不只看"进了容差"，还要"待住"</b>：物体位置误差、朝向误差、以及<b>扭转速度</b>三者同时达标才算；同时有一个 hold 计数器——每在容差内一步 +1、出容差一步 −1（但不低于 0），计到该目标的 \(h^{\text{req}}\) 才算完成。</p>
+  <p>为什么要看扭转速度？因为"摆对了姿势"和"摆对了且稳住了"是两件事。<b>一个物体高速穿过正确位姿，检查器会以为成功了，实际上它下一秒就飞出去了。</b>灯泡还额外要求"要么静止、要么以 −1.5~1.5 rad/s 稳定自转"——这一条直接催生了后面"把灯泡拧到亮"的下游演示。而"掉出容差只延迟、不清零"的设计，又避免了手一抖就重头再来。</p>
+  <p class="src">顺手说一句：这三个条件（位置 / 朝向 / 速度）+ 保持计数，恰好是上一篇 HandsOn 分析里呼吁的"到达后要能维持目标"的另一种解法——只不过这里是在<b>训练时</b>就把"维持"编进了成功定义，而不是事后统计。</p>
+
+  <h3>第四步：两条课程线——摩擦从"黏死"退到"会滑"，目标从"近"推到"远"</h3>
+  <p>两条课程共用一套自适应机制：各有一个进度 \(p\in[0,1]\)，当最近 500 个目标里完成比例高于阈值就往上走一档，低于一个略低的阈值就往下降。这种"双阈值"设计是为了防止在临界点反复横跳。</p>
+  <ul>
+    <li><b>摩擦课程</b>：指尖摩擦系数从<b>不真实的高值 U(2.5, 3.0)</b> 起步，线性退到最终区间 <b>U(0.3, 1.2)</b>。这个设计的妙处是：<b>它只改难度，不改任务结构</b>——动作该怎么做还是怎么做，只是"能不能滑"变了。所以在高摩擦环境里学到的动作骨架可以直接迁移；</li>
+    <li><b>目标课程</b>：在 DexterityGen 的规则上扩展——下一个目标从"离当前状态最近的 10 个抓取"里抽，但随着训练推进，<b>"最近"的范围逐渐放宽</b>，目标从近处慢慢推到远处。</li>
+  </ul>
+  <p>消融数据（刀，3 个种子）：<b>目标 + 摩擦双课程每 episode 到达 2.27 个目标，只用摩擦课程 2.14，完全不用课程 1.87</b>。有趣的是"只用摩擦课程"就已经接近最好成绩——说明<b>摩擦这一条才是主要矛盾</b>，这也从侧面印证了公理三。</p>
+  <p>还有一个反直觉的结论值得一提：Visual Dexterity 曾发现<b>软硅胶指尖</b>会让掌内操作更宽容，但这套配方用<b>硬塑料 + 一层防滑胶带</b>照样做得很好。合理的解释是：软指尖的作用之一是<b>吸收摩擦模型的不确定性</b>；而摩擦课程已经把这件事在仿真里解决了，就不需要靠材料来兜底了。</p>
+
+  <h3>第五步：安全层——学一个"小修正"，配一个"怕摔旋钮"</h3>
+  <p>任务策略 A3 冻结，在它上面再训一个网络 \(\pi_\delta\)。它看到任务策略给出的动作 \(a^{\text{nom}}_t\)，输出一个残差 \(\delta_t\)：</p>
+  <div class="fml">
+    <div class="name">式 (7)：残差动作合成（原文）</div>
+    \[ a_t=\operatorname{clip}\!\left(a^{\text{nom}}_t+\delta_t,\,-1,\,1\right) \]
+    <div class="exp"><b>大白话：</b>这就是"在师傅手上加一点点力"。\(\operatorname{clip}\) 保证无论残差多大，最终动作都还在合法范围内——<b>安全层没有能力把机器人带到任务策略去不了的地方</b>，它只能在原动作附近微调。这一条约束非常重要：它让"安全层失效"的最坏情况退化成"等于没有安全层"，而不是"机器人乱动"。<br>注意动作 \(a_t\) 之后还要走和任务策略<b>完全相同的动作律</b>——两层的输出接口一致，才能无缝叠加。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 (8)：安全层自己的奖励（原文，本篇的核心改动）</div>
+    \[ r_t=\frac{1}{\,1+w\,\|\delta_t\|_2^2/n\,},\qquad n=16 \]
+    <div class="exp"><b>大白话：</b>每活一步得 1 分，但<b>修正量越大，扣得越多</b>。分母里 \(n=16\) 是动作维度，作用是把这个惩罚<b>归一化</b>——这样 \(w\) 这个数字就不依赖于机器人有几个关节，换台手不用重新调。<br><b>这里改掉了原版 ResSafe 的一个坑：</b>原版是 \(r_t=1-\lambda\|\delta_t\|^2\)，可能为负。奖励能为负意味着什么？<b>策略会倾向于"赶紧失败"</b>——因为失败就结束，就不用继续扣分了。原版靠一个很大的终止惩罚来对冲，很别扭。改成 \(r_t\in(0,1]\) 之后，<b>每一步"活着"都值钱，"不修正"最值钱</b>，语义干净了，也不用调终止惩罚。<br>还有一句题外话：这个形式的梯度是平滑的，对"修正量"连续可导，比硬阈值好训得多。</div>
+  </div>
+
+  <p><b>把 \(w\) 变成输入，是这层真正的"产品化"。</b>训练时每个环境、每个 episode 从 \(w\sim U(0,2)\) 随机抽一个，同时喂给 actor 和 critic。于是<b>一个网络学会了整整一族"保守度"</b>；部署时想看它多怕摔，调 \(w\) 就行：\(w\to 0\) 干预最猛（掉得最晚、成功最少），\(w=2\) 几乎不干预（贴近原策略）。真机上他们取了中间值 <b>w = 0.5</b>——"去掉大部分掉落，但代价小得多"。</p>
+
+  <h3>第六步：和"正统"安全滤波比一场</h3>
+  <p>对照组是 HJ 可达性 + RL 学出来的安全评论家 \(Q(x,u)\)（预测"在 \(x\) 做 \(u\) 之后还能安全多久"）。这类方法运行时有两条路：</p>
+  <div class="fml">
+    <div class="name">式 (14)：最小限制安全滤波 LRSF（对照组做法，原文）</div>
+    \[ u(x)=\begin{cases}\pi_{\text{task}}(x), & Q\bigl(x,\pi_{\text{task}}(x)\bigr)>0\\ \pi_{\text{safe}}(x), & \text{否则}\end{cases} \]
+    <div class="exp"><b>大白话：</b>"先按任务策略干，评论家一旦说'下一步要出事了'，就<b>啪一下</b>切成安全策略。"问题就在那个"啪一下"——<b>动作突变</b>。在多指手上，这意味着指力瞬间跳变，本来就快滑的东西直接被这一下甩出去。这就是文献里说的 LRSF 硬切换缺陷，另一条路线 HCSF 用平滑过渡来缓解。</div>
+  </div>
+  <p>实测（橡皮鸭，state policy，取掉落率接近的三个 HCSF 设置做对比）：<b>ResSafe 在 w = 0.5 时把掉落砍半，粗成功率与无滤波版本相差不到 1 个点；在掉落率相当的情况下，HCSF 少到达 9 个百分点的目标，硬切换的 LRSF 更差——目标更少、掉落更多。</b></p>
+  <p>作者给的解释很物理：<b>"像鸭子这种不规则的形状，会不会掉取决于接触的微妙细节，这让安全预测变得很难。这可能是残差滤波（每一步都稍微修一点）比 HJ 滤波（必须在动手之前就判断这一下安不安全）表现更好的原因。"</b>一句话总结：<b>预测"会不会掉"很难，但"边做边稳一手"很容易。</b></p>
+  <p>工程上还差着一层：ResSafe 是<b>单次前向</b>、一个输入调完；HJ 滤波要在运行时对动作做搜索，还对 \(\alpha,\beta\) 两个超参敏感。真机上，"能调"往往比"理论更优"更重要。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：真机规模罕见，但账要算清</h2>
+
+  <h3>真正的贡献</h3>
+  <ul>
+    <li><b>真机评测的规模是这篇最硬的部分。</b>13.3 小时、4,800 个未见过目标、4 个物体 × 6 个腕部朝向（让重力沿手的三个轴分别压过来）。掌内操作领域大多数论文的真机实验是"几个任务、每任务几十次"。<b>这个量级本身就在说话</b>；</li>
+    <li><b>95.2% vs 91.5% 这一对数，是安全滤波最好的广告。</b>掉落从 <b>16 次降到 4 次（−75%）</b>，代价只有 <b>3.7 个百分点</b>的成功率。而且这个权衡是<b>连续可调</b>的，不是"开/关"两档——你可以按场景选"宁可慢也别摔"还是"偶尔摔一下也认"；</li>
+    <li><b>depth policy 让它从"实验"变成"技能"。</b>只靠一个腕部双目相机就达到 <b>72%</b>（灯泡 95%、橡皮鸭 88%），掉落从 88 降到 46（近一半）。因为不需要外部动捕和笼子，它能直接作为下游多步任务的组件——论文演示了<b>把灯泡拧到亮、以及抓起物体再转向</b>这类整臂+手的任务；</li>
+    <li><b>方法学上有两处可复用的"小发明"</b>：一是把修正权重 \(w\) 做成网络输入，得到一整族策略而不是一个点（这在安全 RL 里是很实用的 trick）；二是有界非负的安全奖励 \(1/(1+w\|\delta\|^2/n)\)，一个式子同时解决了"策略求快失败"和"跨本体量纲"两个问题；</li>
+    <li><b>正面回应了"软指尖神话"。</b>硬指尖 + 防滑胶带 + 摩擦课程就能做到 95.2%，说明很多"材料宽容度"的经验其实是在补摩擦建模的课。这对硬件选型是有价值的反例。</li>
+  </ul>
+
+  <h3>必须泼的冷水</h3>
+  <ul class="crit">
+    <li><b>95.2% 是靠动捕撑起来的。</b>state policy 需要 OptiTrack 8 相机 + 物体上贴 10–12 个 marker，笼外根本跑不了。<b>真正能出门的是 depth policy，而它只有 72%。</b>论文标题里的"remarkably well"更适合前者；</li>
+    <li><b>"掉落"的判定比直觉宽。</b>安全集用 \(\ell(x)=d_{\max}-\|p_{\text{obj}}-p_{\text{hand}}\|_2\ge 0\)，\(d_{\max}=0.3\) m，而所有目标都在手根 0.2 m 以内。<b>也就是说，物体离手心 25 厘米、已经躺在桌上但还挂在指尖边缘，都不算"掉"。</b>这个边界对"半掉不掉"的中间态是不敏感的，掉落率因此可能被低估；</li>
+    <li><b>一个物体一个网络。</b>每个物体单独训一套任务策略 + 一套滤波器，多物体统一策略被明确列为未来工作。四个物体 × (28–30 小时 + 约 4 小时) 的算力账，离"通用"还很远；</li>
+    <li><b>只保"不掉"，不保"不撞、不超力矩、不碰坏东西"。</b>安全约束只有一条（离手根太远），没有关节力矩上限、没有自碰撞硬约束（只有奖励里的软惩罚）、没有对环境的约束。<b>这是一条很窄的安全定义</b>——在"手里转东西"这个场景够用，在真实作业里远远不够；</li>
+    <li><b>只控手，不控臂。</b>UR5 只负责把腕摆到指定朝向。也就是说"手够不到怎么办"这个问题被绕过了——真机上更常见的情况恰好是"得挪一下胳膊"；</li>
+    <li><b>四个物体都是刚性的、能一把抓稳的。</b>可变形物体（布、袋子、软管）、细长易滚的物体、需要双手配合的物体，全都没测。而这一层恰恰是"接触细节决定成败"最狠的地方；</li>
+    <li><b>HJ 对比只在一个物体上做。</b>和 HCSF/LRSF 的胜负是在橡皮鸭上、按"掉落率相近"选点比较的。鸭子是四个物体里<b>为安全付出代价最大</b>的那个（论文自己说"橡皮鸭为安全付的最多"），在一个最难的对象上比，结论未必能推广到刀和酒杯；</li>
+    <li><b>13.3 小时的实验里，"6 个腕部朝向"其实是 4 物体 × 6 朝向 × 2 策略 × 有/无滤波的组合</b>，单格样本量并不大。看趋势足够，抠小数点不够。</li>
+  </ul>
+
+  <div class="box bad"><b>一句话结论：</b>这篇最值得抄走的不是"掌内姿态到达 95.2%"，而是<b>"安全要单独成层，而且要把保守度做成一个可调的输入"</b>这个结构。它把"训练一个既灵巧又谨慎的策略"这个不可调的多目标难题，换成了"训一个灵巧的 + 训一个会踩刹车的 + 部署时拧旋钮"三件可管理的事。代价是它把安全定义压到了极窄的一条（别掉出去），也把通用性换成了"一物一模型"。但就"让灵巧手在真机上连续干 13 小时还不把东西摔了"这件事，这已经是目前少见的硬数据。</div>
+
+  <p class="src">原文：Pushing Dexterity and Safety for In-Hand Object Pose Reaching That Works Remarkably Well · arXiv 2610.37652（2026-10-27）· 方法承自 ResSafe（arXiv 2609.15988）、LightningGrasp、DexterityGen、mjlab · 代码与权重作者表示将开源</p>
+</section>
+
+<footer>3W1H × 第一性原理 · 具身智能知识库 · 解析自 arXiv 2610.37652（2026-10-27）</footer>
+
+</div></body>
+</html>
