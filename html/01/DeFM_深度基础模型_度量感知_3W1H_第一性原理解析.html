@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeFM：深度不是"另一种灰度图"，它带着单位 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>DeFM：深度不是"另一种灰度图"，它带着单位<span class="sub">6000 万张深度图像 · DINOv2 自蒸馏 · 三通道对数归一化 · 冻结编码器直接驱动 RL</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-29 12:12</div>
+    <div><b>关键词</b> 深度基础模型 · 度量感知 · sim-to-real</div>
+    <div><b>一句话</b> 71.72% 不是"深度不如 RGB"，是"深度这个模态就到这儿"</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">核心命题</div>
+  <p>RGB 基础模型把图像当成"像素强度场"，而深度图是一个<b>物理量场</b>——每个像素的值是米。把深度图堆成三个通道喂给 RGB 编码器，等于把一个带单位的量降级成三种灰度。DeFM 的全部价值都来自它拒绝做这次降级：它用<b>对数归一化把"米"这个单位显式编码成网络看得见的结构</b>。而它的全部局限，也都源于这个编码只对"绝对尺度"有效——一旦拿不到相机内参，横向量就退化成无量纲比例。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么拆</a>
+  <a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个"只吃深度"的基础模型，加一套可蒸馏的模型谱系</h2>
+
+  <p>DeFM（Depth Foundation Model）是一族<b>完全用深度图像、不用任何 RGB</b> 做自监督预训练的视觉编码器。它不是新网络结构，而是把 DINOv2 的自蒸馏框架搬到深度模态，然后集中解决深度特有的三个问题上。</p>
+
+  <p>它交付的东西分两层：</p>
+
+  <table>
+    <tr><th>层级</th><th>产物</th><th>规模</th><th>用途</th></tr>
+    <tr><td>教师</td><td>DeFM ViT-L/14</td><td>3.04 亿参数</td><td>提供表征上限，蒸馏源头</td></tr>
+    <tr><td>学生</td><td>ViT-S / ResNet / RegNet / EfficientNet</td><td>300 万 ~ 3000 万</td><td>上机器人、上 Jetson Orin</td></tr>
+  </table>
+
+  <p>预训练算账：18 个数据集、6040 万张深度图、ViT-L/14 骨干、62.5 万次迭代、batch 3072、96 张 GH200。折算下来样本曝光量约 19.2 亿次，<b>相当于在数据集上跑了约 31.8 个 epoch</b>。相比之下 DINOv3 用的是 17 亿张图——DeFM 的数据量只有它的约 1/28。</p>
+
+  <div class="box bad">
+    <b>必须注意到的一句原文：</b>「受计算资源限制，我们直接采用 DINOv2 的训练配置，<b>没有对训练目标、投影头、掩蔽策略、多裁剪方案和优化调度进行专门调优</b>。改动主要集中在预训练数据、输入表征和数据增强三个方面。」<br>
+    这意味着后面所有数字都是<b>下界</b>，不是深度基础模型能到的高度。作者自己也把话留在了这儿。
+  </div>
+
+  <p>整套目标函数与 DINOv2 完全一致，由三项损失加一项正则构成：</p>
+
+  <div class="fml">
+    <div class="name">总损失</div>
+    \[ L_{\mathrm{total}}=L_{\mathrm{Global}}+L_{\mathrm{Local}}+L_{\mathrm{iBOT}}+\alpha L_{\mathrm{KoLeo}},\quad \alpha=0.1 \]
+    <div class="exp">Global / Local 两项在分类 token 上对齐教师与学生的输出分布；iBOT 项在被掩蔽的 patch token 上做同一件事，负责稠密空间特征——这一项才是导航、分割、抓取真正依赖的东西；KoLeo 只是把特征在嵌入空间里推开，防止坍缩。</div>
+  </div>
+
+  <p>真正属于深度模态的创新只有一处：<b>三通道对数压缩输入表征</b>，以及围绕它构建的数据配比。剩下的都是搬运。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：深度值得单开一个基础模型，而 RGB 编码器改不出来</h2>
+
+  <h3>深度天然比 RGB 更靠近 sim-to-real</h3>
+  <p>仿真的 RGB 图像很难还原真实世界的光照、材质、反光和阴影，这是视觉域差距的主战场。深度则<b>不受光照、纹理、颜色变化的直接影响</b>，而且高保真深度仿真器已经很成熟。换句话说：深度模态的信息里，本来就少了一大块"仿真还原不了"的成分。这是 DeFM 值得做的第一性理由。</p>
+
+  <p>论文给的证据很直接：只靠一台朝前深度相机，四足机器人就能爬楼梯、路缘、踏脚石；纯深度 RL 策略能做到跑酷和局部避障。深度不是"降级版的 RGB"，它是控制回路里一条<b>自带物理量纲</b>的独立通道。</p>
+
+  <h3>但深度不能靠 RGB 编码器"改造"得到</h3>
+  <p>现有两条路都有硬伤：</p>
+
+  <table>
+    <tr><th>做法</th><th>具体操作</th><th>为什么不行</th></tr>
+    <tr><td>改造 RGB 编码器</td><td>深度图做颜色映射，或堆三个通道</td><td>引入<b>数据分布不匹配</b>；几何保真度受损。网络学到的是"灰度的纹理"，不是"距离的几何"</td></tr>
+    <tr><td>任务专用从头训</td><td>每个任务配一个深度 CNN</td><td>不跨任务、不跨环境、不跨传感器泛化；每次都要重训，训练效率低</td></tr>
+    <tr><td>RGB-D 联合预训练</td><td>DFormer / AsymFormer / Lingbot-Depth</td><td>全部要求<b>成对</b>的 RGB+深度输入，纯深度场景用不了</td></tr>
+    <tr><td>点云基础模型</td><td>Concerto / Utonia / Sonata</td><td>预训练数据集中在室内和自动驾驶；架构依赖 PTv3 变体，<b>计算开销和延迟进不了高频控制回路</b></td></tr>
+  </table>
+
+  <h3>核心矛盾：一个归一化不可能同时服务毫米和百米</h3>
+  <p>这是整篇论文真正的起点。深度值的跨度横跨四个数量级：</p>
+
+  <ul>
+    <li>灵巧操作要分辨<b>毫米级</b>的接触细节（指尖到物体表面的距离）；</li>
+    <li>户外导航要理解<b>数十到数百米</b>的通行结构。</li>
+  </ul>
+
+  <p>任何单一归一化都必须在两端中牺牲一端：min-max 归一化会让远处的厘米级起伏被压成同一个数；固定截断（比如 0.1–10 米）会把 10 米以外全部抹平。<b>DeFM 的答案不是"找一个更好的归一化"，而是"同时喂几个不同尺度的归一化，让网络自己选"。</b></p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：一条"编码单位 → 补分布 → 压体积 → 接策略"的链</h2>
+
+  <h3>第 1 环 · 把"米"编码成三个通道</h3>
+  <p>先做标准的 log1p 压缩，它的作用是<b>把乘法关系变成加法关系</b>，让近处获得更高的相对分辨率：</p>
+
+  <div class="fml">
+    <div class="name">对数压缩</div>
+    \[ \operatorname{logp}(D)=\log(1+D) \]
+    <div class="exp">加 1 是为了让 D=0（无效像素，论文统一置零）映射到 0 而不是负无穷，这是个纯粹的工程细节，但很重要：它让"没有深度"变成一个合法输入值，而不是需要 mask 掉的洞。</div>
+  </div>
+
+  <p>然后构造三个通道：</p>
+
+  <div class="fml">
+    <div class="name">C1 · 全局对数缩放（相对几何）</div>
+    \[ C_1=\frac{\operatorname{logp}(D)-\operatorname{logp}(D_{\min})}{\operatorname{logp}(D_{\max})-\operatorname{logp}(D_{\min})} \]
+    <div class="exp">用当前帧自己的最小/最大值做归一化。这是<b>尺度不变</b>通道：不管场景是桌面还是操场，输出都铺满 [0,1]。代价是绝对尺度彻底丢失。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">C2 / C3 · 中距离与远距离归一化（绝对度量）</div>
+    \[ C_2=\frac{\operatorname{logp}(D)}{\log(10)},\qquad C_3=\frac{\operatorname{logp}(D)}{\log(100)} \]
+    <div class="exp">分母是常数，所以这两个通道<b>保留绝对尺度</b>。C2 以 10 米为归一化单位、C3 以 100 米为单位。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">输入表征</div>
+    \[ X_{\mathrm{in}}=[C_1,C_2,C_3] \]
+    <div class="exp">三通道堆叠后，用整个预训练数据集算<b>一次</b>全局均值与标准差做标准化。</div>
+  </div>
+
+  <p>把数字代进去，就能看清 C2/C3 的分工到底意味着什么（数值按 \(C_2=\log_{10}(1+D)\)、\(C_3=\tfrac{1}{2}\log_{10}(1+D)\) 手算）：</p>
+
+  <table>
+    <tr><th>距离 D</th><th>C2 值</th><th>C3 值</th><th>C2 每米变化率</th></tr>
+    <tr><td>0.1 m</td><td>0.041</td><td>0.021</td><td><b>0.395 /m</b></td></tr>
+    <tr><td>0.5 m</td><td>0.176</td><td>0.088</td><td>0.290 /m</td></tr>
+    <tr><td>1 m</td><td>0.301</td><td>0.151</td><td>0.217 /m</td></tr>
+    <tr><td>5 m</td><td>0.778</td><td>0.389</td><td>0.072 /m</td></tr>
+    <tr><td>10 m</td><td>1.041</td><td>0.521</td><td>0.040 /m</td></tr>
+    <tr><td>50 m</td><td>1.708</td><td>0.854</td><td><b>0.0085 /m</b></td></tr>
+  </table>
+
+  <div class="box good">
+    <b>这张表才是"近距离优先"的定量含义：</b>同样移动 1 米，在 10 厘米处能让通道值变化 0.395，在 50 米处只能变化 0.0085——<b>相差 46 倍</b>。网络在第一层卷积看到的"对比度"就被物理规律决定了：它天然对近处敏感。这不是超参数调出来的，是 log(1+D) 的导数 \(1/[(1+D)\ln 10]\) 决定的。论文说"机器人需要重点感知一米处的障碍物，而远距离深度变化影响相对较小"——这句话的数学形式就是这条衰减曲线。
+  </div>
+
+  <p>同时也能看到 C2 的失效边界：当 D 超过约 9 米，\(C_2\) 就超过 1，越过归一化区间开始饱和，60 米处的 C2（1.79）和 80 米处的（1.90）几乎无法区分。这时候需要 C3 顶上——C3 在 100 米才接近 1。C1 则永远铺满 [0,1]，负责把"这一帧里彼此的高低关系"稳定地喂进去。</p>
+
+  <div class="box bad">
+    <b>一个可以当场验算的冗余：C3 恰好等于 C2 的一半。</b><br>
+    因为 \(\log(100)=2\log(10)\)，所以 \(C_3=\dfrac{\operatorname{logp}(D)}{2\log 10}=\dfrac{C_2}{2}\)，是恒等式，不是近似。<br><br>
+    后果是：无论用"每通道各自标准化"还是"三通道共用一个全局均值/方差"，\(C_2\) 与 \(C_3\) 在标准化之后都只差一个<b>仿射变换</b>（\(C_3=a\,C_2+b\)）。第一层线性映射 \(w_2C_2+w_3C_3\) 可以整体合并成 \((w_2+a w_3)C_2+b'\)，加 ReLU 也不改变这个结论——<b>两个共线输入经过任何分段线性函数，输出仍然落在一维子空间里</b>。<br><br>
+    也就是说：这个"三通道"表征的<b>秩是 2，不是 3</b>。真正独立的只有「相对几何（C1）」和「绝对度量（log10 距离）」两路。论文把它们命名为"中距离归一化 / 远距离归一化"，听起来像两个尺度带，实际上是同一个函数乘了个常数。<br><br>
+    这不否定 DeFM 的实测优势（它对 RGB 基线的领先是真的），但它改写了论文的解释：<b>收益来自"相对 + 绝对"两路互补，而不是"三个尺度"。</b>
+  </div>
+
+  <h3>第 2 环 · 三类数据各补一种缺口</h3>
+  <p>6040 万张图来自 18 个数据集，按来源分三类，分工非常清楚：</p>
+
+  <table>
+    <tr><th>数据类型</th><th>补什么</th><th>带不来什么</th></tr>
+    <tr><td>MDE（单目深度估计生成）</td><td><b>物体中心多样性</b>：杯子、水果、工具……把 ImageNet 级别的类别覆盖搬进深度域</td><td>没有绝对尺度（只转成固定范围的伪度量图）；且带入了特定 MDE 网络的误差指纹</td></tr>
+    <tr><td>合成数据</td><td><b>干净、无噪声的度量尺度</b>；低成本覆盖真实世界难以复现的场景</td><td>缺少真实传感器的噪声特性，直接训会学到"过于理想"的深度</td></tr>
+    <tr><td>真实数据</td><td><b>传感器噪声指纹</b>：散斑、缺失像素、边缘飞点、条带……</td><td>规模有限、场景重复度高</td></tr>
+  </table>
+
+  <p>消融支持这个分工：只用真实数据的模型在 OFFSED / TartanGround 上弱，只用合成的在 ScanNet / SUN-RGBD 上弱，只用 MDE 的在 GraspNet-1B（真实抓取深度）上弱。而<b>完整混合在五个基准上从来没有成为最差的那一个</b>，平均 mIoU 最高。作者自己补了一句诚实的限定：这是缩小规模（12.5 万步、ViT-S）的实验，<b>不能确定全规模下的最优配比</b>。</p>
+
+  <h3>第 3 环 · 蒸馏：CNN 为什么必须要 BiFPN</h3>
+  <p>蒸馏的动机是纯工程性的：PPO 这类 RL 算法需要<b>很大的 batch</b> 才能稳定，而大编码器吃显存。所以要把 ViT-L 压到 300 万–3000 万参数。</p>
+
+  <p>但直接蒸到 ResNet 会撞上一个结构性问题：<b>标准 CNN 最后一层的全局池化，恰好把稠密空间特征给扔了</b>。而 iBOT 那一路学到的东西——每个 patch 的几何对应——正是导航避障、分割、抓取定位要用的。池化一过，全没了。</p>
+
+  <div class="step">
+    <div class="t">解法：在 CNN 骨干上加双向特征金字塔（BiFPN）</div>
+    <div class="d">对 F/8、F/16、F/32 三个分辨率做双向融合，再在 F'/16 上输出增强后的稠密特征。输入尺寸选 256×256，使 BiFPN 输出恰好和 ViT-L/14 在 224×224 输入下的 patch 网格（约 16×16）对齐——这样空间蒸馏才有逐点可比的对象。</div>
+  </div>
+
+  <p>蒸馏用两项损失：全局项对齐池化特征与教师分类 token，空间项（去掉掩蔽）对齐 BiFPN 稠密输出与教师 patch token。消融显示 ReLU 换成 FPN 或 BiFPN 都显著改善，BiFPN 综合最优、标准 FPN 也很有竞争力——<b>结论不是"必须 BiFPN"，而是"必须补一个多尺度融合模块"</b>。</p>
+
+  <h3>第 4 环 · 三个真机任务，编码器全部冻结</h3>
+
+  <table>
+    <tr><th>任务</th><th>机器人 / 编码器</th><th>策略头</th><th>关键条件</th></tr>
+    <tr><td>点目标导航</td><td>Unitree B2W 轮足 · RegNetX-400MF（约 400 万参数）+ FPN</td><td>FPN 稠密特征 × 本体感知 → 交叉注意力 → SRU → MLP → 速度指令</td><td>单台朝前深度相机；深度下采样到 <b>98×98</b>；120 秒内到达算成功</td></tr>
+    <tr><td>灵巧抓取</td><td>KUKA-Allegro · DeFM 编码器</td><td>深度编码 ⊕ 本体感知 → LSTM + MLP；教师=特权状态，学生=纯深度</td><td>训练时注入散斑/高斯/像素丢弃/条带噪声；另用 Kinect 噪声模型测鲁棒性；2000 episode</td></tr>
+    <tr><td>四足爬梯</td><td>ANYbotics ANYmal · 4 台深度相机</td><td>CNN 编码嵌入 ⊕ 本体感知 → RNN</td><td>梯级半径 15–45 mm（步长 5）、倾角 70°–90°（步长 5°）；每组合 1024 并行环境 × 750 episode；15 秒内完成算成功</td></tr>
+  </table>
+
+  <p>三个任务共同的设置是<b>冻结视觉编码器、只训下游策略</b>。这是全文最硬的工程主张：如果冻结就能用，那"深度预处理 pipeline"这一整层手工艺——高程图、点云反投影、体素化、噪声滤波器——就有被一个编码器替代的可能。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：它证明了"冻结深度编码器能直接驱动 RL"，但没证明"深度能替代 RGB"</h2>
+
+  <h3>站得住的数字</h3>
+  <table>
+    <tr><th>指标</th><th>DeFM</th><th>对比</th><th>怎么读</th></tr>
+    <tr><td>Top-5 KNN（ViT-L）</td><td><b>84.79%</b></td><td>全对比模型最高</td><td>冻结特征的聚类质量</td></tr>
+    <tr><td>线性探测（ViT-L）</td><td><b>71.72%</b></td><td>RGB SOTA 约 87.2%</td><td>纯深度在 ImageNet-1k 上的上限附近</td></tr>
+    <tr><td>ViT-S 三项指标</td><td>全面领先同级</td><td>最高提升约 10%</td><td>小模型更需要模态专用预训练</td></tr>
+    <tr><td>语义分割 mIoU（ViT-S）</td><td>部分基准领先</td><td>最多高出约 <b>30%</b></td><td>稠密任务上差距被放大</td></tr>
+    <tr><td>参数量效率</td><td>RegNetY-800MF（630 万）</td><td>打赢 2210 万参数的 RGB ViT-S</td><td>三分之一的参数，更好的深度特征</td></tr>
+  </table>
+
+  <p>还有一个容易被忽略的结果：<b>两种点云基础模型（Concerto、Utonia）的表现，甚至低于最小的 DeFM 模型</b>。原因作者归为域差——单相机拍出来的局部点云，和这两者预训练的稠密室内扫描 / 独立物体 / LiDAR 场景差得太远。这反过来说明一件事：<b>"三维"不等于"更适合机器人"</b>，数据分布比维度更重要。</p>
+
+  <h3>需要打折读的六处</h3>
+  <ol class="crit">
+    <li><b>对比口径混了一个变量。</b>DeFM 用的是自己设计的三通道归一化，而所有 RGB 基线（DINOv2 / DINOv3 / C-RADIOv3 / Theia）只能吃 min-max 单通道堆叠成三份的深度图。所以"DeFM 赢"里同时包含两个因素：<i>模态专用的预训练数据</i> 和 <i>更好的输入归一化</i>。论文的归一化消融只在 DeFM 自己身上做（C1 / C3 / 三通道），<b>没有把三通道归一化喂给 DINOv3</b>——而这恰好是唯一能把两个因素分开的对照。导航实验里他们的确观察到"DINOv3 不如 VAE"，并把原因归为"DINOv3 把深度当另一种强度通道"，这个解释本身是合理的，但它仍是解释，不是被隔离出来的因果。</li>
+    <li><b>ImageNet-1k-Depth 是个自指基准。</b>这个基准是用 MDE 网络把 RGB 图像转成"估计深度"造出来的。而 DeFM 的预训练语料里有整整一类就是 MDE 生成数据。于是在这个基准上做线性探测，有一部分是在测<b>"你有没有学会那个 MDE 网络的误差指纹"</b>，不是纯粹的跨域泛化。作者自己在局限性里承认了对 MDE 数据的依赖，但基准设计上没做剥离。</li>
+    <li><b>71.72% vs 87.2% 不能读成"深度不如 RGB"。</b>1000 类里相当一部分靠颜色和纹理区分（蛇的细粒度亚种、家具的材质差异），深度图<b>在物理上就不携带这些信息</b>。差的那 15 个点，主要是模态的信息缺口，不是模型的容量缺口。真正该问的不是"能不能追上 RGB"，而是"在机器人真正需要的几何/可供性任务上，深度够不够用"——而这一层，论文用导航、抓取、爬梯三个任务回答了，答案是够。</li>
+    <li><b>冻结不是免费的鲁棒性。</b>切到 Kinect 噪声模型后，<b>所有</b>冻结模型的性能都显著下降。作者的解释很到位：架在冻结特征上的 MLP 过拟合了训练阶段的深度图噪声分布。DeFM 只是"掉得最少"，因为它提供的特征更一致。这条对工程部署是硬提醒：<b>冻结编码器 ≠ 免调噪声</b>，头还是得配。而端到端微调过的 VAE 直接严重过拟合训练噪声，比冻结更糟。</li>
+    <li><b>细障碍物仍是死穴，而且原因不在表征在分辨率。</b>导航策略会栽在电线、细杆、网状结构上，仿真里同样栽。作者归因于输入分辨率只有 98×98。这是诚实的，但它同时划出了 C1/C2/C3 那套尺度分离的能力边界：<b>像素没了，再好的归一化也变不出结构。</b>三通道解决的是"同一个像素怎么表示"，解决不了"这个像素存不存在"。</li>
+    <li><b>绝对尺度仍依赖相机内参。</b>作者在局限性里明确写了：缺少相机内参时，横向空间尺度会出现歧义。这其实是整套方法论的结构性约束——C2/C3 编码的是<b>沿光轴的 Z 向距离</b>，X/Y 方向的度量要靠内参反投影才能恢复。所以"度量感知"这个词得限定在 Z 轴上。</li>
+  </ol>
+
+  <div class="box good">
+    <b>真正被证成的三件事：</b><br>
+    ① <b>深度模态可以自己做基础模型</b>，而且不需要 RGB 那种 17 亿张图的规模——6040 万张就拿到了对 RGB 预训练编码器的稳定优势。原因是深度模态的信息熵更低、噪声结构更稳定，Scaling 曲线更早进入收益区。<br>
+    ② <b>一个冻结的深度编码器能直接驱动 RL</b>，覆盖导航、灵巧操作、运动控制三个差别极大的任务族。这为"用通用表征取代逐任务深度预处理"提供了第一个可复现的实证。<br>
+    ③ <b>蒸馏是可行的</b>：300 万–3000 万参数的 CNN/ViT 保留了大部分表征能力，能上 Jetson Orin。这条比大模型的分数更重要——它决定了这套东西能不能进真实机器人。
+  </div>
+
+  <h3>一句话收口</h3>
+  <p>DeFM 的贡献不是"又训了一个大模型"，而是把一件被长期糊弄过去的事摆正了：<b>深度图的每个像素是一个带单位的物理量，任何把它当灰度像素处理的 pipeline，都在第一步就丢了信息。</b>它用 log(1+D) 的三个变体把这个单位编码进去，代价是这套编码只覆盖 Z 轴、且需要内参才能恢复横向尺度。它没有让深度追上 RGB，也不需要——它证明的是另一件事：在机器人真正在乎的任务上，一条只吃深度、可冻结、能塞进边缘设备的编码器，已经够用了。</p>
+</section>
+
+<footer>
+3W1H 第一性原理拆解 · 由 human five 文章解析生成 · 2026-10-29
+</footer>
+
+</div></body>
+</html>
