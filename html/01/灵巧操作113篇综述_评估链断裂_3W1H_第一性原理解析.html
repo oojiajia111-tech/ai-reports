@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>四万字灵巧操作综述：113 篇论文，四种手，零次穿透深度 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>四万字灵巧操作综述：113 篇论文，四种手，零次穿透深度<span class="sub">一篇把自家领域"审"了一遍的元综述 · 灵巧手 / 仿真器 / 训练范式 / 双手协同 / 评估协议</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-28</div>
+    <div><b>关键词</b> 评估协议 · 穿透深度 · 硬件集中度</div>
+    <div><b>一句话</b> 论文数三年涨三倍，但它未必意味着知识涨了三倍</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>灵巧操作的门槛不在手指数量，而在<b>接触可以被反复打断再重建</b>。接触是离散事件，于是动力学非光滑，于是解析不可能，于是"证明"这个位置被<b>仿真器</b>顶了班。可仿真器能不能担这个责，取决于一个数字——<b>穿透深度</b>：手指有没有真的穿进物体里。这篇综述读了 113 篇论文、翻了 63 个代码仓库，得到的结论是：<b>没有任何一篇报告过策略实际运行的那个仿真里的穿透深度</b>。结论不是"谁更强"，而是<b>这个领域暂时丧失了比较自己成果的能力</b>——发文量翻三倍，不等于知识翻三倍。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么</a><a href="#how">③ 怎么拆</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一次针对"学习方法时代"的抽样审计</h2>
+  <p>这是一篇关于灵巧操作的元综述。范围划得很清楚：<b>学习控制下的单手与双手多指操作</b>，平行夹爪只作对照、不作研究对象。样本是 <b>113 篇基于学习的方法论文</b>，每篇都被编码成结构化字段，再和三类外部证据交叉核对：论文原文、<b>公开代码仓库</b>、<b>厂商规格</b>。</p>
+  <p>先看行业的"体温"：</p>
+  <table>
+    <tr><th>观测项</th><th>结果</th><th>含义</th></tr>
+    <tr><td>论文数量趋势</td><td>自 2022 年增长约 <b>3 倍</b></td><td>领域在快速膨胀</td></tr>
+    <tr><td>主流范式</td><td><b>54 篇</b>（近半）走同一条路：GPU 仿真 + 特权状态 RL → 蒸馏成仅用视觉的学生策略 → 迁真机；约一半再加蒸馏</td><td>事实上已形成单一技术路线</td></tr>
+    <tr><td>仿真器集中度</td><td>这 54 篇"绝大多数集中在同一个仿真器上，而其<b>后继版本很少被使用</b>"</td><td>整个领域押在一个平台上</td></tr>
+    <tr><td>任务分布</td><td>抓取 <b>58/113</b> 最大；<b>双手协调增长最快</b></td><td>仍是"抓起来"为主，双手才刚起步</td></tr>
+    <tr><td>硬件集中度</td><td>四种手支撑几乎所有实验，<b>Allegro 一家占 35/113</b></td><td>结论的"载体"高度同质</td></tr>
+    <tr><td>手可买到却零论文</td><td><b>8 种</b>可直接购买或依公开设计自制的手，没有出现在任何一篇方法论文里</td><td>不是造不出来，是没人用</td></tr>
+    <tr><td>报告规范</td><td>113 篇里只有 <b>70 篇</b>说明成功率对应的试验次数</td><td>近四成结果连"跑了几次"都不知道</td></tr>
+  </table>
+  <p>另一条正在变粗的路线：<b>直接从遥操作示范里学</b>——VLA、diffusion policy，以及"把数据采集装置本身当成主要贡献"的系统。它把"设计奖励函数"的问题，换成了"采集数据"的问题。</p>
+  <p class="src">原文给不同读者指了不同的入口：新手读第 II 节（术语）+ 第 V 节前半（两条训练路线）+ 第 III 节（实际用什么硬件），约半小时能建全景；要做实验的直接读第 VII 节；已是圈内人的，看第 IV-B（接触怎么被仿真）、第 V-F（论文与代码的差异）、第 VI 节（双手）、第 VII-C（只跑 20 次试验能说明什么）。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：证明的标准换了，但新标准的"底线"没人测</h2>
+  <p>这条公理链是这个领域过去五年发生的事，一环扣一环。</p>
+
+  <h3>公理一：灵巧的定义是"能换姿势"，不是"能抓住"</h3>
+  <p>原文引 Bicchi 的区分很关键：<b>约束物体</b>是静态问题（接触能不能拦住物体运动），<b>操纵物体</b>是动态问题（在持续持有的过程中，接触能不能不断解除并重新建立）。平行夹爪能把绝大多数东西抓起来，但很难在手内把物体转向。</p>
+  <div class="step"><div class="t">推论 1</div><div class="d">所以"灵巧"的判据是<b>接触的可重构性</b>，跟自由度、跟手指根数都不是一回事。37 个自由度的机械臂做不了手内旋转，也不叫灵巧。</div></div>
+
+  <h3>公理二：接触是"要么有、要么没有"的开关，动力学因此非光滑</h3>
+  <p>手指可以推，不能拉。每当接触建立或解除，运动方程的形式就变了。这就是非光滑动力学的来源：位移和作用力都受单边约束。经典抓取理论自己承认局限——"固定住物体并不意味着系统一定稳定"，而这类判据<b>只能用来检查候选构型，没法直接在机器人上执行</b>。</p>
+  <div class="step"><div class="t">推论 2</div><div class="d">解析路线走到头了。要"跑起来"，只能靠数值仿真 + 试错。这一步决定了后面所有问题。</div></div>
+
+  <h3>公理三：仿真器接替了"理论证明"的位置，于是仿真保真度 = 论文可信度</h3>
+  <p>原文把这次范式转移说得非常利落："过去，研究目标是证明某个构型能够稳定持有物体；现在，目标变成训练一个能在大量仿真实验中取得较高得分的策略。这意味着，<b>仿真器开始承担原本由理论分析承担的角色</b>，而任务得分则在一定程度上取代了理论证明。"</p>
+  <p>这话听上去是进步，但它把两项责任压给了研究者：<b>仿真器在关键环节必须有足够的物理保真度；评估指标必须有明确的物理含义。</b>整篇综述就是在审计这两项责任履行得如何。</p>
+  <div class="step"><div class="t">推论 3</div><div class="d">既然"证明"被"分数"替换，那么审查的重点就从"定理对不对"变成"分数是怎么被量出来的"。这解释了为什么全文最重的一节是第 VII 节（评估协议），而不是算法对比。</div></div>
+
+  <h3>公理四：穿透深度是保真度的直接度量，而它几乎从未被测量</h3>
+  <p>如果手指穿进了物体里 5 毫米还在报"成功"，那这个成功在物理上是假的。所以穿透深度不是细节，是<b>判决性指标</b>。原文的结论极狠：</p>
+  <ul>
+    <li>113 篇里，<b>没有任何一篇</b>报告过"手穿进物体"的深度——在该策略自己运行的那个物理仿真里；</li>
+    <li>唯一一份报告"策略所达到姿态穿透体积"的研究，是在<b>仿真器外部</b>、用<b>仿真器从未采用的网格</b>重新测的，而它仿真内部的穿透值<b>是零</b>；</li>
+    <li>而工具其实早就有：IsaacGymEnvs 里有任务能按网格算每个环境的最大相互穿透深度，并在超过 1 mm 时限制策略更新；Tactile Genesis 能把 Genesis 几何里的穿透深度当传感器信号；DexTrack 给了穿透深度公式却只用在输入数据上。</li>
+  </ul>
+  <div class="box bad"><b>最要命的一层：</b>在柔顺接触模型里，穿透深度<b>不是一个客观物理量，而是研究者自己设的刚度参数算出来的数</b>。也就是说，同一个引擎、同一个任务，换一组刚度参数，穿透深度就换一个值。当"是否穿模"取决于你调了哪个旋钮，跨论文比较成功率就没有共同的尺子。</div>
+  <div class="step"><div class="t">推论 4</div><div class="d">比较链在这里断了：分数依赖协议（判据各不相同）+ 判据依赖仿真保真度 + 保真度由未报告的刚度参数决定 = <b>113 篇论文的成功率在数学上不可比。</b></div></div>
+
+  <div class="box good"><b>公理链收口：</b>灵巧=接触可重构（一）→ 非光滑不可解析（二）→ 仿真顶替证明（三）→ 保真度的判决指标没人测（四）= <b>"论文更多"不能推出"知道得更多"，因为把结果放在一起比的那把尺子，本身就是各家自己做的。</b></div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：四个动作，把"没写"变成"发现"</h2>
+
+  <h3>动作一：三源交叉 —— 论文、代码、厂商规格对着读</h3>
+  <p>这是全文方法论上最硬的一招：<b>如果论文公开了代码仓库，就同时检查仓库里的奖励函数和论文中的描述，做对照。</b>原文强调，这种做法在机器人圈外早已是常规（可重复性研究、RL 实现细节审计、奖励设计审查、基准重发布），但<b>此前没人系统性地用它审过某个机器人子领域已公开的奖励函数</b>。</p>
+  <p>结果：<b>63 篇发布了可解析代码的论文里，有 8 篇</b>在指定的文件和代码版本中给出的数值，与论文印刷的数值不同。表 II 逐例记录了仓库、版本、文件、两组数值，且<b>所有相关作者在发布前都已被联系</b>。</p>
+  <p>最有代表性的案例是 PhysHOI：<b>论文奖励表里权重 0.1 的奖励项，在获取到的代码版本里被设成了 0</b>；而论文报告的成功判据也只考虑了位置。也就是说，"论文里的奖励函数描述的是一份文档，不是实际运行的代码"。</p>
+
+  <h3>动作二：把"未报告"当数据 —— 因为沉默本身就有分布</h3>
+  <p>统计时，凡提取不到的数值一律记作"未报告"，即使原始来源可能有。这看似保守，但跑出来的模式非常尖锐：</p>
+  <table>
+    <tr><th>问题</th><th>沉默比例</th><th>后果</th></tr>
+    <tr><td>人类动作怎么映射到机器人手</td><td>用人类数据的 53 篇中，<b>33 篇未说明</b></td><td>人类数据迁移这条路的可复现性无从判断</td></tr>
+    <tr><td>双手怎么协同</td><td>28 篇双手闭环里，<b>21 篇用单一策略处理拼接后的双手观测</b>；架构只被比较过两次，且<b>结论相互矛盾</b></td><td>主流做法其实从未被认真验证过</td></tr>
+    <tr><td>VLA 到底用了几自由度的手</td><td>在多指手上评测的通用策略/VLA，主动驱动自由度<b>中位数只有 6</b>；而报告了具体数字的 RL 论文中位数是 <b>16</b></td><td>"VLA 也能做灵巧操作"这句话的硬件前提被悄悄降级了</td></tr>
+    <tr><td>评估协议本身用手了吗</td><td>构建新协议所依据的 7 篇评估方法论文，<b>没有一篇真正使用灵巧手</b>（1 篇用夹爪，6 篇未说明）</td><td>测灵巧的方法，是在不灵巧的硬件上设计的</td></tr>
+  </table>
+  <p>读懂这张表要换个角度：<b>它不是"大家偷懒"，而是"关键前提被默认了"。</b>33 篇不写映射，是因为大家都假定"人手动捕 → 重定向"是常识；21 篇用单一策略，是因为拼接观测最简单。默认项没人查，就成了领域的地基。</p>
+
+  <h3>动作三：给评估定一个可执行的下限 —— 20 次试验能说什么</h3>
+  <p>既然成功率是二项随机变量（成功/失败），那它天生带误差棒。给定 \(n\) 次试验、观测成功率 \(\hat p\)，95% 置信区间约是：</p>
+  <div class="fml">
+    <div class="name">成功率的不确定度：次数决定分辨率</div>
+    \[ \hat p \pm 1.96\sqrt{\frac{\hat p(1-\hat p)}{n}} \]
+    <div class="exp"><b>大白话：</b>抛硬币。抛 20 次，出现 12 次正面（60%），但误差棒有 [36%, 81%] 那么宽；抛 200 次、120 次正面（还是 60%），误差棒收窄到 [53%, 67%]。<b>同样的 60%，试验次数不同，可信度差了一个量级。</b><br>代入这篇综述审到的现实：113 篇里只有 70 篇说了试验次数，很多工作是 20 次量级。那就意味着——<b>两个方法报"65%"和"55%"，在 20 次试验下根本分不出高下</b>。原文第 VII-C 节正是要给出"要得到有明确置信区间的成功率，实际需要多少次试验"。</div>
+  </div>
+  <p>这一步的价值在于：它不需要重跑任何实验，就能判定"某篇论文的结论在统计上站不站得住"。<b>这是一个可以立刻用上的审计工具。</b></p>
+
+  <h3>动作四：七条结论，六条是"缺口"而不是"排名"</h3>
+  <p>原文非常克制地声明："本文无法确定哪种方法优于另一种方法。本文没有重新运行任何方法。"所以结论全是关于<b>研究基础设施</b>的：</p>
+  <ol>
+    <li>8 种可获取的手零实验（19 种无论文的手里，11 种既未公开销售也未开放设计——所以不能全怪研究者）；</li>
+    <li>33/53 未说人类动作如何映射；</li>
+    <li>21/28 双手用单一策略，架构对比只做过两次且矛盾；</li>
+    <li>VLA 的主动自由度中位数 6 vs RL 的 16；</li>
+    <li>7 篇评估方法论文无一使用灵巧手；</li>
+    <li>63 篇有代码的论文里 8 篇数值不符；</li>
+    <li>穿透深度几乎从未在被测量的位置上被测量。</li>
+  </ol>
+  <p>并且作者给了"实际改进不需要显著增加算力"的清单：<b>从生成实验结果的配置文件自动生成奖励表；引用准确的代码版本；说明试验次数与成功判据；公开逐次试验结果；把 rollout 中的穿透深度作为诊断指标报告</b>（不一定要拿去优化策略，TopoRetarget 已经证明这个数字信息量很大）。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：它给的是一张体检表，不是一枚奖牌</h2>
+
+  <h3>为什么这篇值得读</h3>
+  <ul>
+    <li><b>它把"领域共识"变成了"待验证假设"。</b>"仿真 + 特权 RL + 蒸馏"不再是天经地义，而是一个只被少数平台验证过的方案。</li>
+    <li><b>它提供了立即可用的审计工具。</b>二项置信区间公式 + "穿透深度"这个判决指标，读者可以马上拿去检查自己或别人的论文。</li>
+    <li><b>它诚实到伤自己。</b>所有覆盖率都声明是<b>下限</b>（未提取与未报告无法区分）；部分研究仅依据文献信息引用；第七项（Ma and Dollar 2011）虽已下载但未阅读，且声明没有任何结论依赖这些研究的具体内容。</li>
+    <li><b>它指出了"硬件同质化"这个被忽视的风险。</b>四种手撑起几乎所有实验，意味着"换个本体还成立吗"这个问题，整个领域都还没答。</li>
+  </ul>
+
+  <h3>读的时候要打的折扣</h3>
+  <ul class="crit">
+    <li><b>没有重跑任何方法（作者主动声明）。</b>所以它不能告诉你 A 比 B 强，只能告诉你"你没法判断 A 和 B 谁强"。这两件事的价值不同，别混。</li>
+    <li><b>覆盖率是下限，不是精确值。</b>凡是"未提取"都记成"未报告"，会把一些其实报告了、但表述方式不标准的论文算进缺口。所以 33/53、21/28 这类数字应当读成"至少这么多"。</li>
+    <li><b>样本只覆盖学习方法时代。</b>这是有意的范围限定，不构成对更早解析方法传统的评价——但它也意味着"传统方法其实更可靠"这种引申是无根据的。</li>
+    <li><b>它没有给出"应该怎么做才对"的完整方案。</b>评估协议（第 VII 节、附录 E）是给"成功率"这类指标定规范，但并没有解决"如何在四种手之外获得可信迁移结论"这个更硬的问题。</li>
+    <li><b>穿透深度作为判决指标，本身也依赖刚度参数。</b>报告它能暴露问题，但不同引擎/不同参数下的数值依然不可直接横比。</li>
+  </ul>
+
+  <h3>一句话判断</h3>
+  <div class="box good"><b>这篇综述最锋利的地方，不是揭短，而是把"揭短"做成了可复现的方法：</b>三源交叉（论文/代码/规格）+ 统一编码（未报告就记未报告）+ 统计下限（二项区间）。任何一个人都能照着做一遍，去审任何一个子领域。至于灵巧操作本身——只要还没人把"策略 rollout 时的穿透深度"报出来，所有排行榜都只是自家尺子量出来的名次。<b>下一步该盯的不是新 SOTA，而是谁第一个把这个数字写进论文。</b></div>
+  <p class="src">原文链接：https://mp.weixin.qq.com/s/oc_rSVw7dtU99i6hz-v9lQ　｜　公众号 human five，2026-10-28 13:49（约四万字，正文 8 章 + 5 个附录）</p>
+</section>
+
+<footer>3W1H 第一性原理拆解 · 由 human five 文章解析生成 · 2026-10-29</footer>
+</div></body>
+</html>
