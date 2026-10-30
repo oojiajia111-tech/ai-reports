@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在 Egocentric 数据上对 π0.5 后训练 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);font-weight:600;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>在 Egocentric 数据上对 π0.5 进行后训练<span class="sub">一场把「数据源优劣」和「自家管线的坐标系 bug」混在一起的对照实验 · 公众号「human five」长文导读</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-30 02:36</div>
+    <div><b>发布方</b> Midcentury</div>
+    <div><b>基座</b> π0.5（全模型微调）</div>
+    <div><b>基准</b> LIBERO-10 厨房仿真</div>
+    <div><b>关键词</b> egocentric · 后训练 · EgoDex · 视角偏移 · 多重比较</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>这篇文章表面在回答「人类第一视角数据能不能提升 π0.5」，实际上它更接近一份<b>自证材料</b>：正文第 9 节承认，所有成功率都来自<b>历史 checkpoint</b>，本次没有跑任何新训练；事后内部审计发现，历史流程的头部运动补偿与动作归一化存在<b>坐标系混用</b>和<b>不同混合方案动作尺度不一致</b>；而修正后的 v3 流程，<b>一个评估结果都还没有</b>。所以它给出的不是「人类数据值多少」，而是「在一条已知有缺陷的管线上，用五六组随机种子能看出多少」。</p>
+  <p style="margin-top:10px">真正值得带走的东西只有一条：<b>用「帧数」做数据量对齐，是一个错误的等量代换。</b>本文把 20 条机器人示范<b>重复 20 次</b>凑到 110,560 帧，去对齐 1,306 条人类 episode 的 135,093 帧。前者是 <b>20 个独立样本、每条 9 分钟</b>；后者是 <b>1,306 个独立样本、每条 10 秒</b>。两个维度朝相反方向拉开五十倍以上，乘积却相等。所以那个 +5.5 个百分点，既不能读成「人类数据有用」，也不能读成「人类数据没用」——它测的是一个成分完全不同的东西。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么结论拿不到</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个基座、两场对照、四种相机视角</h2>
+  <p>全部实验围绕同一件事展开：从 π0.5 的基础 checkpoint 出发，在 LIBERO-10 的十个厨房任务上做<b>后训练</b>，然后看策略在<b>相机被挪动</b>之后还能不能干活。任务本身没变，变的是观察角度——这是它整个设计的支点。</p>
+
+  <div class="step">
+    <div class="t">对照 A：Midcentury 自有数据 vs Apple EgoDex</div>
+    <div class="d">两组人类数据在<b>环境与物体层面做了匹配</b>，部分任务也匹配；转换后帧数仅差 <b>6 帧</b>（约 120,000 帧量级）；同样的机器人示范预算、同样的配对随机种子、同样的评估任务。目的不是比谁更容易，而是<b>在数据量相同的前提下，比数据来源</b>。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">对照 B：加入人类数据 vs 只用机器人数据</div>
+    <div class="d">纯机器人一侧把 20 条示范<b>重复 20 次</b>扩到 110,560 帧；人类一侧约 135,093 帧。比较在训练视角与多个偏移视角下的完整任务成功率。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">压力测试：把相机挪开</div>
+    <div class="d">侧移 <b>12.2 cm</b>（0.122474 m）等若干条件，方向与视场角保持不变。逻辑是：机器人可能换装、重新标定、被撞歪，任务目标不变但物体在画面里的位置、表观形状、可见程度都变了。策略若依赖「画面里物体出现在某处」这种浅层线索，一挪就崩。</div>
+  </div>
+
+  <p style="margin-top:14px">训练配置相当克制，说明这是<b>低成本后训练</b>而非重训练：</p>
+
+  <table>
+    <tr><th>项目</th><th>取值</th><th>含义</th></tr>
+    <tr><td>初始化</td><td>π0.5 基础模型</td><td>不是从零训练</td></tr>
+    <tr><td>更新范围</td><td>全模型微调（非 LoRA）</td><td>参数量全开，但步数很少</td></tr>
+    <tr><td>训练步数</td><td>3,000 步</td><td>极小预算</td></tr>
+    <tr><td>Batch / Warmup</td><td>256 / 300 步</td><td>常规</td></tr>
+    <tr><td>Action Horizon</td><td>10</td><td>动作块长度</td></tr>
+    <tr><td>数据频率</td><td>10 Hz，重定向后<b>右手</b>动作</td><td>只用单手监督</td></tr>
+    <tr><td>机器人示范</td><td>每任务 2 条，共 20 条</td><td>极少</td></tr>
+    <tr><td>评估量</td><td>每检查点每视角 200 次（10 任务 × 20）</td><td>单次评估的分辨率上限约 0.5%</td></tr>
+  </table>
+
+  <div class="box good">
+    <b>它设计得对的地方：</b>把「相机位置」单独拎出来当自变量，是这个问题里最干净的一个切法。因为人类 egocentric 视频与机器人固定机位视频之间，最大的差异之一就是<b>视角分布</b>——人的头在动，机器人的相机焊在腕上或架上。如果人类数据真能带来什么，最应该体现在「换个角度看同一件事还能做」上。这个假设可检验、可证伪，比笼统说「人类数据提升泛化」要诚实得多。
+  </div>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么这个结论本来就拿不到：三层结构性障碍</h2>
+
+  <h3>第一层：帧数对齐把两个相反方向的维度抹平了</h3>
+  <p>数据量对齐是这类对照实验的标准动作，但「帧」不是数据的自然单位。同样一帧，在一条 10 秒的片段里和在一条 9 分钟的片段里，承载的信息完全不同。</p>
+
+  <div class="fml">
+    <div class="name">有效监督的分解</div>
+    <div>\[ I_{\text{eff}} \;\approx\; N_{\text{ep}} \;\times\; \bar{\ell}_{\text{ep}} \;\times\; \rho_{\text{iface}} \]</div>
+    <div class="exp"><b>独立 episode 数</b>决定「见过多少种起始状态」，<b>单条时长</b>决定「一条轨迹里有多少连续因果」，<b>接口保真度</b>决定「这些信息有多少能塞进机器人的动作空间」。三者是<b>相乘</b>关系，任何一项塌掉都补不回来。而「总帧数」只等于前两项的乘积，第三项被完全忽略了。</div>
+  </div>
+
+  <p>把本文的数字代进去看：</p>
+
+  <table>
+    <tr><th></th><th>人类一侧</th><th>机器人一侧</th><th>比值</th></tr>
+    <tr><td>独立 episode</td><td>1,306 条</td><td><b>20 条</b>（重复 20 次）</td><td>人类多 <b>65×</b></td></tr>
+    <tr><td>单条时长（10 Hz 折算）</td><td>约 103 帧 ≈ <b>10.3 秒</b></td><td>5,528 帧 ≈ <b>9.2 分钟</b></td><td>机器人长 <b>54×</b></td></tr>
+    <tr><td>总帧数</td><td>135,093</td><td>110,560</td><td>基本相等</td></tr>
+    <tr><td>折算总时长</td><td>约 <b>3.75 小时</b></td><td>约 3.07 小时</td><td>接近</td></tr>
+  </table>
+
+  <p>两个因子一个放大 65 倍、一个缩小 54 倍，乘积几乎抵消——于是「帧数对齐」成立，「数据可比」却不成立。人类数据提供的是<b>大量短片段</b>（广度），机器人数据提供的是<b>少量长轨迹</b>（深度，且被复制了 20 份）。<b>广度与深度不是同一种资源，不能用一个标量配平。</b></p>
+
+  <p>这一点还有一层更尖锐的读法：人类侧有 1,306 个独立起始状态，机器人侧只有 20 个。在这个前提下，训练视角上两者<b>平均成功率相同</b>。也就是说，65 倍的场景覆盖并没有换来训练分布内的优势。而这一点，比 +5.5 个百分点更值得追问。</p>
+
+  <div class="box bad">
+    <b>顺带一个容易被忽略的细节：</b>把 20 条示范重复 20 次扩到 110,560 帧，在数学上等价于给这 20 条样本一个<b>20 倍的采样权重</b>。原文自己点出了「重复示范不会增加独立示范的数量；相同步数也不能保证不同数据混合方案中的机器人样本获得相同的曝光量」。但这句话同时也意味着：在 3,000 步、batch 256 的训练里，机器人样本被反复见到，人类样本几乎都是一次性经过。所谓「混合训练」在优化轨迹上其实是<b>先拟合机器人、再顺便看一眼人类</b>。
+  </div>
+
+  <h3>第二层：显著性链条逐级塌缩</h3>
+  <p>这是全文最有教学价值的一段。同一个「+5.5 个百分点」，在不同检验口径下的存活情况是：</p>
+
+  <table>
+    <tr><th>检验口径</th><th>结果</th><th>存活条件数</th></tr>
+    <tr><td>单一条件、未校正</td><td>侧向偏移 12.2 cm：20.5% → 26.0%，<b>+5.5 pp</b>，95% CI <b>[2.6, 8.5]</b>（不含零）</td><td>1</td></tr>
+    <tr><td>Holm 校正，七种相机条件</td><td>按原文措辞，只有<b>向前偏移 12.2 cm</b> 这一条件仍在完整任务成功率上达到显著</td><td>1，但<b>换了条件</b></td></tr>
+    <tr><td>扩到十四项检验（并入部分得分）</td><td><b>没有任何</b>完整任务成功率对比达到显著</td><td><b>0</b></td></tr>
+  </table>
+
+  <p>注意第二行的微妙之处：Holm 校正后活下来的不是正文用来支撑结论的那个条件，而是另一个。<b>这不是「结论稳健」，这是「显著性打地鼠」</b>——七个条件里总有一个看起来显著，校正后剩一个，再换检验集合就一个不剩。作者把这三层都写了出来，这一点很难得；但如果只读摘要里的「20.5% → 26.0%」，得到的印象会与第 9 节的实际情况相差很远。</p>
+
+  <p>对照 A（两大人类数据源）的情况更弱：三个偏移视角的差距在 <b>0.3 至 5.8 个百分点</b>之间，最大差距出现在向前偏移 6.1 cm，而<b>所有配对差异的 95% 置信区间都包含零</b>——每个视角只有五到六组随机种子配对。原文说得很直白：这些估计「同时兼容相对于 EgoDex 的提升和下降」，既不能证明 Midcentury 更优，也不能证明两者等效。</p>
+
+  <h3>第三层：坐标系混用，直接攻击命题本身</h3>
+  <p>第 9.2 节的这段自曝，是全文分量最重的一段：</p>
+  <div class="box bad">
+    「后续内部审计发现，历史版本的<b>头部运动补偿和动作归一化</b>存在问题，包括<b>坐标系混用</b>，以及<b>不同数据混合方案采用不同的动作尺度</b>。这些问题对观察到的性能差异究竟产生了多大影响，目前尚不清楚。目前还没有使用修正后的 v3 流程得到的策略评估结果。」
+  </div>
+  <p>为什么这两条特别致命？因为它们不是噪声，而是<b>偏向性污染</b>：</p>
+  <ul>
+    <li><b>坐标系混用</b>：人类手部动作要重定向到机器人末端执行器空间，头部运动补偿决定相机参照系。参照系一旦混，人类动作与机器人动作就不在同一个空间里，模型学到的「跨本体对齐」是错的。而这个对齐，恰恰是「人类数据能不能用」这个命题的<b>全部内容</b>。</li>
+    <li><b>动作尺度不一致</b>：不同混合方案下同一物理动作的数值范围不同，梯度量级随之不同。这意味着两场对照之间不仅数据不同，<b>优化问题的尺度也不同</b>。原文因此明确说，两组实验「不能视为同一个三组对照」。</li>
+  </ul>
+  <p>结果就是：<b>想归因的变量（数据源质量）与控制住的变量（管线一致性）被同一个 bug 绑在了一起。</b>你无法判断 5.8 pp 里有多少来自 Midcentury 的数据更好、多少来自那条数据的尺度更巧。</p>
+
+  <p>更深一层，还有个范式上的天花板。π0.5 的动作专家是在低维平行夹爪动作空间上预训练的，而人类手有二十多个自由度，重定向后还要压回这个接口。所以「后训练」能改变的只是<b>边际分布</b>，不是<b>表征容量</b>。这也是为什么同期其他工作要动架构（例如用双 token 交错把动作维度扩到 58 维）而不是只换数据。在接口不变的前提下，人类数据的期望收益本来就该被压低。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：三步流水线，以及它算不出来的那一步</h2>
+
+  <div class="step">
+    <div class="t">① 数据加工：视频 → 动作目标</div>
+    <div class="d">从 egocentric 视频估计手部运动，重定向到机器人动作空间，取<b>右手</b>动作作为监督信号，统一到 10 Hz。人类记录与机器人记录<b>不做时间配对</b>——这点很重要，意味着不需要「人和机器人做同一件事」的同步数据，门槛低得多。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">② 匹配：环境、物体、任务、帧数、种子</div>
+    <div class="d">73 条源视频拆成 1,306 个 episode（EgoDex 侧 1,690 个），转换后帧数差 6 帧，配对随机种子相同，评估任务相同。匹配只覆盖部分维度，原文承认「无法证明两组数据具有完全相同的类别频率，也无法消除所有采样偏差」。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">③ 评估：四种视角 × 十任务 × 20 次</div>
+    <div class="d">完整任务成功率定义为「最终状态下所有任务谓词为真」。原文自己指出这个判据的漏洞：<b>只检查最终状态谓词，并不能证明动作执行顺序符合要求</b>——先开后放和先放后开，终态可能一样。</div>
+  </div>
+
+  <p style="margin-top:14px">关键数字汇总：</p>
+
+  <table>
+    <tr><th>指标</th><th>数值</th><th>怎么读</th></tr>
+    <tr><td>纯机器人：训练视角 → 侧移 12.2 cm</td><td>39.3% → 20.3%</td><td>视角一变，性能直接腰斩，这是压力测试有效的证据</td></tr>
+    <tr><td>加入人类数据后（合并两组）</td><td>20.5% → <b>26.0%</b></td><td>+5.5 pp，15 组配对中 12 组改善</td></tr>
+    <tr><td>Midcentury vs EgoDex（三个偏移视角）</td><td>+0.3 ~ +5.8 pp</td><td>全部 95% CI 含零</td></tr>
+    <tr><td>最佳两组配对</td><td>+11.1 / +8.1 pp</td><td><b>按已观察评估结果筛选</b>，不能外推</td></tr>
+    <tr><td>训练视角下两者</td><td>相同</td><td>数据源差异只在分布偏移下显现</td></tr>
+  </table>
+
+  <p>关于「+11.1 / +8.1 pp」这一行，原文的自我限定写得非常清楚：这个排序「依据已经观察到的评估结果，衡量的是 Midcentury 相对于 EgoDex 的优势，而非绝对成功率。它<b>无法估计新一轮训练预期能够获得的性能提升</b>」。换句话说，这是<b>事后挑出来的最好成绩</b>，只能当上限参考，不能当期望值。</p>
+
+  <div class="fml">
+    <div class="name">两场对照不能合并的原因</div>
+    <div>\[ \underbrace{20.5\% \to 26.0\%}_{\text{对照 B：+人类 vs 纯机器人}} \;\;\neq\;\; \underbrace{0.3 \sim 5.8\text{ pp}}_{\text{对照 A：Midcentury vs EgoDex}} \]</div>
+    <div class="exp">两场用了<b>不同历史版本的数据集构建</b>（原始版 137,110 帧、后续过滤版 135,093 帧、EgoDex 对照约 120,000 帧），随机种子范围也不同（42–50 与 51–56）。所以它们不是「A 比 B 好、B 比 C 好」的链条，而是两条互不衔接的证据。把它们拼起来读出一个「人类数据净收益」，是把两次不同实验当成一次三组对照。</div>
+  </div>
+
+  <p>还有一个关于规模的错配值得说：这场实验真正用到的人类数据是 <b>3.75 小时</b>（135,093 帧 ÷ 10 Hz）。而 egocentric 数据的全部价值主张是「可规模化到上千小时」。用一个不到四小时的样本，去检验「人类经验能否成为规模化替代品」，在<b>问题层面</b>就错位了——它测到的是「少量高质量人类数据在短程任务上的边际效应」，不是「人类数据能不能顶替真机采集」。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：最值得抄的是它的披露格式</h2>
+
+  <div class="box good">
+    <b>三条真实价值：</b>
+    <ol style="margin:8px 0 0 22px">
+      <li><b>把「相机位置」当自变量</b>，是这个问题里最干净的一个切法。它把「泛化」这句空话，变成了可测的「同一任务换个视角还成不成」。</li>
+      <li><b>不确定性披露的范本</b>。CI 全部标注为未校正、明确说明「按已观察结果排序无法估计预期收益」、明确说明「本次没有跑新训练」、明确隔离了一组已知错误构建的结果。工业界报告里，这种把自拆台放在正文而不是埋进附录第 9 节的做法很少见。</li>
+      <li><b>给数据采购一个可操作的结论</b>：人类 egocentric 数据的价值不在时长，而在<b>管线一致性</b>——坐标系与动作尺度对齐。一次坐标系混用就能让所有对照失去归因能力，这比缺几小时数据严重得多。</li>
+    </ol>
+  </div>
+
+  <h3>局限清单</h3>
+  <ol class="crit">
+    <li><b>报告的不是新实验，是历史结果的再分析。</b>原文：「本文报告的成功率来自历史 LIBERO-10 仿真实验结果。本报告没有开展新的训练，也没有重新进行整体策略评估。」所以它不是一次预注册的实验，而是一次事后复盘——这在方法论上属于最弱的一档证据。</li>
+    <li><b>核心变量被管线 bug 污染。</b>坐标系混用 + 动作尺度不一致，恰好作用在「人类动作 ↔ 机器人动作」这个命题的关键接缝上。修正后的 v3 流程尚无任何评估结果，所以本文所有数字都可能是<b>一个已废弃流程</b>的表现。</li>
+    <li><b>样本量撑不起结论。</b>每个视角五到六组配对随机种子，全部置信区间跨零。作者自己写：「它们既不能证明 Midcentury 普遍更优，也不能证明两种数据源表现等效。」这是<b>无结论</b>，不是「弱结论」。</li>
+    <li><b>最强数字是事后筛选的。</b>+11.1 / +8.1 pp 来自「按四种视角平均优势排序」挑出的最佳配对，且原文说该配对是「在录制前确定」的——但筛选依据仍是已观察到的评估表现。这是典型的 selection on observed outcomes。</li>
+    <li><b>规模错配。</b>用 3.75 小时人类数据回答「能否规模化」。同时只做右手、只做 LIBERO-10 厨房仿真、只有十任务。原文承认：「这些实验无法证明策略在工厂任务中的表现，也无法证明真实机器人系统的可靠性、双臂迁移能力或数据采集成本的节省。」</li>
+    <li><b>成功判据过宽。</b>只看最终状态谓词，不校验动作顺序。对「先开盒再放入」这类顺序敏感任务，这个判据会系统性高估成功率——而顺序恰恰是人类数据被认为最擅长传递的东西。这等于用一把测不准的尺子，去量它最想证明的那一点。</li>
+    <li><b>视角偏移只是半个压力测试。</b>12.2 cm 平移保持了方向与视场角，而真实安装误差带旋转、焦距、光照。原文承认「并不能复现所有真实安装误差，也不能衡量真实机器人系统的可靠性」。</li>
+    <li><b>无法分离机制。</b>人类数据可能通过三条互斥路径起作用：视角多样性、动作监督精度、高层语义结构。本文只对第一条做了间接检验，且原文明确说「无法将这一因素与动作目标、语言、归一化或采样方式的影响区分开来」。三条路径要三套对照，这里一套都没有。</li>
+  </ol>
+
+  <h3>一个外部镜像，值得一并看</h3>
+  <p>同期另一条独立证据指向同一个方向，但更冷：<b>ReWeight</b>（arXiv:2609.13851，港大 + TeleAI）在 RoboTwin 2.0 上对 π0.5 做后训练，在<b>随机化</b>设置下，把全部可用 egocentric 人类数据等权加入，平均成功率 <b>0.29</b>，而纯机器人数据是 <b>0.34</b>——<b>加了人类数据反而低 5 个点</b>；随机抽同样大小的子集也只有 0.32，同样低于基线。只有做「示范检索 + 逐样本加权」才转正（0.42 随机化 / 0.57 干净）。这篇的结论比本文更直接：<b>不是人类数据没用，是无差别混合会把策略拖坏</b>——贡献的符号会随评测分布翻转。</p>
+  <p>把两篇并读，能拼出一个更完整的判断：人类 egocentric 数据不是「加了就有收益」的资源，而是<b>一个需要被选择函数加工的半成品</b>。本文用 3.75 小时、单一 pipeline、无筛选的设定，本来就在最不利的一侧做实验，最后得到「置信区间全部跨零」，其实与上述判断并不矛盾。</p>
+
+  <div class="box bad">
+    <b>读这篇最该带走的一句：</b>它真正的贡献不是那 +5.5 个百分点，而是<b>用一份实验数据，把「人类数据值不值钱」这个问题重新拆开了一次</b>——拆成「数据源质量」「混合方式」「接口容量」「评测分布」四个互相纠缠的变量，然后诚实地承认自己只动了其中一个、而且那一个还被 bug 污染了。在一个人人都在报点数的领域，一份敢说「我这组结果既兼容提升也兼容下降」的报告，信息量比一个漂亮数字大得多。至于要不要采人类数据：先查你的坐标系和动作尺度是不是同一套，再谈时长。
+  </div>
+
+  <p class="src" style="margin-top:16px">原文：《在 Egocentric Data 上对 π0.5 进行后训练》，公众号「human five」，2026-10-30 02:36 发布，发布方 Midcentury。本文中「独立 episode 数 / 单条时长 / 折算小时数」为按原文帧数自行折算（10 Hz），原文未直接列出；「v3 流程」「坐标系混用」等自曝内容均引自原文第 9.2 节。原文关于 Holm 校正的那一句在抓取时于「在完整任务成功率上达到」处截断，后接数值/显著性标记未能取到，故文中按「达到显著」理解，特此标注。外部对照 ReWeight（arXiv:2609.13851）非原文内容，仅作并读参考。</p>
+</section>
+
+<footer>本文为公众号「human five」文章《在 Egocentric Data 上对 π0.5 进行后训练》的第三方解析，非原文转载。原文发布于 2026-10-30。</footer>
+
+</div></body>
+</html>
