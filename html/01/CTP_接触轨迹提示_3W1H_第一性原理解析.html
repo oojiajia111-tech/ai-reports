@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从一次示范中迁移接触行为 · CTP · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);font-weight:600;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>从一次示范中迁移接触行为<span class="sub">Contact Trajectory Prompting：让参考示范不只说"走哪条路"，还说"每一段该用多大力" · 公众号「human five」长文导读</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-23</div>
+    <div><b>论文</b> arXiv:2610.18848</div>
+    <div><b>领域</b> In-context 机器人学习 · 接触丰富操作 · 触觉表征</div>
+    <div><b>关键词</b> contact prompt · 非均匀采样 · 设定值 vs 测量值 · 冻结参数迁移</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>全文最值钱的是论文给出的那一句区分：<b>"执行时感受到力"与"从示范中知道该怎样用力"，作用不同。</b>这句话把控制论里两个常被混为一谈的东西重新分开了——<b>测量值（measurement）</b>和<b>设定值（setpoint）</b>。力传感器只给前者：它告诉你此刻指尖压了多大，但绝不会告诉你"这次该轻擦还是重擦"。而现有 in-context 方法的参考示范只编码了位置轨迹，等于只给了<b>路径的设定值</b>，接触维度的设定值是空的。机器人于是陷入一个尴尬处境：<b>它能感觉到自己用力过猛，却不知道自己本来就该用多轻。</b></p>
+  <p style="margin-top:10px">CTP 做的事，就是把参考从"位置轨迹"扩成"位置＋接触的联合时序"。两个物理事实决定了这件事的难点：其一，<b>力不能直接命令</b>，它由动作和物体共同决定，所以力只能进条件空间、不能进动作空间；其二，<b>接触的时间常数远短于轨迹</b>，均匀抽帧会把"轻碰一下"直接漏掉，所以采样必须按力变化走。理解了这两条，就能理解它为什么要用非均匀抽样的时序编码器——那是个被物理约束逼出来的设计，并非调参调出来的。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么必须补接触</a><a href="#how">③ 怎么做</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一次示范 = 一条带接触的时间序列</h2>
+  <p>CTP 属于 in-context robot learning（ICRL）：策略训练完成后参数冻结，测试时读一条新的参考示范就能执行，不必为这条示范再训练。它要改的是<b>参考的内容</b>——从图像／机器人状态／动作轨迹，扩到包含接触记录。</p>
+
+  <p>一条 CTP 参考包含三路同步信号：</p>
+  <ul>
+    <li>机械臂末端<b>位置</b>；</li>
+    <li>左右指尖的<b>力与力矩</b>；</li>
+    <li><b>触觉形变</b>。</li>
+  </ul>
+  <p>关键在组织方式：它<b>不是</b>在轨迹后面附一串力值，而是保留"动作进展 ↔ 双指接触变化"的<b>时序对应</b>——接触何时开始、过程中怎么变、何时结束。这个对应关系才是被编码的东西。</p>
+
+  <div class="step">
+    <div class="t">编码：非均匀采样 + 时序编码器</div>
+    <div class="d">一部分按时间<b>均匀</b>取样；另一部分<b>专门挑力／力矩状态差异大的时刻</b>。原因是短暂的接触变化会被均匀抽帧漏掉——轻碰一下可能在两帧之间就完成了。训练时编码器还通过<b>重建运动与接触记录</b>来学，逼它保留两者随时间变化的关系。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">执行：参考只编码一次，参数全程冻结</div>
+    <div class="d">策略同时读当前图像、机器人状态、双指力触觉，从 prompt 里提取与<b>当前交互阶段</b>相关的内容，生成下一段动作。参考编码一次后不再变，机器人边执行边更新观测。这样参考里的接触要求能用到新场景，又不会退化成对旧轨迹的机械回放。</div>
+  </div>
+
+  <p style="margin-top:12px">实验覆盖三类任务，每类三个<b>未参与策略训练</b>的测试物体：</p>
+  <table>
+    <tr><th>任务</th><th>成功判据</th></tr>
+    <tr><td>擦拭</td><td>覆盖目标区域，并维持工具与表面的接触</td></tr>
+    <tr><td>旋转</td><td>按参考指定的方向转到目标角度</td></tr>
+    <tr><td>插入</td><td>完成接触、对齐，并达到目标深度</td></tr>
+  </table>
+  <p class="src">评测协议：每个测试物体用 4 条参考，每条参考执行 3 次，单次执行只输入其中一条参考。注意论文特意澄清了 one-shot 的含义——"用一条目标物体的示范指导一次执行"，<b>不是</b>未经训练就学会全新任务类别。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么必须补接触：位置参考丢掉了什么</h2>
+
+  <h3>反例比定义更清楚</h3>
+  <p>文章开头那个例子是整篇的缩影：用板擦沿花瓶表面走同一条路线，<b>轻擦和重擦的动作看起来可能差不多</b>，指尖受力却明显不同。也就是说，两条示范在位置空间里几乎重合，在接触空间里截然不同。</p>
+  <p>如果参考只编码位置，这两条示范在策略眼里就是<b>同一个输入</b>。模型不可能输出两种行为——不是它学不会，是<b>信息在传入之前就已经被丢掉了</b>。</p>
+
+  <h3>为什么"装了力传感器"救不了这个问题</h3>
+  <div class="box bad">
+    力传感器的实时读数只反映<b>当前</b>接触。<br>
+    它回答"我现在压了多少"，不回答"我这次该压多少"。
+  </div>
+  <p>这是闭环控制里最基础的区分，但在具身策略学习里经常被模糊掉。用控制论的语言写出来就很清楚：</p>
+  <div class="fml">
+    <div class="name">两个不同的量</div>
+    <div>\[ \text{误差} \;=\; r(t) - y(t) \]</div>
+    <div class="exp">\(y(t)\) 是测量值，来自力传感器，实时可得；\(r(t)\) 是设定值，必须由<b>任务意图</b>给出。只有在 \(r(t)\) 已知的前提下，误差才有意义。现有 ICRL 从示范里提取的是位置设定值 \(r_{\text{pos}}(t)\)，接触设定值 \(r_{\text{force}}(t)\) <b>从来没有被提取过</b>。加力传感器相当于把 \(y\) 变准了，但 \(r\) 仍然是空的——<b>误差因此无从计算</b>。</div>
+  </div>
+
+  <h3>为什么力不能直接写进动作空间</h3>
+  <p>一个容易想到的偷懒方案是把"目标力"当成动作的一部分直接回归。这在物理上不成立：</p>
+  <ul>
+    <li>指尖感受到的力是<b>动作 × 物体接触刚度 × 几何</b>的联合结果，不是独立可命令的量；</li>
+    <li>同样的动作在不同物体上产生完全不同的力——换一个花瓶，同一段轨迹的接触力可能差几倍。</li>
+  </ul>
+  <p>所以力只能作为<b>条件</b>（condition）进入，由策略去间接实现。CTP 把这一点做对了：参考提供接触意向，策略自己负责在具体物体上把它变成动作。这也解释了为什么参考必须<b>参数冻结、编码一次</b>——如果允许为每条参考微调，模型就会去记住"这个物体对应这串力值"，而不是学"接触意向怎么转成动作"。</p>
+
+  <h3>为什么采样必须非均匀</h3>
+  <p>接触事件的时间尺度天生不均衡：整条轨迹可能持续几秒，但"接触建立"和"接触解除"这两个关键转折只占几十毫秒。均匀抽帧时，这两个时刻<b>有很大概率落在采样点之间</b>，而它们恰恰是整条参考里信息量最大的地方。</p>
+  <p>按力／力矩差异选点，本质是在做一次<b>信息驱动的重采样</b>：把采样预算从"时间均匀"挪到"状态变化剧烈处"。这不是工程技巧，是对接触信号统计特性的直接响应。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：从记录到 prompt 到动作</h2>
+
+  <h3>第一步：把示范变成有序的 contact prompt</h3>
+  <p>均匀采样点 + 力变化剧烈点 → 时间对齐 → 时序编码器压缩成一组<b>有顺序</b>的 token。训练目标里包含<b>重建运动与接触记录</b>这一项，作用是防止编码器把时序结构压丢——如果重建得回来，说明时序关系还在。</p>
+
+  <h3>第二步：按当前阶段读参考</h3>
+  <p>执行时用 cross-attention 从 prompt 里取"与当前交互阶段有关"的内容。这个设计很关键，论文用消融给了代价：把它换成<b>平均池化</b>，高度扰动下成功率从 94.4% 掉到 <b>38.9%</b>。平均池化把整条参考抹成一个向量，等于告诉策略"这条参考整体上大概这么用力"——阶段信息全没了，遇到"接触时机变了"的情况就无从判断。</p>
+
+  <h3>第三步：靠在线接触观测处理现场偏差</h3>
+  <p>参考能指定"该多大力"，但机器人还得判断"眼前碰到了没有"。论文把物体高度上移或下移 2 cm，直接改变接触时机，结果对照极其锋利：</p>
+  <table>
+    <tr><th>配置</th><th>成功率</th></tr>
+    <tr><td>CTP（参考 + 在线接触观测）</td><td><b>95.8%</b></td></tr>
+    <tr><td>去掉在线接触观测</td><td>20.8%</td></tr>
+  </table>
+  <p>失败案例的共同点是"没能接触到表面"——位置参考本身没错，但物体不在原位了，而机器人不知道自己还没碰上。<b>这一组说明参考与反馈不可互相替代，必须两条腿都站。</b></p>
+
+  <h3>四组数字放在一起看</h3>
+  <table>
+    <tr><th>对比</th><th>结果</th><th>说明了什么</th></tr>
+    <tr><td>9 个未见物体总体</td><td>CTP 78.7% / BPP 65.7% / DP-FT 40.7% / π0.5-FT 37.0%</td><td>比最强基线高 13.0 个百分点，9 个实例中 8 个最高或并列最高</td></tr>
+    <tr><td>擦拭力度（行为条件）</td><td>轻擦 91.7% / 重擦 83.3%（BPP：75.0% / 58.3%）</td><td>换参考，行为跟着换；力度维度的优势最明显</td></tr>
+    <tr><td>旋转方向（行为条件）</td><td>顺 100% / 逆 100%（BPP：91.7% / 83.3%）</td><td>方向控制两者都强，差异不出在这里</td></tr>
+    <tr><td>架构消融（高度扰动）</td><td>直接拼接 52.8% → 重建预训练编码器 94.4% → 换平均池化 38.9%</td><td>关键在<b>表征</b>和<b>读取方式</b>，不在"有没有把力信号喂进去"</td></tr>
+  </table>
+  <p>最后一行是全文最有信息量的实验：把力信号硬拼进输入，只能拿到 52.8%；同一批数据换成会重建的时序编码器，跳到 94.4%。<b>模态的加入方式，比模态本身更重要。</b></p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：哪几个结论硬，哪几个还软</h2>
+
+  <h3>硬的部分：机制性对照</h3>
+  <p>95.8% vs 20.8%、94.4% vs 38.9% 这两组，样本量不大但差距悬殊到不可能由噪声解释。它们回答的是"接触参考有没有用""时序结构要不要保留"，这两问的答案很扎实。</p>
+  <p>还有一个容易被忽略的漂亮结果：训练示范<b>只有轻擦和重擦</b>，没有中等力度那一档；测试时插入"中等力度"的参考，模型在未见物体上仍执行出轻—中—重的正确顺序。这说明它学到的是<b>连续的力度条件映射</b>，不是两个离散档位的记忆。文章自己也做了限定——"中等力度实验说明模型能响应测试时才引入的参考档位，不等于能精确跟踪任意力曲线"，这个边界划得很诚实。</p>
+
+  <h3>软的部分：主结果的显著性</h3>
+  <ol class="crit">
+    <li><b>13 个百分点的领先，在统计上站不稳。</b>108 次执行（9 物体 × 4 参考 × 3 次）下，78.7% 的 Wilson 95% 区间约 [70%, 85%]，65.7% 约 [56%, 74%]。<b>两区间重叠</b>，所以"CTP 显著优于 BPP"这个说法不成立；能说的是"方向一致，8/9 个实例占优"。真正显著的只有上面那两组机制性消融。</li>
+    <li><b>四个基线里有两个偏弱。</b>BPP 是公平对手——同样冻结参数、同样有力触觉输入。但 DP-FT 与 π0.5-FT 走的是<b>用单条参考微调</b>的路线，一条示范的微调本来就吃亏。40.7% 和 37.0% 更像是"这条路线不适合 one-shot"，而不是"CTP 比它们强 40 点"。</li>
+    <li><b>插入任务露出了短板。</b>有一个实例 CTP 只有 33.3%，低于 BPP 的 41.7%。这很合理：插入的核心是<b>几何精度</b>（对齐到毫米级），接触参考补的是"该多用力"，补不了"位置偏了 2 mm"。这条负例的信息量比多数正例都大——它标出了方法的适用边界：<b>力参考替代不了位姿精度</b>。</li>
+    <li><b>测的不是法向接触力。</b>文章明确说明图中画的是"减去握持基线后、单侧指尖三维力的大小，并非工具与物体之间的法向力"。这意味着换一个握持姿态、换一个工具，这个量就会漂移。作为"接触意向"的代理它够用，但作为可迁移的物理量它不干净。</li>
+    <li><b>规模仍是九个物体、三类任务。</b>而且验证范围被限定在"已训练任务类别中的未见物体"。文章结尾自己承认"更复杂的物体几何及新的任务类别，还需要进一步检验"。这条限制很硬：它是<b>物体级泛化</b>，不是<b>任务级泛化</b>。</li>
+  </ol>
+
+  <div class="box good">
+    <b>读这篇最该带走的一句：</b>给机器人装力传感器，只是让它"知道自己现在多用力"；要让它"知道该多用力"，必须从示范里把<b>接触的设定值</b>提取出来并且按时序编码。这两件事之间隔着一整套表征设计——直接拼接原始信号只能到 52.8%，做成会重建的时序 prompt 才到 94.4%。在接触操作里，数据的<b>组织方式</b>比数据的<b>模态</b>更能决定上限。
+  </div>
+
+  <p class="src" style="margin-top:16px">论文：Contact Trajectory Prompting: In-Context Transfer of Contact-Rich Behaviors from a Single Demonstration（arXiv:2610.18848）· 代码 github.com/ctp-robotics/CTP · 项目页 ctp-robotics.github.io</p>
+</section>
+
+<footer>本文为公众号「human five」文章《从一次示范中迁移接触行为》的第三方解析，非原文转载。原文发布于 2026-10-23。</footer>
+
+</div></body>
+</html>

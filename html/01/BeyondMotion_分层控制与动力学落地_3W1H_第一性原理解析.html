@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beyond Motion Tracking：走向通用物理交互 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);font-weight:600;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>Beyond Motion Tracking：走向通用物理交互<span class="sub">Spatial grounding ≠ dynamics grounding：机器人学会了"怎么动"，还没学会"动了之后世界会怎样" · 公众号「human five」长文导读</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-19</div>
+    <div><b>原文</b> Haoyang Weng, "Steerable Physical Interaction Competence"（2026-10）</div>
+    <div><b>领域</b> 人形全身控制 · 分层策略 · 表征设计</div>
+    <div><b>关键词</b> S0/S1/S2 · 接触意图 · steerability · latent 等价性</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>整篇文章只为一句话服务：<b>spatial grounding ≠ dynamics grounding。</b>前者是"知道东西在哪、关系如何"，可以从图文里学；后者是"知道自己的动作会让世界变成什么样"，<b>只能通过在仿真或真机上亲自执行、接收反馈、再调整，才能长出来</b>。这两件事之所以容易被混为一谈，是因为 motion tracking 已经把前者做到了极致——今天的 tracker 能跟着参考动作跳得跟人一样像，于是看上去"机器人会动了"。但会动和会交互之间隔着一整层的物理因果。</p>
+  <p style="margin-top:10px">作者用一个比喻把现有主流的 motion-centric 架构钉住了：<b>"相当于一个人蒙着眼睛，另一个人看着环境，告诉他身体应该怎么动。"</b>——S1 看着环境，输出 body motion reference；S0 不接受场景输入，只靠本体状态跟着跑。环境一变，信息必须先过 S1、再转成新的 motion reference，才能影响 S0。<b>S0 从来没有直接感知外界、并据此闭环的机会。</b>即使把 S1 加速一百倍，这条路也补不上，因为缺的不是速度，是<b>S0 自己经历过 action→feedback 的那个循环</b>。</p>
+  <p style="margin-top:10px">第二层立论同样重要：<b>接口的信息量，决定了上层智能能被兑现多少。</b>S1 再聪明，如果接口只传身体运动，它就<b>无法指定</b>"轻触还是压紧"、"腿继续承重还是把重量交给椅子"。这不是表达能力问题，是<b>信道容量</b>问题。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么断层在 dynamics</a><a href="#how">③ 怎么补：表征与接口</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：三层分工，两个 grounding</h2>
+  <p>文章提出一个三层结构，职责边界清晰：</p>
+
+  <table>
+    <tr><th>层</th><th>角色</th><th>频率</th><th>需要的能力</th></tr>
+    <tr><td><b>S2</b></td><td>LLM：具身理解、空间推理</td><td>低频</td><td>spatial grounding（强项）</td></tr>
+    <tr><td><b>S1</b></td><td>VLA：根据场景持续指定细粒度交互意图</td><td>约 5 Hz</td><td>把理解转成 intent</td></tr>
+    <tr><td><b>S0</b></td><td>低层 controller：执行意图，闭环响应</td><td>控制频率</td><td><b>dynamics grounding</b>（缺的那块）</td></tr>
+  </table>
+
+  <p style="margin-top:12px">两个 grounding 的定义是全文的地基：</p>
+  <div class="step">
+    <div class="t">Spatial grounding</div>
+    <div class="d">理解空间与交互关系。VLM 从海量图文里学到的正是这个。它能在约 1 Hz 的尺度上判断"这个把手可以拉""碗在盘子左边"。</div>
+  </div>
+  <div class="step">
+    <div class="t">Dynamics grounding</div>
+    <div class="d">来自<b>自身物理交互</b>的控制能力：policy 输出动作 → 执行 → 接收它对身体、接触、物体产生的反馈 → 据此调整后续动作。作者认为，<b>这种闭环交互经验是建立 dynamics grounding 的必要条件</b>。</div>
+  </div>
+
+  <h3>为什么"加速"不能替代这一层</h3>
+  <p>这是文章最有说服力的一段反驳：</p>
+  <div class="box bad">
+    "即使能以 <b>50 Hz</b> 输出控制信号，也不意味着它学会了在接触、负载和扰动变化中及时调整行为。"<br><br>
+    <b>速度是必要条件，不是充分条件。</b>一个没有在控制时间尺度上经历过 action–feedback 循环的 LLM/VLM，不会仅凭推理加速就学会快速控制。
+  </div>
+  <p>换个说法：fast inference 是"更快地猜"，responsiveness 是"根据实际发生的事改主意"。前者不需要世界给反馈，后者必须。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么断层在 dynamics：三个具体缺口</h2>
+
+  <h3>缺口一：S0 不接受场景输入，闭环被切断</h3>
+  <p>在一类常见的 <b>motion-centric</b> 架构里：S1 看环境 → 通过 motion interface 给 S0 发身体运动 reference → S0 只靠本体状态跟踪这条 reference。整个链路里，<b>S0 从不直接看外界</b>。</p>
+  <p>后果很具体：环境变化的信息需要"先经过 S1、再转成新的 reference"，才能影响执行。这个绕行带来两个代价——<b>延迟</b>（S1 是 5 Hz 量级，接触事件是毫秒级）和<b>信息丢失</b>（reference 里装不下接触力这类信息）。</p>
+
+  <h3>缺口二：训练经历里没有物体动力学</h3>
+  <p>一个主要在 free space 学会跟踪身体运动的 S0，即使收到一条漂亮的抛掷 reference，也抛不动重物。原因不是它不听话，而是<b>物体的质量、惯性、接触会改变全身的平衡与运动</b>，而这套因果关系它从没见过。</p>
+  <p>作者拿三组 demo 做了对照，观察角度不是"动作难度"而是<b>responsiveness</b>：</p>
+  <table>
+    <tr><th>系统</th><th>做了什么</th><th>为什么有 responsiveness</th></tr>
+    <tr><td>PHP（parkour）</td><td>地形运动</td><td>RL policy 以 scene 信息为输入，在仿真里执行自己的动作并据物体/环境反馈学习</td></tr>
+    <tr><td>Workhorse（搬箱）</td><td>物体搬运</td><td>同上，把物体纳入训练</td></tr>
+    <tr><td>Atlas（抛掷）</td><td>重物抛掷</td><td>MPC <b>显式建模</b>物体质量、动量与机器人施加的力，联合优化两者后续运动</td></tr>
+  </table>
+  <p>对照组是 Delta-0、Omega-0、Archon 这些 whole-body VLA：它们能完成开洗碗机、整理床铺、采摘蔬菜这些复杂动作，但<b>较少展现随交互变化而调整的 responsiveness</b>。差别不在动作复杂度，在<b>S0 有没有把外界 dynamics 纳入学习</b>。</p>
+
+  <h3>缺口三：接口里没有"接触"这个变量</h3>
+  <p>这是整篇最锋利的地方——它用两个日常例子证明 <b>object motion 和 body motion 都不足以唯一确定交互</b>：</p>
+  <div class="box bad">
+    <b>擦黑板</b>：需要与黑板接触并施力，但<b>不希望黑板移动</b>。如果接口只能指定 object motion，那"黑板不动"这个目标与"什么都没做"完全等价——末端执行器可以只是轻轻掠过，字擦不掉。<br><br>
+    <b>坐到椅子上</b>：相同的身体 motion，既可以是双腿继续受力、维持悬坐，也可以是让椅子承重、放松坐下。如果接口不指定 pelvis 与椅子的接触关系，<b>policy 收到的 reference 就是有歧义的</b>——它不知道该不该把重量交出去。
+  </div>
+  <p>结论很清楚：交互需要三样东西同时指定，缺一不可——</p>
+  <div class="fml">
+    <div class="name">交互意图的三个分量</div>
+    <div>\[ \text{intent} = \underbrace{\text{object motion}}_{\text{希望外界怎么动}} \;+\; \underbrace{\text{contact intent}}_{\text{用什么方式接触}} \;+\; \underbrace{\text{robot motion}}_{\text{身体如何参与}} \]</div>
+    <div class="exp">contact intent 至少要能表达：是否保持接触、desired force/wrench、force range、compliance。作者明确说这三者<b>不是二选一</b>，而是互补——object motion 指定结果，contact intent 指定方式，robot motion 描述参与。</div>
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么补：两个表征必须"可扩展"</h2>
+  <p>作者把表征拆成两半，并各自给了一条"必须满足"的约束：</p>
+
+  <h3>Scene awareness：回答"正在发生什么"</h3>
+  <p>早期工作 HDMI 用 <b>robot frame 下的 object pose</b> 表示物体信息。这个做法对单个物体可行，但有个硬伤：<b>它依赖我们预先知道这个物体的坐标系怎么定义。</b>而作者给出的反驳很漂亮——"一个物体不应该天然有一个绑定在身上的坐标系"。</p>
+  <p>替代方案是 point cloud / RGB / depth：不绑定任何预定义物体定义，粒度更细，S0 可以<b>直接感知整个环境</b>。这条约束的本质是<b>可扩展性</b>：不能每加一个物体就得先定义一套坐标系。</p>
+
+  <h3>Interaction intent：回答"希望发生什么"</h3>
+  <p>演进路径是三步，每一步都在去掉一个依赖：</p>
+  <div class="step">
+    <div class="t">object frame → robot frame</div>
+    <div class="d">去掉对预定义 object frame 的依赖，从而能描述<b>任意单个物体</b>的运动。</div>
+  </div>
+  <div class="step">
+    <div class="t">robot frame → flow</div>
+    <div class="d">覆盖多个物体乃至整个场景。S1 可以直接推理"物体的各个部分应该怎么移动"，交给 S0 执行。</div>
+  </div>
+  <div class="step">
+    <div class="t">object motion → + contact</div>
+    <div class="d">补上第三节说的那三个分量。这一步是目前最不成熟的，作者也承认"要让 contact intent 真正落地，仍需解决力的感知或估计、硬件条件以及 sim2real gap"。</div>
+  </div>
+
+  <h3>全文最精彩的一段：latent interface 的等价性证明</h3>
+  <p>很多人直觉认为"把接口换成 latent code，就能表达更细的意图"。作者用三行推演把这个直觉打掉了：</p>
+  <div class="fml">
+    <div class="name">接口位置不增加信息量</div>
+    <div>设物理量为 \(p\)，encoder 为 \(E\)，\(z = E(p)\)，action decoder 为 \(D\)，动作为 \(a = D(z)\)。</div>
+    <div>\[ \text{路径 A：}\; S_1 \to p \to E \to z \to D \to a \]</div>
+    <div>\[ \text{路径 B：}\; S_1 \to z \to D \to a \]</div>
+    <div class="exp">在相同状态、相同 decoder 下，B 只要输出对应的 \(z\)，执行结果与 A <b>完全相同</b>。结论：<b>"改变接口的位置，没有增加原 interface 无法表达的信息。"</b></div>
+  </div>
+  <p>这个论证的边界作者标得很清楚：<b>限于同一个 encoder–decoder，以及 encoder 能产生的 latent</b>。由 RL 交互经验塑造出的其他表示，或者对可达集合之外 latent 的搜索，需要另行讨论。</p>
+  <p>但作者并没有因此否定 latent，反而给了它一个更准确的位置：<b>"信息相同，不代表学习和调用的难度相同。"</b>更有结构的空间可以让已有能力更容易被选择、插值和组合。所以正确的顺序是——<b>先让 S0 学到交互能力、建立足够细粒度的 interface，再让 latent 的结构帮助 S1 更好地使用它</b>。把顺序反过来，只会得到一个精致但空的接口。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：一篇把"VLA 万能论"拆开的观点文</h2>
+
+  <h3>它真正想说的是什么</h3>
+  <p>表面在谈 S0/S1/S2 的分层，实质上在做两件事：</p>
+  <ul>
+    <li><b>给 motion tracking 的成熟度祛魅。</b>跟踪得像，不等于会交互。今天大量"whole-body VLA 完成复杂动作"的 demo，掩盖了 S0 从未经历物体动力学的这个事实。</li>
+    <li><b>把"数据 scaling 能解决一切"这条信仰切开。</b>作者对数据路线的判断是分场景的，这一段值得单独看。</li>
+  </ul>
+
+  <h3>对数据路线的判断（这是最实用的部分）</h3>
+  <table>
+    <tr><th>本体类型</th><th>本体数据可获取性</th><th>可行路线</th></tr>
+    <tr><td>双臂夹爪</td><td>易（结构简单、易遥操作）</td><td>real-data BC / fleet learning 可行。参考：WALL-B 快递分拣、自动驾驶 fleet learning</td></tr>
+    <tr><td>灵巧手 / 人形</td><td>难（同等规模 teleop 难获得）</td><td>必须大量借助 human video</td></tr>
+  </table>
+  <p>关键的反驳在这里：</p>
+  <div class="box bad">
+    human video 可以提供空间、动作与交互意图的<b>先验</b>，但它<b>没有让目标 policy 亲自经历"自己输出的 action 在该本体上产生什么物理后果"</b>。<br><br>
+    也就是说，这类数据能教会你"人是怎么做的"，教不了你"你的手做同样的事会发生什么"。所以<b>不能据此期待 VLA 自动获得 dynamics grounding</b>——这部分经验必须在仿真或真机的闭环里补。
+  </div>
+
+  <h3>需要打问号的地方</h3>
+  <ol class="crit">
+    <li><b>这是观点文章，不是实验论文。</b>全文没有一个量化结果，所有论断都是基于 demo 观感与逻辑推演。作者本人用了大量"我认为"来标记这一点，这是诚实的，但引用时必须区分"论断"和"证据"。</li>
+    <li><b>"dynamics grounding 必须在闭环中获得"是个强断言。</b>反例可能存在：视频世界模型学到的 dynamics 先验，能否在某种程度上替代亲身经历？作者没有讨论这一支。这在当前世界模型快速进步的背景下，是最值得追问的一条。</li>
+    <li><b>三层划分是工程约定，不是物理必然。</b>作者在 Q3 里自己说得很清楚："需要保留的是 S1 的功能与运行频率；它是否对应一个独立模型，则是开放问题。"所以不要把 S0/S1/S2 读成三个必须存在的模型。</li>
+    <li><b>"task-specific S0 能否统一"这个问题没有被回答。</b>PHP、Workhorse、Atlas 都证明了把物体 dynamics 纳入控制有用，但它们各自是专用控制器（Workhorse 官网明确说每个任务有自己的 planner 和 tracker）。作者想要的那个"同一接口、同一 S0 应对不同任务与物体"，目前<b>只有愿望，没有实例</b>。这是全文最大的空白。</li>
+    <li><b>latent 等价性证明的条件很窄。</b>它成立的前提是"同一个 encoder–decoder"。但现实中换接口往往会连带换 decoder 的架构与训练方式，那时两条路径不再等价。这个证明更像"别指望改接口就白拿信息"，而不是"latent 无用"。</li>
+    <li><b>contact intent 的落地条件没有解决。</b>作者自己列出三个待解：力的感知或估计、硬件条件、sim2real gap。这三条都是硬骨头，尤其第三条——在仿真里精确建模接触力本身就是未解难题。</li>
+  </ol>
+
+  <div class="box good">
+    <b>读这篇最该带走的一句：</b>机器人领域的下一步不在"让 VLA 更聪明"，而在<b>给 S0 补上 dynamics grounding、给接口补上接触这个变量</b>。前者靠闭环交互经验（仿真或真机），后者靠重新设计表征。这两件事都不能靠"更大的模型"或"更多的视频"绕过——因为缺的不是知识，是<b>亲自经历</b>。
+  </div>
+
+  <p class="src" style="margin-top:16px">原文：Weng, Haoyang. "Beyond Motion Tracking: Steerable Physical Interaction Competence"（2026-10）· haoyangweng.pages.dev/blog/2026-10-steerable-interaction-competence</p>
+</section>
+
+<footer>本文为公众号「human five」文章《Beyond Motion Tracking：走向通用物理交互》的第三方解析，非原文转载。原文发布于 2026-10-19。</footer>
+
+</div></body>
+</html>

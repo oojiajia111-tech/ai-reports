@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Natura-1：人类经验 Scaling 与物理世界基础模型 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);font-weight:600;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>Natura-1：从人类经验 Scaling 到物理世界基础模型<span class="sub">50B MoE · 一百万小时人类经验 · 20-DoF 灵巧手 · 100 毫秒闭环 · 公众号「human five」长文导读</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-14</div>
+    <div><b>机构</b> Nature Will</div>
+    <div><b>领域</b> 人类数据预训练 · 灵巧操作 · 实时控制</div>
+    <div><b>关键词</b> 监督形式 · 本体适配 · 长程可靠性 · 接触可观测性</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>这篇文章最有价值的不是那几个分数，而是它在开篇就立下的一条不可绕过的约束：<b>数据规模、监督形式、本体适配共同决定预训练是否有效，任何一项都不能由另两项自动补足。</b>这句话直接掐死了当前最流行的两个偷懒假设——"人类视频够多就行"和"模型够大就行"。</p>
+  <p style="margin-top:10px">为什么不能补足？因为三件事缺的是不同东西。<b>规模</b>缺的是量，<b>监督形式</b>缺的是"视频里根本没记录的信息"——关节控制、接触力、触觉反馈、执行约束，这些<u>拍不出来</u>；<b>本体适配</b>缺的是"几何/动力学/观测"三重差异的校准，这些<u>看不会</u>。所以一百万小时视频也不会自动长出夹持力该给多大。</p>
+  <p style="margin-top:10px">第二个立论更硬，而且给了一个可以直接算的公式：<b>长任务可靠性是乘性的，不是加性的。</b>每步成功率 \(p\)、共 \(n\) 个不可恢复步骤，整任务成功率是 \(p^n\)。99% 的步准确率，走 100 步只剩 36.6%。这个数字的意义在于：<b>把每步从 99% 提到 99.9%，远不如让系统具备"发现错误并重试"的能力</b>——后者改变的是公式结构（把 \(p^n\) 变成可恢复的过程），前者只是在同一个公式里挪小数点。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么人类经验不够用</a><a href="#how">③ 怎么做</a><a href="#worth">④ 数字与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一条五环因果链</h2>
+  <p>官方披露的配置：<b>50B 参数 MoE</b>，在<b>超过一百万小时</b>人类经验上预训练，驱动 <b>20-DoF 灵巧手</b>，端到端观测到动作 <b>100 毫秒以内</b>。数据以受控采集为主、互联网第一人称视频补充。</p>
+  <p>文章把整条路线组织成一条因果链，每一环都必须站住，后面才成立：</p>
+  <div class="fml">
+    <div class="name">五环链</div>
+    <div>\[ \underbrace{\text{人类经验}}_{\text{提供覆盖}} \to \underbrace{\text{数据系统}}_{\text{生成监督}} \to \underbrace{\text{联合建模}}_{\text{学习可迁移结构}} \to \underbrace{\text{机器人适配}}_{\text{落实为动作}} \to \underbrace{\text{闭环评估}}_{\text{检验可靠性}} \]</div>
+    <div class="exp">这条链的每一环都可能成为断点，而<b>最容易被跳过的是第三环和第五环</b>——很多工作直接拿覆盖量当结论（跳过"结构是否可迁移"），再用离线误差当证据（跳过"闭环是否可靠"）。</div>
+  </div>
+
+  <h3>为什么是灵巧手，不只是"更难"</h3>
+  <p>夹爪把物体约束在相对简单的接触结构里；多指手要持续决定：<b>哪些手指参与、从哪里接触、何时滑动、何时释放</b>。动作维度随关节数增长，若每关节离散成多档，组合数会爆炸。</p>
+  <p>但真正的困难是这个：</p>
+  <div class="box bad">
+    <b>物理结果对误差的敏感度并不均匀。</b>手指在空中偏移 2 毫米可能无关紧要，在薄片插入或边缘捏取时却可能决定成败。<br><br>
+    所以动作学习的关键不是"平均误差小"，而是<b>把有限的预测精度分配到真正影响结果的位置</b>。这一条直接否定了拿 MSE 当唯一指标的做法。
+  </div>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么人类经验必然不够：两道无法用数据填的墙</h2>
+
+  <h3>墙一：本体差距分三层，只有第一层能靠 retarget 解决</h3>
+  <table>
+    <tr><th>差异</th><th>具体内容</th><th>解法</th></tr>
+    <tr><td><b>几何</b></td><td>指长、关节轴线、手掌形状改变可达抓取</td><td>运动重建 + retargeting ✅</td></tr>
+    <tr><td><b>动力学</b></td><td>刚度、驱动力、背隙、摩擦决定同一动作是否产生同样结果</td><td>机器人后训练 + 系统辨识（部分校准）</td></tr>
+    <tr><td><b>观测</b></td><td>人靠触觉与本体感觉调整，<b>视频根本没记录这些</b></td><td>新传感器 / 主动探索 / 利用历史</td></tr>
+  </table>
+  <p>第三行是死结：这不是"数据不够多"，是<b>信号在采集时就缺失了</b>。再用一百万小时同类视频，也补不进一个从未被记录的量。</p>
+
+  <h3>墙二：接触失败的两种成因，必须分开治</h3>
+  <p>全文最锋利的一个思想实验：</p>
+  <div class="box bad">
+    两个外观相同的物体，一个表面干燥，另一个覆有薄油膜。<b>接触前的相机画面可能近似一致</b>，而稳定抓取所需的力和策略已经不同。<br><br>
+    更多视频可以帮助模型建立更好的统计先验，也能让它从微小滑动中估计状态；但<b>若当前输入根本无法区分两种情况，仅增加相同模态的数据并不能保证辨识</b>。
+  </div>
+  <p>于是"抓取失败"这个表象背后有两种完全不同的病：</p>
+  <ul>
+    <li><b>模型没学到规律</b> → 加经验、加数据可以治；</li>
+    <li><b>决策时缺少必要观测</b> → 加同类数据治不好，必须有新模态（触觉/力）或试探性动作。</li>
+  </ul>
+  <p>这条区分极其重要，因为它解释了为什么"视觉预测指标改善了，接触失败却还在"——<b>两件事本来就不共享解法</b>。</p>
+
+  <h3>跨本体能复用的到底是什么知识</h3>
+  <p>这一节把"人类经验可迁移"从口号变成了清单：</p>
+  <table>
+    <tr><th>✅ 可迁移（任务-物体关系）</th><th>❌ 不可迁移（执行系统相关）</th></tr>
+    <tr><td>容器倾斜会改变液体位置</td><td>夹持力大小</td></tr>
+    <tr><td>薄片形成悬空边缘后更易抓取</td><td>关节速度</td></tr>
+    <tr><td>双手可分别承担固定与操作</td><td>指尖轨迹</td></tr>
+    <tr><td>扶正杯子需要建立接触、改变姿态、必要时支撑</td><td>摩擦补偿</td></tr>
+  </table>
+  <p>所以合理的预期是：<b>人类预训练提供行为与交互先验，机器人数据校准这些先验在具体硬件上的实现方式。</b>两类数据承担不同任务，谁也不能替代谁。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：从视频到动作的四段工程</h2>
+
+  <h3>① 清洗：降低"错误监督"，而不是提高画质</h3>
+  <p>覆盖视频与片段级去重、传感器完整性、时间连续性，以及互联网视频的镜头切分、手部可见性、质量评估。目的很明确——<b>防三类污染</b>：剪辑把不连续的物理过程拼接在一起；时间错位让模型把结果归因于错误动作；遮挡造成不可靠的手部重建。</p>
+  <p class="src">作者提醒了一个反直觉的点：遮挡、快速动作、失败恢复这类片段<b>更难标注，却可能提供最关键的交互经验</b>。所以质量控制要同时看"可信度"和"覆盖度"，不能只砍难样本。</p>
+
+  <h3>② 运动重建：MPJPE 不是终点</h3>
+  <p>从单目与双目第一视角恢复稠密手部与身体运动，转为统一表示。在带动捕真值的内部 benchmark 上，<b>MPJPE 比所选开源方法降低 41%</b>。</p>
+  <p>但文章紧接着泼了一盆冷水，这段值得原样引用：</p>
+  <div class="box bad">
+    "两个重建结果可以具有相近的 MPJPE，却在<b>拇指与食指是否接触物体、是否穿过物体表面、接触时刻是否正确</b>等关键问题上明显不同。<b>控制价值取决于误差发生在哪里。</b>"
+  </div>
+
+  <h3>③ 语言标注：标注意图，不只标注动作</h3>
+  <p>"拿起杯子"能描述一个局部动作，但说不清<b>为何拿起、接下来做什么、哪些物体应保持不动</b>。层级标注把整体目标、子任务、具体步骤连起来，让相似视觉片段在不同意图下得到区分。实现上用共享 episode 上下文的 agentic 流程保证层级一致。</p>
+  <p class="src">对应的评估要求也很实在：要检查"目标/步骤/可见行为是否一致"，<b>避免把推测出来的意图当作真实监督</b>。</p>
+
+  <h3>④ 联合建模：三个"统一"各自统一了什么</h3>
+  <div class="step">
+    <div class="t">Whole Trajectory Modeling</div>
+    <div class="d">把完整 episode 组织成语言/图像/视频/动作 token 序列，自回归建模，<b>一次训练计算中监督轨迹的多个时间位置</b>。好处是"拿起内衬"与"放进盒内"的关系能在同一序列里学；物体离开视野时，历史视频还能提供线索。</div>
+  </div>
+  <div class="step">
+    <div class="t">Video + Action Joint Modeling</div>
+    <div class="d">动作说明"想怎样改变世界"，视频展示"世界实际怎么变"。只预测动作，不必解释物体变化；只预测视频，可能生成合理画面却给不出可执行控制。联合训练让两者互相约束。视频与动作通过 <b>Flow Matching</b> 与联合去噪训练，各模态分别定义 loss。</div>
+  </div>
+  <div class="step">
+    <div class="t">Language Is Load-bearing</div>
+    <div class="d">很多片段里光看视觉就能猜到下一步（手已伸向杯子 → 大概率继续抓），模型因此可能<b>忽略语言</b>。要让语言成为有效条件，必须让<b>相同或相近场景能通向不同的行为未来</b>——这正是"左手先做/右手先做/两手同时"这组对照指令要验证的。</div>
+  </div>
+  <p>Flow Matching 的选择理由讲得很干净：机器人动作连续且多解（同一个杯子可从不同方向抓），<b>用平方误差学一个确定输出，会把多个合法模式平均到一个不理想的位置</b>；而学概率路径上的向量场可以表达条件分布。</p>
+
+  <h3>⑤ 系统：100 毫秒是怎么来的</h3>
+  <p>这条不是"模型跑得快"，而是全链路协同：</p>
+  <table>
+    <tr><th>环节</th><th>做法</th><th>数字</th></tr>
+    <tr><td>数据处理吞吐</td><td>统一存储与处理基础设施，连接采集/标注/训练</td><td>约 <b>35 万小时/周</b></td></tr>
+    <tr><td>训练效率</td><td>流式读 batch + 分布式并行 + 内存优化</td><td>MFU &gt; 50%，GPU 利用率 <b>98%</b></td></tr>
+    <tr><td>控制平面</td><td>Rust 处理连接/校验/预处理/编排，GPU workers 负责计算</td><td>端到端 <b>&lt; 100 ms</b></td></tr>
+    <tr><td>自定义 Kernel</td><td>融合相邻算子、复用中间结果、减少显存访问与启动开销</td><td>attention 约 <b>1200 TFLOP/s</b>，超 FlexAttention 基线 6 倍；端到端训练 1.7×、推理 2×</td></tr>
+  </table>
+  <p class="src">指标口径要说清：100 ms 是"一次观测进入系统到对应动作输出"，<b>实际动作下发与底层关节伺服可用各自频率</b>。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>数字与局限：哪些能引用，哪些不能</h2>
+
+  <h3>最硬的一组：跨域 Scaling 曲线</h3>
+  <p>从约 <b>44,000 小时</b>推进到 <b>100 万小时</b>，动作预测误差的相对下降：</p>
+  <table>
+    <tr><th>验证数据</th><th>Action MSE 下降</th><th>Action MAE 下降</th></tr>
+    <tr><td>留出的人类数据</td><td>47.7%</td><td>37.3%</td></tr>
+    <tr><td>留出的<b>真实机器人</b>数据</td><td><b>67.7%</b></td><td><b>49.3%</b></td></tr>
+  </table>
+  <p>这组数最值得注意的地方是<b>第二行比第一行降得更多</b>：人类经验规模推进，收益却更多地体现在<b>另一类本体</b>的数据上。这是"可迁移结构确实被学到了"的直接信号。官方补充了一个关键条件——机器人验证<b>使用同一模型权重，未为该次评估额外训练</b>（限于离线验证；真机执行系统仍经过机器人后训练适配）。</p>
+  <p class="src">但也必须看清评估方式：两组都用 <b>teacher forcing</b>，以历史观测为条件预测动作。真实 rollout 中机器人自己的动作会改变后续观测，一旦出现误抓或滑落，输入就偏离验证轨迹。<b>离线误差下降 ≠ 闭环可用</b>，文章自己点出了这一点。</p>
+
+  <h3>Benchmark：一个大数字，但口径要小心</h3>
+  <table>
+    <tr><th>模型</th><th>得分</th><th>平台</th></tr>
+    <tr><td>Natura-1 Base</td><td><b>53.4</b></td><td>双臂灵巧手</td></tr>
+    <tr><td>Natura-1 Agentic</td><td><b>59.1</b></td><td>双臂灵巧手</td></tr>
+    <tr><td>π0.5</td><td>13.5</td><td>双臂<b>夹爪</b></td></tr>
+    <tr><td>GPT-6-Astra</td><td>16.7</td><td>双臂<b>夹爪</b></td></tr>
+    <tr><td>π0.5（灵巧手平台微调后）</td><td><b>0</b></td><td>双臂灵巧手</td></tr>
+    <tr><td>GPT-6-Astra（每任务 60 分钟限制内）</td><td><b>0</b></td><td>双臂灵巧手</td></tr>
+  </table>
+  <p>作者自己加了限定："上述结果属于相应硬件与控制配置下的<b>系统级比较</b>，benchmark 得分<b>不直接等同于整任务成功率</b>。"</p>
+
+  <h3>长程可靠性的那个公式</h3>
+  <div class="fml">
+    <div class="name">乘法结构</div>
+    <div>\[ P(\text{整任务成功}) = p^{\,n} \quad\text{其中 } n \text{ 个步骤互相独立、不可恢复} \]</div>
+    <div class="exp">\(p=0.99\)、\(n=100\) → \(0.99^{100} \approx 0.366\)。<b>每步 99% 看起来很稳，100 步只剩三成六。</b>这个示意不是 Natura-1 的实测，但它精确说明了长流程的敌人是谁——不是平均精度，是"没有恢复机制"。</div>
+  </div>
+  <p>由此推出的部署指标比成功率有用得多：<b>平均无人工干预运行时长、每小时人工接管次数、失败后恢复率、完成时间分布</b>。这四个指标才能区分"一次成功"和"能稳定跑"。</p>
+
+  <h3>必须打问号的六点</h3>
+  <ol class="crit">
+    <li><b>53.4 对 13.5 不是同平台对比。</b>π0.5 与 Astra 的 13.5 / 16.7 是在<b>双臂夹爪</b>平台测的，Natura-1 的 53.4 在<b>双臂灵巧手</b>平台。两个分数不能直接相减。真正可比的是同平台那两行——π0.5 微调后 0 分、Astra 60 分钟内 0 分；而这更可能反映"平台适配成本极高"，而不是"模型能力差 50 分"。</li>
+    <li><b>六项工作流都做了额外任务微调。</b>包馄饨、装箱、上茶、书法、贴膜、酸奶碗——"这些演示均在基础模型上进行了额外的任务微调"。所以它们证明的是"基础模型 + 微调能达到的精度"，<b>不是 zero-shot 能力</b>。</li>
+    <li><b>"未出现在后训练数据中"无法独立核实。</b>托盘任务的零样本声明依赖官方自述。这个声明在逻辑上成立（训练样本是拾取水果、搬运已装载托盘等独立动作，测试要求在新布局下串联），但外部无法验证训练集的完整构成。</li>
+    <li><b>"emergent" 没有定量规律。</b>文章自己划了线：'这里的"涌现"描述未经专门指定的行为表现，<b>尚不等同于已经建立随模型规模变化的定量规律</b>'。所以毛线篮、滑卡片这些案例是"能力存在"的证据，不是"涌现可预测"的证据。</li>
+    <li><b>没有失败案例的统计。</b>第十章开头明确写："这些分析不等同于对 Natura-1 已报告失败案例的统计。"也就是说，接触失败、本体差距这些讨论是<b>结构性分析</b>，不是对实测失败的分类统计。缺了这块，就不知道它的失败到底集中在哪一层。</li>
+    <li><b>100 ms 是系统指标，且下游还有关节伺服。</b>它衡量"观测进入 → 动作输出"，动作下发与底层伺服各有频率。对闭环有意义，但不能读成"控制周期 10 Hz"。</li>
+  </ol>
+
+  <div class="box good">
+    <b>读这篇最该带走的两句：</b><br><br>
+    ① <b>规模、监督、适配三者不可互相替代。</b>视频里没记录的接触力，再多视频也补不出来——这类缺口只能用新传感器或试探动作去换。<br><br>
+    ② <b>长任务的可靠性是乘性的。</b>\(0.99^{100}=36.6\%\) 说明：与其把每步精度从 99% 提到 99.9%，不如让系统能发现错误并重来——后者改变的是公式结构，前者只是挪小数点。这也解释了为什么"重抓、重新支撑、调整顺序"这类看似不起眼的中间行为，比任何单点精度提升都更值钱。
+  </div>
+</section>
+
+<footer>本文为公众号「human five」文章《自然意志Natura-1:从人类经验 Scaling 到物理世界 Foundation Model》的第三方解析，非原文转载。原文发布于 2026-10-14。</footer>
+
+</div></body>
+</html>

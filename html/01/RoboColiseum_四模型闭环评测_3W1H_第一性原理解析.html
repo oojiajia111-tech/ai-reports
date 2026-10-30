@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RoboColiseum 四模型闭环评测 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);font-weight:600;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>四个前沿模型同台：指令遵循 95%，碗堆叠 0%<span class="sub">RoboColiseum 共享接口下的闭环评测 · 「懂」和「会」之间不是距离，是断层 · 公众号「human five」长文导读</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-20</div>
+    <div><b>被测</b> GPT-6 Astra · GPT-6.1 Sol · Claude Opus 5.5 · Gemini 4 Argon</div>
+    <div><b>领域</b> 具身评测 · 直接控制 · 闭环可靠性</div>
+    <div><b>关键词</b> Agent2Act · 接口即能力 · 失败改变场景 · 时间预算</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>全文最锋利的一对数字是：<b>指令遵循得分全部超过 95%，碗堆叠四个模型全部为零。</b>这两个数字放在同一张表里，说明的不是"能力还不够"，而是<b>"懂"和"会"之间不是一段可以靠加数据缩短的距离，而是一道断层</b>。指令遵循考的是"在若干物体里选对那一个"——纯粹的符号推理；碗堆叠考的是"建立稳定接触、抬起、叠到另一个碗上"——纯粹的物理交互。前者接近满分，后者为零，意味着这两件事在模型内部<b>根本不共享同一套机制</b>。</p>
+  <p style="margin-top:10px">第二个更值得记的结论是：<b>"模型能力"这个词在这里是空的。</b>同一个 Astra，去掉深度，成功率 90%→80%；去掉夹爪几何，→70%；去掉历史，四种布局只能完成两种、决策次数从 27.5 涨到 66.5。所以正确的说法永远是"某模型在某个接口条件下的能力"。这也顺带解释了为什么具身领域各篇论文的成功率不可横向比较——它们的接口根本不一样。</p>
+  <p style="margin-top:10px">第三层是最容易被忽略的物理事实：<b>失败会改变题目</b>。硬币第一次没投进槽口，平躺在盒盖上——此时任务名义上还是"投放"，但下一步必须先解决"怎么把它捡起来"。符号世界里答错了可以重答，物理世界里答错了会改写题干。这是闭环可靠性问题的物理根源。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 为什么断层在这</a><a href="#how">③ 实验怎么做</a><a href="#worth">④ 结果与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：四个模型 + 一个接口 + 四条赛道</h2>
+  <p>研究把四个前沿多模态模型接入 <b>Agent2Act</b> 统一接口，在 RoboColiseum（G2 轮式双臂机器人）上比较。职责划分很明确：<b>模型决定下一步尝试什么</b>（提出运动目标与夹爪命令），<b>接口负责运动学验证与执行转换</b>。这样比较的对象就是"模型能提出什么"，而不是"谁能写对底层控制"。</p>
+
+  <table>
+    <tr><th>赛道</th><th>考察什么</th><th>代表任务</th></tr>
+    <tr><td>指令遵循</td><td>按属性、语义、逻辑条件选择并操作目标</td><td>按颜色/大小/数量取物，逻辑"或"条件</td></tr>
+    <tr><td>空间推理</td><td>理解位置关系并用动作满足</td><td>绝对/相对位置拾取、排序、堆叠</td></tr>
+    <tr><td>通用操作</td><td>接触、连续动作、双臂协调</td><td>开门、持锅、倾倒、舀取、整理货架</td></tr>
+    <tr><td>鲁棒性</td><td>观测或初始条件变化后维持表现</td><td>背景光照、相机位置、图像质量、措辞、初始位姿</td></tr>
+  </table>
+
+  <p style="margin-top:12px">模型能看到的信息相当丰富，这一点很重要，因为它决定了"失败"能归因到哪里：</p>
+  <ul>
+    <li><b>通用控制信息</b>：动作 schema、坐标位姿约定、机器人与夹爪几何、相机标定、执行约束；</li>
+    <li><b>当前观测</b>：RGB、机器人位姿与关节状态、夹爪状态、<b>可查询的深度</b>（模型自选位置，返回带模拟噪声的观测）；</li>
+    <li><b>反馈与历史</b>：请求运动与实际运动的偏差、动作验证/拒绝信息、近期决策与执行记录；</li>
+    <li><b>评分进度</b>：环境检查器的得分与状态，<b>与运动反馈分开提供</b>。</li>
+  </ul>
+  <p class="src">任务成功由 RoboColiseum 原生评估判定，独立于模型自己的完成声明——这一点值得专门表扬：它把"模型说完成了"和"任务真完成了"分开了。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么断层出现在"闭环"这一层</h2>
+
+  <h3>断层的位置，被一对数字钉死了</h3>
+  <div class="box bad">
+    指令遵循：Astra、Sol、Opus <b>全部 &gt; 95%</b><br>
+    碗堆叠：这四个模型（含 Argon）<b>全部 0.00</b>
+  </div>
+  <p>选对物体和叠好一个碗，在人看来是同一件事的两个步骤，在模型内部却是两套完全不同的能力：</p>
+  <ul>
+    <li><b>选择</b>是分类问题——把视觉特征映射到符号标签，这正是 VLM 在互联网数据上被训练得最好的部分；</li>
+    <li><b>接触</b>是控制问题——需要知道夹爪从哪里接近、接触点在哪、抬起来会不会滑、两个碗的中心如何对齐。</li>
+  </ul>
+  <p>更尖锐的是：碗堆叠在论文自己的分类里属于<b>空间推理</b>赛道，而这个赛道上 Opus 在绝对/相对位置拾取上都是 1.00。也就是说，同一个模型在"同一条赛道"里，既能满分完成位置关系判断，又在需要把它变成接触时归零。<b>赛道划分本身就在这个任务上失效了。</b>论文自己承认了这一点："赛道得分能够帮助定位困难任务，却不能直接解释失败原因。"</p>
+
+  <h3>为什么闭环是瓶颈，而不是感知或规划</h3>
+  <p>把一次操作拆成四个环节，就能看清卡在哪：</p>
+  <div class="fml">
+    <div class="name">四个环节，三条已经打通，一条没有</div>
+    <div>\[ \underbrace{\text{理解任务}}_{\text{已通：}>95\%} \;\to\; \underbrace{\text{定位目标}}_{\text{已通：}1.00} \;\to\; \underbrace{\text{建立接触}}_{\text{部分通}} \;\to\; \underbrace{\text{判断是否奏效并修正}}_{\textbf{未通}} \]</div>
+    <div class="exp">前三段各自都有高分证据，唯独最后一段——"我做了，它成了吗？没成怎么改？"——没有任何赛道在直接测它。而所有失败案例最终都归到这里。</div>
+  </div>
+
+  <h3>三个物理事实，决定了这一环特别难</h3>
+  <ol>
+    <li><b>动作有副作用，而且副作用的副作用还得处理。</b>硬币没投进槽口 → 平躺在盒盖上 → 抓取问题出现了。任务没变，题干变了。</li>
+    <li><b>"执行了"不等于"生效了"。</b>通过运动学检查只说明动作合法，不说明抓稳了。系统必须能把"预计发生什么"和"实际发生什么"对上。</li>
+    <li><b>重复同一动作不会带来新信息。</b>去掉历史记录后，两个失败 episode 的表现是"在摆放阶段反复尝试相同动作"——它忘了自己试过，于是把同一个失败重演一遍。</li>
+  </ol>
+  <p>第 3 点被实验量化得很清楚：移除历史后，平均决策次数从 <b>27.5 涨到 66.5</b>，四种布局只完成两种。这说明<b>历史不是锦上添花的上下文，它是"避免循环"的唯一机制</b>。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：七项配置实验，把接口拆开看</h2>
+  <p>主实验是四模型横向比较；更有信息量的是针对 Astra 的七项<b>消融式配置实验</b>——每次只改接口的一个方面，看成功率和决策代价怎么变。</p>
+
+  <table>
+    <tr><th>改动</th><th>成功率</th><th>平均规划决策次数</th><th>说明</th></tr>
+    <tr><td>完整系统</td><td>90%</td><td>16.7</td><td>基线（10 项指令遵循任务）</td></tr>
+    <tr><td>移除深度</td><td>80%</td><td>27.6</td><td>仍能用 RGB 选目标，但要多绕几圈定位</td></tr>
+    <tr><td>移除执行偏差反馈</td><td>80%</td><td>35.6</td><td>不知道上一轮动作差在哪</td></tr>
+    <tr><td>移除夹爪几何</td><td><b>70%</b></td><td><b>51.6</b></td><td>跌幅最大，模型倾向保持夹爪初始朝向</td></tr>
+    <tr><td>软 IK（放宽位姿接受条件）</td><td><b>100%</b>（9/10→10/10）</td><td>46.9</td><td>完成率上去，但修正负担也上去</td></tr>
+    <tr><td>移除投影自检</td><td>—</td><td>55.6</td><td>出现反复抓取与抓持丢失</td></tr>
+    <tr><td>直接关节控制</td><td>80%</td><td>基本不变</td><td>步数 118.8→254.3，但耗时 32.68→<b>19.62 分钟</b></td></tr>
+  </table>
+
+  <h3>四个可以直接带走的接口结论</h3>
+  <div class="step">
+    <div class="t">① 夹爪几何比深度更关键</div>
+    <div class="d">移除深度掉 10 个点，移除夹爪几何掉 20 个点、决策次数翻三倍。说明"从哪个方向接近、哪里能形成接触"这类知识，模型自己推不出来——它必须被<b>显式喂进去</b>。</div>
+  </div>
+  <div class="step">
+    <div class="t">② 偏差反馈是修正的前提，不是优化项</div>
+    <div class="d">"请求的运动与实际运动差在哪里"这句话，模型自己是看不到的。没有它，闭环退化成开环，决策次数直接翻倍。</div>
+  </div>
+  <div class="step">
+    <div class="t">③ 放宽约束能提完成率，但要付修正成本</div>
+    <div class="d">软 IK 让十项任务从 9 成变 10 成，代价是决策次数从 16.7 涨到 46.9。<b>放宽执行条件的收益，取决于系统有没有能力消化由此产生的偏差。</b></div>
+  </div>
+  <div class="step">
+    <div class="t">④ 步数、时间、成功率是三个独立维度</div>
+    <div class="d">直接关节控制：动作步数翻倍（118.8→254.3），耗时却<b>下降</b>（32.68→19.62 分钟）。因为少了规划往返。所以"更多动作"不等于"更长时间"，用任何单一指标评判效率都会失真。</div>
+  </div>
+
+  <h3>主结果的形状：领先位置不同，短板相同</h3>
+  <table>
+    <tr><th>维度</th><th>领先者</th><th>关键数字</th></tr>
+    <tr><td>总体</td><td>Opus</td><td>与 Astra 仅差 <b>0.29 个百分点</b>（基本是噪声）</td></tr>
+    <tr><td>空间推理</td><td>Opus</td><td>绝对/相对位置拾取均 1.00；Sol 在排序与堆叠上均 1.00</td></tr>
+    <tr><td>通用操作</td><td>Opus</td><td>但四者在这一赛道<b>全部最低</b></td></tr>
+    <tr><td>指令遵循 / 鲁棒性</td><td>Astra</td><td>—</td></tr>
+    <tr><td>图像质量扰动</td><td>Opus 0.76</td><td>Sol 崩到 <b>0.18</b>（降 0.77）</td></tr>
+  </table>
+  <p>通用操作这一栏最值得看：四个模型得分 0.3879–0.4670，而论文列出的四个<b>专用策略</b>条目是 0.6320–0.6613。反过来，Astra / Sol / Opus 的指令遵循与空间推理得分都超过了专用策略在对应维度的最高值。</p>
+  <div class="box good">
+    这个交叉对照说明了一件很清楚的事：<b>通用模型在"理解与关系判断"上已经超过专用策略，在"物理操作"上还差 20 个百分点以上。</b>这不是"通用模型即将取代专用策略"，而是"通用模型补上了专用策略缺的语义，但还没补上专用策略有的手感"。
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：这是一篇难得诚实的评测</h2>
+
+  <h3>它做对的三件事</h3>
+  <ol>
+    <li><b>共享接口。</b>四个模型看到同样的观测、同样的约束、同样的动作空间。没有这一条，跨模型比较就是空谈。</li>
+    <li><b>分开"模型声称完成"与"环境判定完成"。</b>很多具身评测栽在这里：模型说"我做完了"，评测就记成功。</li>
+    <li><b>把时间预算拉进来。</b>32.68 分钟完成十项任务、64.65 分钟完成四种积木布局——这个量级让"最终成功"和"可接受时间内成功"变成两个问题。</li>
+  </ol>
+
+  <h3>但它自己划了很多边界，读的时候必须一起读</h3>
+  <ol class="crit">
+    <li><b>配置实验每个条件只跑一次。</b>论文原文写得很直白："由于样本少、没有重复运行，后文将重点关注变化方向及具体行为，不把单次结果视为稳定的效应估计。"所以 90%→80% 这类单次差异<b>没有统计意义</b>，只能当方向线索。真正可信的是"移除历史后出现反复尝试相同动作"这种<b>行为层面的定性证据</b>。</li>
+    <li><b>Argon 的推理强度不同。</b>Astra/Sol/Opus 用高推理强度，Argon 用中等（原因说得很实在：高强度的 API 响应太慢，没法大批量跑）。所以涉及 Argon 的任何比较都混入了配置差异。</li>
+    <li><b>表里的数值不是任务成功率。</b>论文明确说"表中数值为百分制基准得分，不等同于完整任务成功率"。这个限定极重要，否则 95% 会被读成"95% 的任务做成了"。</li>
+    <li><b>0.29 个百分点的总体差距不该排名。</b>Opus 与 Astra 的总分差落在这个量级，说明"谁第一"取决于具体任务组合，而不是能力高低。论文自己的表述是"分赛道的能力结构更值得关注"，这个态度是对的。</li>
+    <li><b>配置实验只做了 Astra。</b>所以"深度重要""夹爪几何最重要"这些结论，严格说只对 Astra 成立。论文在结尾也提出了后续方向：把同样的接口变更施加到不同模型，才能判断哪些收益是共性的。</li>
+    <li><b>鲁棒性总分掩盖了差异。</b>Argon 总分高于 Sol，但优势只来自图像质量一项；在背景光照、相机位置、指令措辞、初始位姿这四项上，<b>Sol 的绝对得分都更高</b>。这是一个很好的提醒：单一鲁棒性总分会骗人，必须按扰动类型拆开看。</li>
+  </ol>
+
+  <div class="box good">
+    <b>读这篇最该带走的一句：</b>今天具身模型的短板不在"看懂"，在"闭环"——生成一个合理动作之后，它能不能判断这个动作奏效了没有，偏离时能不能改，失败后能不能恢复。而闭环能力<b>几乎完全由接口决定</b>：给不给偏差反馈、给不给历史、给不给夹爪几何，同一个模型的表现能差出 20 个点。所以下一步真正该卷的不是模型参数，是<b>接口里装了什么信息</b>。
+  </div>
+</section>
+
+<footer>本文为公众号「human five」文章《RoboColiseum 评测：GPT-6 Astra、Claude Opus 5.5 等四模型同台》的第三方解析，非原文转载。原文发布于 2026-10-20。</footer>
+
+</div></body>
+</html>

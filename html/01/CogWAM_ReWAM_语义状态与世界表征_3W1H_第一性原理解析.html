@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CogWAM 与 ReWAM：语义状态与世界表征 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);font-weight:600;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>CogWAM 与 ReWAM：该记什么，该怎么记<span class="sub">世界动作模型的两半——任务进度该不该每帧更新？表征该为重建服务还是为动作服务？ · 公众号「human five」长文导读</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-11</div>
+    <div><b>类型</b> Robotion 技术分享预告（含两篇论文推介）</div>
+    <div><b>论文</b> CogWAM（arXiv:2609.37721）· ReWAM（arXiv:2609.38163）</div>
+    <div><b>关键词</b> 事件驱动语义状态 · KEEP/UPDATE · 表征与控制目标错位</div>
+  </div>
+</div>
+
+<div class="box bad" style="margin-top:0">
+  <b>素材边界说明：</b>原文是一篇技术分享的<b>活动预告</b>，正文由两篇论文的<u>摘要级介绍</u>构成，不含实验数据、消融结果或失败分析。因此本文的解析<b>只做问题框架与机理推演，不给任何数字结论</b>——原文里没有的东西，这里也不会补。要看实证，需回到两篇论文原文。
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>两篇工作表面上一个管"理解"、一个管"表征"，其实问的是同一个问题的两半：<b>世界动作模型该把什么装进内部状态，以及用什么标准来装。</b></p>
+  <p style="margin-top:10px"><b>CogWAM 问的是"该记什么，什么时候该改"</b>。长时序操作里，"任务完成了多少"这个量并不是连续变化的——它在做一步的过程中基本恒定，只在跨阶段时跳变。如果每帧都重新估计它，得到的是<b>一堆围绕真值的噪声抖动</b>，而不是更准的估计。所以它用事件驱动的 KEEP/UPDATE 机制：<b>默认保持不变，只在关键转换时刻更新</b>。这不是省算力的小技巧，而是对"任务进度是分段恒定"这一物理事实的正确建模。</p>
+  <p style="margin-top:10px"><b>ReWAM 问的是"该按什么标准装"</b>，而且它一开口就掀了桌子：<b>"世界模型重建得越好，机器人就一定越强吗？"</b>答案是未必。因为视觉重建优化的目标是<b>像素保真</b>——包括背景纹理、光照、无关物体；而控制需要的是<b>动作相关的可区分性</b>。这两者可以冲突：一个能把木纹重建得纤毫毕现的表征，可能对"手指是否已经夹住"这种十几个像素的位移完全不敏感。所以 ReWAM 干脆不用为重建设计的 Video-VAE 潜空间，改用预训练 DINO 感知特征，并让<b>动作目标反向塑造表征</b>。</p>
+  <p style="margin-top:10px">合起来是一条判断：<b>世界动作模型的内部表征，服务对象是决策，不是还原。</b>这句话听起来像常识，但现有做法（直接用 Video-VAE 潜空间、每帧重估语义状态）恰恰都在按"还原世界"的标准设计。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a><a href="#why">② 两个前提错在哪</a><a href="#how">③ 怎么改</a><a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：两篇工作，两个切口</h2>
+
+  <table>
+    <tr><th></th><th>CogWAM</th><th>ReWAM</th></tr>
+    <tr><td><b>论文</b></td><td>Aligning Semantic Cognition with World Action Modeling via Event-Driven Interfaces</td><td>Rethinking Representations for World-Action Modeling</td></tr>
+    <tr><td><b>切口</b></td><td>任务进度的持续理解</td><td>世界表征空间的设计</td></tr>
+    <tr><td><b>核心机制</b></td><td>事件驱动语义接口；持续维护的 Semantic State 同时进入世界预测与动作生成；<b>KEEP/UPDATE</b> 避免冗余更新</td><td>DINO 预训练感知特征 + Feature Calibration + Temporal Representation Bottleneck（TRB）+ Action-Grounded Representation Shaping（AGRS）</td></tr>
+    <tr><td><b>一句话</b></td><td>让任务进度同时指导"预测未来"和"生成动作"</td><td>让动作目标决定表征该编码什么</td></tr>
+  </table>
+
+  <p style="margin-top:12px">两个共同的背景判断值得记下来：</p>
+  <ul>
+    <li><b>WAM 的定位</b>：联合学习"未来世界状态预测"与"机器人动作生成"，目标是让机器人不只会执行，还能理解物理世界如何变化。</li>
+    <li><b>两篇的分工</b>：CogWAM 处理"语义认知"这一层（理解当前该做什么），ReWAM 处理"物理表征"这一层（在什么空间里学动态）。文章末尾的收束很准确——<b>"如何让机器人既理解当前应该做什么，又能在有利于控制的表征空间中学习世界动态？"</b></li>
+  </ul>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么两个流行前提都站不住</h2>
+
+  <h3>前提一：任务进度应该被持续、密集地估计</h3>
+  <p>这个前提的诱惑在于"信息越多越准"，但它忽略了一个结构性事实：</p>
+  <div class="fml">
+    <div class="name">任务进度是分段常值函数，不是连续信号</div>
+    <div>\[ \text{progress}(t) = s_k \quad \text{当 } t \in [\tau_k, \tau_{k+1}) \]</div>
+    <div class="exp">在第 \(k\) 步执行期间，进度保持不变；只有跨过 \(\tau_{k+1}\) 才跳变。对这样一个信号做高频估计，得到的是<b>围绕常数 \(s_k\) 的估计噪声</b>——不是更多信息，是更多抖动。而这些抖动会同时污染世界预测和动作生成两条通路。</div>
+  </div>
+  <p>所以"KEEP/UPDATE"的正确读法不是"省计算"，而是<b>把更新时机对齐到信号的真实变化点</b>。这与信号处理里的采样定理是同一件事：对带宽有限的信号，超过必要频率的采样只会引入噪声。</p>
+  <p class="src">原文给出的动机也是这个方向："通过高效的 KEEP/UPDATE 机制避免冗余的语义状态更新"，"保留执行历史，并在关键任务转换时高效更新"。</p>
+
+  <h3>前提二：视觉重建质量高 = 控制能力强</h3>
+  <p>这是 ReWAM 那记直拳要打的东西。把两者的优化目标写出来，冲突就一目了然：</p>
+  <div class="fml">
+    <div class="name">两个目标函数优化的根本不是同一个量</div>
+    <div>\[ \mathcal{L}_{\text{重建}} = \big\| x - \hat{x} \big\|^2 \quad\text{（逐像素保真，背景也算分）} \]</div>
+    <div>\[ \mathcal{L}_{\text{控制}} = \text{任务成功 / 动作可分性} \quad\text{（只关心与动作耦合的那部分变化）} \]</div>
+    <div class="exp">一个表征可以在这两者之间<b>严重错配</b>：房间的窗帘摆动、桌面反光、背景里走过的人，都会主导重建损失；而"指尖与物体之间多了 3 毫米的挤压"在像素空间里贡献极小，在控制上却是决定性的。<b>重建越强，越可能把容量花在与动作无关的细节上。</b></div>
+  </div>
+
+  <h3>于是"直接用 Video-VAE 潜空间"就成了一个未经验证的默认</h3>
+  <p>原文的描述很准确：现有 WAM "通常直接使用为视觉重建设计的 Video-VAE 潜在空间进行世界预测与动作学习"。这是一个<b>继承式的选择</b>——因为视频生成模型好用，就顺手拿它的潜空间，而不是因为该潜空间对控制友好。</p>
+  <p>ReWAM 的做法是换掉这个默认：以 DINO 感知特征为基础。理由可以推一下——DINO 这类自监督特征是在<b>判别性目标</b>下学出来的（区分不同图像/区域），而不是在<b>重建目标</b>下学出来的（还原每个像素）。前者天然更接近"可区分"，后者天然更接近"可还原"。<b>而控制需要的是可区分。</b></p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么改：三个模块各治一种病</h2>
+
+  <h3>CogWAM：把语义状态做成"稀疏事件"</h3>
+  <div class="step">
+    <div class="t">事件驱动的语义接口</div>
+    <div class="d">持续维护一个 Semantic State，把它<b>同时</b>接入世界预测和动作生成两条通路。关键在于"同时"——如果只喂给动作生成，世界模型就不知道任务进展，预测出的未来可能与任务无关（比如预测出"手继续悬停"而不是"手该去拿下一个物体"）。</div>
+  </div>
+  <div class="step">
+    <div class="t">KEEP / UPDATE</div>
+    <div class="d">两种动作：保持不变，或在关键转换点更新。这个二值决策本身就是"事件检测"——判断当前是否发生了任务阶段切换。<b>比"每帧重新回归一个进度标量"更省，也更稳。</b></div>
+  </div>
+  <div class="step">
+    <div class="t">要验证的三件事</div>
+    <div class="d">原文列出的实验方向：长时序操作、指令遵循、跨场景泛化。这三项恰好对应"记得住阶段""听得懂指令""换场景还能认出阶段"——都在检验同一个东西：<b>语义状态是不是真的在追踪任务进度，而不是在拟合视觉外观</b>。</div>
+  </div>
+
+  <h3>ReWAM：把表征从"可还原"扭向"可控制"</h3>
+  <table>
+    <tr><th>模块</th><th>作用（据原文摘要）</th><th>它对应解决什么</th></tr>
+    <tr><td><b>Feature Calibration</b></td><td>校准预训练 DINO 特征</td><td>通用视觉特征不是为机器人任务学的，需要对齐到目标任务分布</td></tr>
+    <tr><td><b>Temporal Representation Bottleneck（TRB）</b></td><td>时序表征压缩</td><td>逐帧感知特征不直接等于动态表征；<b>压缩掉与动态无关的变化</b>，留下随时间演化的部分</td></tr>
+    <tr><td><b>AGRS</b></td><td>Action-Grounded Representation Shaping，<b>非对称梯度优化</b></td><td>让动作目标塑造表征、同时让世界模型学动态——<b>两个目标不是平等合作的</b></td></tr>
+  </table>
+
+  <h3>"非对称梯度"这个词值得单独说</h3>
+  <p>AGRS 用"非对称梯度"是全文技术味最重的一处，也是最容易被忽略的设计。它意味着<b>动作损失对表征的梯度与预测损失对表征的梯度，权重或路径不同</b>。</p>
+  <p>为什么需要非对称？因为两者的可靠程度不一样：动作是有监督标签的（示范数据里真实存在），而未来的视觉预测在接触场景里极难准确（物体形变、遮挡、接触力都拍不到）。如果让两者平等地塑造表征，<b>不可靠的预测目标会稀释可靠的动作信号</b>。</p>
+  <p class="src">原文的表述是："让动作目标决定表征应该编码什么，让世界模型学习这些表征如何随时间演化。"——注意这两句的主语不同：<b>表征由动作决定，动态由世界模型学</b>。这是一个明确的主从关系，不是对等融合。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：问题提得比答案更值钱</h2>
+
+  <h3>两篇各自最值钱的一句话</h3>
+  <div class="box good">
+    <b>CogWAM</b>：任务进度是分段恒定的，所以它应该被<b>事件驱动地更新</b>，而不是被高频估计。<br><br>
+    <b>ReWAM</b>：<b>"世界模型重建得越好，机器人就一定越强吗？"</b>——这个反问拆掉了一个被默认继承的设计选择。
+  </div>
+  <p>两个判断的共同点，是把"更多"换成了"更对"：更多语义更新 → 更对的更新时机；更强的重建 → 更对的表征目标。</p>
+
+  <h3>为什么这两个问题在 2026 年被同时提出</h3>
+  <p>因为它们都是<b>WAM 范式成熟到一定程度后才会暴露的问题</b>。早期做 WAM，能用就行；等到要跑长时序、要跨场景泛化，才会发现：</p>
+  <ul>
+    <li>语义状态每帧抖，长任务就会"忘记自己在第几步"；</li>
+    <li>表征按重建优化，控制精度就在关键接触处丢。</li>
+  </ul>
+  <p>换句话说，<b>这两篇是"WAM 从能跑到跑得久"阶段的必修课</b>，而不是从 0 到 1 的创新。</p>
+
+  <h3>必须打问号的地方</h3>
+  <ol class="crit">
+    <li><b>本文无可验证数据。</b>原文是活动预告，只有摘要级描述，没有成功率、没有消融、没有基线对比。任何"效果更好"的期待都超出原文信息范围。</li>
+    <li><b>"重建好 ≠ 控制好"这个论点，需要对照实验才能成立。</b>逻辑上它完全说得通，但要证明"Video-VAE 潜空间确实拖累了控制"，需要<b>同架构、同数据、只换潜空间</b>的对照。这个实验是否做了、结果如何，原文没有交代。</li>
+    <li><b>DINO 特征是否真的"更适合控制"，是假设不是结论。</b>判别性特征更接近"可区分"，但它缺的可能是<b>细粒度几何</b>——DINO 擅长区分"杯子 vs 瓶子"，未必擅长区分"夹住 1 毫米 vs 3 毫米"。而这恰恰是接触任务最需要的。Feature Calibration 和 TRB 能不能补上这块，是关键未知。</li>
+    <li><b>KEEP/UPDATE 的二值决策本身可能成为新故障点。</b>如果事件检测漏判（该更新时没更新），语义状态就会长时间停在错误阶段，而且<b>没有任何机制会自动纠正</b>——因为"保持不变"是默认行为。这比"每帧估计但有小噪声"更危险：后者误差有界，前者可能持续跑偏。原文未提及如何检测这种漏判。</li>
+    <li><b>"长时序"的尺度没有界定。</b>多少步、多长时间算长时序？如果验证任务是几十步量级，那么"每帧更新"和"事件更新"的差别可能还体现不出来。这个量级决定了结论的适用范围。</li>
+  </ol>
+
+  <div class="box good">
+    <b>读这篇最该带走的一句：</b>世界动作模型里，<b>内部状态的更新频率</b>和<b>表征的优化目标</b>，是两个经常被顺手默认、却直接决定上限的设计选择。默认做法是"每帧更新 + 按重建优化"，而这两篇分别指出：前者在对一个分段常值信号做过度采样，后者在对一个不需要还原的世界做过度还原。<b>把"更密"换成"更准"，是这两个方向共同的方法论。</b>
+  </div>
+
+  <p class="src" style="margin-top:16px">
+    CogWAM：horizonrobotics.github.io/CogWAM · arXiv:2609.37721 · github.com/HorizonRobotics/CogWAM<br>
+    ReWAM：arXiv:2609.38163 · github.com/hustvl/ReWAM
+  </p>
+</section>
+
+<footer>本文为公众号「human five」文章《从语义认知到动作表征:迈向通用世界动作模型》的第三方解析，非原文转载。原文为 Robotion 技术分享预告，发布于 2026-10-11。文中未含实验数据，本解析据此明确不作数字结论。</footer>
+
+</div></body>
+</html>
