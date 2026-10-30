@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metatron：把人形机器人拆成"一个冻住的脊髓"和"一堆能改的代码" · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>Metatron：把人形机器人拆成"一个冻住的脊髓"和"一堆能改的代码"<span class="sub">NVIDIA · 一个 checkpoint 走天下 · 稀疏目标 prompt · 球面投影生成式策略 · 技能是普通代码，由 coding agent 迭代</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-10-27 · arXiv 2610.38027</div>
+    <div><b>关键词</b> 人形全身控制 · 部分目标条件化 · 遮罩在线蒸馏 · 代码即技能</div>
+    <div><b>一句话</b> 新任务不再需要重训策略，只需要重写几行几何目标</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">核心命题</div>
+  <p>人形机器人今天要装一堆控制器，每一个都在重学同一件事——<b>怎么让这具身体不摔倒</b>。Metatron 把"身体怎么协调"和"任务要干什么"彻底切开：前者训成<b>一个冻结的执行层</b>，只吃可以缺项的目标；后者写成<b>普通代码</b>，每 20 毫秒塞一组新目标。于是一个冻住的模型，能靠改代码从走路变成坐下、再变成被推倒后自己爬起来，全程不动权重。它证明的不是模型更大更好，而是<b>控制的复杂度被放错了地方：本该在代码里的东西，被塞进了训练里</b>。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么拆</a>
+  <a href="#formula">④ 三个公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个"接受草图"的全身控制器，加一层"画草图"的代码</h2>
+
+  <p>Metatron 分两层，边界非常清楚：</p>
+
+  <table>
+    <tr><th>层</th><th>是什么</th><th>训不训</th><th>输入 → 输出</th></tr>
+    <tr><td><b>基础策略</b>（Base Policy）</td><td>每台本体一个的生成式全身控制器（Unitree G1、仿真角色 SOMA 各一个）</td><td><b>训一次，之后永久冻结</b></td><td>历史观测 + 上一帧动作 + <b>prompt</b> → 关节指令（20–50 Hz）</td></tr>
+    <tr><td><b>技能层</b>（Skill Layer）</td><td>有状态的小程序，每一步构造、更新 prompt</td><td><b>不训</b>，只写代码 / 改代码</td><td>任务意图 + 场景几何 → prompt</td></tr>
+  </table>
+
+  <p>所谓 prompt，不是给大模型打字的那句话，而是<b>一组可选项全开的几何目标</b>：某个身体部位在某个世界坐标、某个时刻应该在哪；一个不看世界坐标的"姿势"；一个前进速度；一段"照这个样子动"的风格样例；以及场景里几个盒子的八个角。任何一项都可以留空——<b>留空由 mask 表示，而不是填一个默认值</b>。这是整篇论文的接口设计核心。</p>
+
+  <p>它不是从零搭的。基础策略直接架在 NVIDIA 自己之前的 <b>MaskedMimic</b> 上：先训一个"照着参考动作复刻"的稠密跟踪专家（用 PPO + 特权仿真状态），再把这个专家蒸馏成一个只看稀疏目标的学生。Metatron 在此之上加了四样东西：不用动捕的外部设备也能算出身体位姿（正向运动学）、世界坐标目标、把场景物体压成带尺寸的几何盒、以及风格样例。此外它自己造了一批<b>合成的摔倒—爬起轨迹</b>，把"倒地"这种动捕棚里没人愿意录的状态补进了训练集。</p>
+
+  <div class="box good">
+    <b>先看它到底做到了什么（真机 Unitree G1，同一个 checkpoint）：</b>走路 / 侧步 / 转向、被推后自动恢复、VR 遥操作抓苹果、走到沙发边坐下再站起来、握手和被牵引时不僵。<b>同一个权重文件，切换模式只是换 prompt 的 mask</b>，模型权重和传感器处理一行不改。仿真里同一个配方还做出了前滚翻、从台沿滑落再爬墙。
+  </div>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：身体的物理约束是共享的，任务才是个别的</h2>
+
+  <h3>第一性矛盾：所有任务共享同一套"不摔倒"的约束，却被拆成五个模型各学一遍</h3>
+  <p>论文开头举了一个连续动作：走到桌边（要走路控制器）→ 抓起杯子（要操作控制器）→ 被推了一下（要恢复控制器）→ 递给人（要柔顺控制器）→ 握手（要另一个）。这五个控制器各自都要学平衡、重心转移、着地、关节限位——<b>它们在重复学习同一门课</b>，而且每次切换都要额外写交接逻辑，交接处最容易摔。</p>
+
+  <p>把这件事追到最底层：一台人形机器人能被执行的动作，受限于一组<b>与任务无关</b>的约束——质心投影必须落在支撑多边形内、关节力矩有上限、脚不能穿地、接触要能提供足够的摩擦。这套约束的数学形式和任务是"走路"还是"坐下"完全无关。<b>因此"协调身体"这件事，在信息上是可以从任务里剥离出来的。</b>这是 Metatron 全部设计的公理。</p>
+
+  <h3>为什么不能直接回归：稀疏目标对应的是一个"多峰"答案集</h3>
+  <p>如果你告诉机器人"手在 0.8 秒后到桌上那个点"，合法解有无穷多条：可以从左边绕、从右边绕、蹲一点、伸直手臂、先迈一步。这些解<b>彼此相距很远</b>，但都合格。</p>
+
+  <p>这时如果用一个确定性网络直接回归动作，训练时它看到的所有合格解会被<b>平均</b>掉。平均出来的往往是什么？是"两条腿各迈一半、两只手都别动"——一个既不像走也不像站、还违反动力学的中间态。<b>这不是网络容量不够，是目标函数在数学上就要求它输出平均值。</b></p>
+
+  <div class="step">
+    <div class="t">所以必须引入一个"选择器"</div>
+    <div class="d">Metatron 用条件 VAE：一个确定性条件 \(d_t\) 编码"现在是什么处境"，一个随机隐变量 \(z_t\) 负责"这一次选哪种走法"。采样出来的 \(z\) 一旦定了，整条动作轨迹就定了 —— 多峰问题被拆成"选峰"（采样）+"落峰"（解码）两步。</div>
+  </div>
+
+  <h3>为什么剩下的毛病不该由策略负责</h3>
+  <p>光有速度指令，策略有时会走出<b>小碎步、高频抖脚</b>——仿真里还能看，上真机又费电又不安全。直觉反应是"策略不够好，再训"。但论文的判断是相反的：<b>是 prompt 欠定，不是策略欠能力。</b>速度指令只说了"往哪走多快"，没说"脚该落在哪、抬多高、步频多少"。这些是<b>可计算的几何量</b>，属于任务层的知识，应该由代码补上，而不是让神经网络从数据里再去猜一遍。</p>
+
+  <p>这条判断改变了整个工程形态：<b>调参从"改奖励函数再训三天"变成"改几行 Python 再跑十分钟"</b>。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：一条"专家 → 蒸馏 → 冻结 → 用代码补目标"的链</h2>
+
+  <h3>第 1 环 · 先训一个"只会照抄"的专家</h3>
+  <p>第一阶段故意做得笨：给完整参考动作，用 PPO 训一个 MLP，让它每一帧都尽可能贴合参考。奖励是经典的指数核加动作平滑惩罚（式 2 见下）。这一步不需要泛化，只需要<b>把"协调身体"这件事做到极致</b>。G1 上训了四个专家，分工是：BONES（基础动作）、AMASS+LAFAN（大规模动捕）、recovery（合成摔倒恢复）、SAMP（场景交互，比如坐沙发）。</p>
+
+  <h3>第 2 环 · 遮罩在线蒸馏：让学生在自己会走到的状态上被纠正</h3>
+  <p>第二阶段是把专家"降级"成通用接口。做法是<b>遮罩蒸馏</b>：学生在 rollout 中走到的每个状态，都让冻结的专家用它的完整参考动作打一个"标准答案"标签；同时喂给学生的 prompt 被<b>随机遮掉大部分项</b>。学生必须在信息残缺的情况下复现专家的动作。</p>
+
+  <div class="box good">
+    <b>为什么必须是 on-policy（在线）而不是拿专家轨迹做离线回归？</b>因为学生终究会走偏。一旦它走到专家从没去过的状态，离线数据里没有标签，错误就无人纠正、越滚越大。在线蒸馏让专家的"批改"发生在<b>学生自己造成的错误状态上</b>，这才让"容忍近似目标"这件事成立——学生学会的不是"照着这条轨迹走"，而是"看到这组残缺目标，身体该怎么配平"。
+  </div>
+
+  <h3>第 3 环 · 冻结，然后把"欠定"交给代码</h3>
+  <p>策略冻住之后，技能层的职责只有一件：<b>每一步生成一组几何目标，把欠定的部分补足</b>。论文给了四个技能，每个都短得离谱：</p>
+
+  <table>
+    <tr><th>技能</th><th>补了什么目标</th><th>代码有多短</th></tr>
+    <tr><td>转向 / 行走</td><td>在速度指令之外，按当前速度与朝向角，算出<b>每只脚在未来 τ 时刻的落点</b>（式 6）</td><td>一条周期曲线，两个拟合函数 \(A(v)\)、\(f(v)\)</td></tr>
+    <tr><td>坐下</td><td>三个<b>静态</b>目标点：躯干在座面上方固定高度、略靠后；两只脚刚好越过座沿、按站距分开</td><td>三个点，无中间路点</td></tr>
+    <tr><td>起身</td><td>躯干目标沿一条直线从坐高抬到站高，同时持续前移</td><td>一条直线</td></tr>
+    <tr><td>恢复 / 柔顺</td><td>只约束躯干高度（或高度+朝向），四肢全留空</td><td>一个人写的规则就够</td></tr>
+  </table>
+
+  <p>"坐下"这个例子最说明问题：<b>没有规划器、没有中间路点、没有"先转身再屈膝"的时序脚本</b>。技能只给三个静态点，策略自己决定什么时候转身、什么时候迈步、先动哪条腿。因为目标只说了"最后在哪"，中间的协调本来就是执行层的活。</p>
+
+  <div class="step">
+    <div class="t">Coding agent 在这里干了什么活（这是全文最有意思的一段）</div>
+    <div class="d">人写第一版规则 → 看到问题（走路碎步、起身犹豫）→ 用人话描述问题 → agent 自己搭一个"评测场"（随机速度序列 / 不同沙发几何与接近角度）→ 从动捕片段里拟合出紧凑规则 → 在评测场上打分、找失败样例、迭代。<b>结果是一段人可读的代码，不是一堆新权重。</b></div>
+  </div>
+
+  <h3>第 4 环 · 训练数据的三个来源，各自补一种缺口</h3>
+  <table>
+    <tr><th>来源</th><th>补什么</th><th>补不了什么</th></tr>
+    <tr><td>动捕重定向（大规模动作库）</td><td>走、跑、跳、舞、体操、体育——动作的<b>多样性与自然度</b></td><td>没有与家具的接触，重定向后容易穿模</td></tr>
+    <tr><td>场景交互重定向（SAMP，两阶段优化）</td><td><b>身体与物体的接触关系</b>：坐沙发、躺床。第二阶段加入碰撞代价与关节锚定惩罚，宁可平移根节点也不扭曲关节</td><td>只覆盖有采集的场景类型</td></tr>
+    <tr><td>合成恢复轨迹（在仿真里直接生成）</td><td><b>倒地状态</b>——动捕棚里不会有人故意摔。用 HIL + 遮罩目标，从随机倒地位姿录出爬起轨迹</td><td>恢复动作不一定像人，只求能用</td></tr>
+  </table>
+
+  <p>第三条是关键补丁。它解释了一个反直觉的现象：<b>真机上它能从仰躺、趴着、跪坐等各种姿势爬起来，包括动捕数据里根本不存在的别扭姿势</b>。因为"爬起"这个能力不是被示范出来的，是在仿真里<b>被生成</b>出来的——生成覆盖了姿态空间，而不是复制了某几条轨迹。</p>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Math</span>三个公式：接口、生成、蒸馏</h2>
+
+  <div class="fml">
+    <div class="name">式 (3) · prompt 是一个五元组，每一项都可以缺</div>
+    \[ g_t=\left(\mathcal{C}_t^{w},\ \mathcal{C}_t^{\ell},\ u_t,\ \xi_t,\ b_t\right) \]
+    <div class="exp">
+      \(\mathcal{C}_t^{w}\)：世界坐标下的身体部位位置/朝向，<b>每个都带一个"几秒后到达"</b>；\(\mathcal{C}_t^{\ell}\)：不看世界坐标的姿势（相对躯干、按朝向对齐、高度以最低点为基准），所以"举手"这个姿势换个地方站还是同一个意思；\(u_t\)：朝向坐标系里的平面速度，<b>只说走多快，不说到哪</b>；\(\xi_t\)：一段样例动作经池化后的一个 token——注意池化丢了时间顺序，所以它描述的是"像这样动"，而不是"按这个顺序动"；\(b_t\)：场景物体的包围盒八角和尺寸。<br><br>
+      <b>大白话：</b>这行公式的本质是"<b>把任务意图翻译成身体能听懂的最小信息集</b>"。关键在括号外那个 mask——没给的项不是零，而是"不管"。于是同一个策略可以只收到一个速度（走路），也可以只收到一个躯干高度（爬起），还可以收到 54 个手腕目标（够物）。<b>接口的宽度是策略训练时就固定下来的，但每次用多宽是运行时决定的。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 (4) · 先验/后验双高斯，采样后投到单位球面</div>
+    \[ p_\theta(\tilde z_t\mid x_t,g_t)=\mathcal{N}\!\left(\mu_t,\operatorname{diag}(\sigma_t^2)\right) \]
+    \[ q_\phi(\tilde z_t\mid x_t,g_t,s_t,y_t)=\mathcal{N}\!\left(\mu_t+\Delta\mu_t,\operatorname{diag}({\sigma_t'}^2)\right) \]
+    \[ z_t=\tilde z_t/\|\tilde z_t\|_2,\qquad h_t=f_\theta(d_t,z_t) \]
+    <div class="exp">
+      \(x_t=(o_t,a_{t-1})\)：能上机器人的观测与上一帧动作；\(s_t,y_t\)：<b>只在训练时有的</b>特权仿真状态和完整参考动作；\(\mu_t,\sigma_t\) 由先验 transformer 从"传感器 token + prompt token"算出，\(d_t\) 是同一个 transformer 输出的确定性条件；\(\Delta\mu_t,\sigma_t'\) 由只在训练时存在的后验编码器给出。<br><br>
+      <b>大白话：</b>两个高斯说的是同一件事的两个视角。<b>后验</b>是"抄答案的时候知道该选哪条路"（因为看得见完整参考），<b>先验</b>是"考试的时候只能自己猜"（只有残缺目标）。训练时用 KL 把先验拽向后验，于是<b>猜的能力被抄答案的能力教出来</b>。部署时后验整条支路被删掉，只剩先验。<br><br>
+      \(z_t=\tilde z_t/\|\tilde z_t\|_2\) 这行看着不起眼，实际很关键：把隐变量<b>强行按到单位球面上</b>，等于把"用多长的向量"这个自由度删掉，只留下"朝哪个方向"。方向就是"选哪条动作路线"，长度则是网络可以偷懒乱用的旋钮——旋钮没了，隐空间就只剩语义。<b>代价是球面是弯的，普通高斯分布在球面上会被压出偏差，所以还要配一个"球面解码"训练目标，并用循环退火反复松紧 KL。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 (5) · 蒸馏总损失：一项模仿，四项"别乱来"</div>
+    \[ \mathcal{L}=\mathbb{E}\big[\ell(a_t^q,a_t^{\mathrm{trk}})+\beta_e D_{\mathrm{KL}}(q_\phi\|p_\theta)\big]+\lambda_\mu\mathbb{E}\big(\|\mu_t\|_2-1\big)^2 \]
+    \[ +\lambda_{\mathrm{dyn}}\mathbb{E}\big[\ell(F(h_t^q),\mathrm{sg}(d_{t+1}))\big]+\lambda_{\mathrm{tc}}\mathbb{E}\big[\ell(h_t^q,\mathrm{sg}(h_{t-1}^q))\big]+\lambda_{\mathrm{act}}\mathbb{E}\big[\ell(a_t^q,\mathrm{sg}(a_{t-1}^q))\big] \]
+    <div class="exp">
+      \(a_t^q\)：学生用后验采样解出的动作；\(a_t^{\mathrm{trk}}\)：冻结专家在<b>同一状态</b>给出的动作（这就是"标准答案"）；\(\ell\)：各坐标上的均方误差；\(\mathrm{sg}(\cdot)\)：stop-gradient，把目标当常数，<b>不让梯度穿过去</b>。<br><br>
+      <b>大白话：</b>五项各管一件事——<br>
+      ① \(\ell(a_t^q,a_t^{\mathrm{trk}})\)：<b>抄专家的动作</b>，这是唯一真正教技能的一项；<br>
+      ② \(\beta_e D_{\mathrm{KL}}\)：<b>让"考试时的猜法"贴近"抄答案时的选法"</b>，否则部署时先验乱采样，动作就散了；<br>
+      ③ \((\|\mu_t\|_2-1)^2\)：<b>把先验均值也摁到单位长度</b>，防止它和球面投影打架；<br>
+      ④ \(\ell(F(h_t^q),\mathrm{sg}(d_{t+1}))\)：让融合表示里<b>藏着"下一步的处境"</b>，相当于给 latent 加了个预测未来的自监督任务——这样它学到的不是当前帧的指纹，而是"事情要往哪走"；<br>
+      ⑤ 后两项：让相邻时刻的表示和动作<b>别跳</b>，真机上抖动就是从这里来的。<br><br>
+      注意 ④⑤ 都用了 stop-gradient：目标是"过去的自己"，不是可优化的敌人。<b>这一整套里没有任何一项在教"任务"，全都在教"身体"。</b>
+    </div>
+  </div>
+
+  <p>下面这个式子不属于策略，它是<b>技能代码里的一行</b>——但它比任何公式都更能说明"技能是什么"：</p>
+
+  <div class="fml">
+    <div class="name">式 (6) · 由 coding agent 拟合出的落足规则（不是神经网络，是代码）</div>
+    \[ \mathbf{p}_i(\tau)=\mathbf{b}_i+\begin{bmatrix}A(v)\cos\alpha\cos\phi_i\\ W\big(s_i|\sin\alpha|+|\cos\alpha|\sin\alpha\cos\phi_i\big)\\ H\max(0,-\sin\phi_i)\end{bmatrix},\quad \phi_i=\phi_t+2\pi f(v)\tau+\delta_i \]
+    <div class="exp">
+      \(\mathbf{p}_i(\tau)\)：第 \(i\) 只脚在未来 \(\tau\) 时刻、躯干朝向坐标系下的落点；\(\mathbf{b}_i\)：标定好的站姿偏移；\(v\)：前进速度；\(\alpha\)：行进方向与机器人朝向的夹角（正面走 \(\alpha=0\)，侧移 \(\alpha=\pm90°\)）；\(\phi_i\)：这只脚的相位，\(\delta_R=0,\delta_L=\pi\) 让两只脚错开半个周期；\(A(v)\) 摆幅、\(f(v)\) 步频，都是拟合出来的函数；\(W\) 横向加宽、\(H\) 抬脚高度。<br><br>
+      <b>大白话：</b>这三行在说三件人话——<b>第一行</b>：脚往前迈多远，跟着速度走；<b>第二行</b>：往侧边走时，两脚要自动站宽一点（不然会绊），侧移越多站得越宽；<b>第三行</b>：摆动中期把脚抬起来，落地时归零。<br><br>
+      妙处在于 \(\alpha\) 一个变量同时管了三件事：\(\alpha=0\) 是走路，\(\alpha=\pm90°\) 是侧步，\(\alpha\) 连续变化就是转弯——<b>不用写三个模式，一个公式自己长出来</b>。而 \(A(v)\)、\(f(v)\) 随速度同时增长，得到的是"步子更长更频"，而不是"小碎步倒腾得更快"。<b>这行代码解决的那个"碎步"问题，用奖励函数调了不知道多少轮都没彻底解决。</b>
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：接口这件事被证成了，但"能干什么"仍被数据锁死</h2>
+
+  <h3>站得住的数字</h3>
+
+  <p><b>全身够物（MuJoCo，54 个目标：3 个距离 × 3 个高度 × 双手，最远 1.8 米所以必须迈步）</b>——判据是手腕停在 10 cm 内且机器人保持直立：</p>
+
+  <table>
+    <tr><th>方法</th><th>够到率</th><th>误差（仅算够到的）</th><th>保持直立</th></tr>
+    <tr><td><b>Metatron</b></td><td><b>83%</b></td><td>5.9 cm</td><td><b>100%</b></td></tr>
+    <tr><td>ARDY（实时自回归扩散）+ SONIC 跟踪器</td><td>39%</td><td>6.4 cm</td><td>82%</td></tr>
+    <tr><td>GRU + 解析手臂 IK + SONIC</td><td>28%</td><td>5.6 cm</td><td>81%</td></tr>
+    <tr><td>GRU + SONIC（不给 IK）</td><td><b>0%</b></td><td>—</td><td>87%</td></tr>
+  </table>
+
+  <p>这组数字最该看的不是 83 对 39，而是<b>误差那一列几乎一样（5.9 / 6.4 / 5.6）</b>。它说明：只要够到，大家的<b>手臂精度是同一水平</b>；差距全在"够不到"上。也就是差别不在"手准不准"，而在"身体会不会配合"。论文的解释也对得上：差距最大的恰恰是需要全身调整的目标——<b>高位够物要反向配重，低位够物要折髋</b>，而一个固定在站立高度上做规划的生成器根本没法适应。</p>
+
+  <p><b>推抗（1 m/s 前行中，躯干受 100 ms 力脉冲，8 个方向）</b>：</p>
+
+  <table>
+    <tr><th>力（N）</th><th>200</th><th>400</th><th>600</th><th>800</th><th>1000</th></tr>
+    <tr><td><b>Metatron</b></td><td>100%</td><td>100%</td><td>62%</td><td>75%</td><td>75%</td></tr>
+    <tr><td>ARDY + SONIC</td><td>100%</td><td>100%</td><td>17%</td><td><b>0%</b></td><td><b>0%</b></td></tr>
+    <tr><td>GRU + SONIC</td><td>100%</td><td>75%</td><td>25%</td><td><b>0%</b></td><td><b>0%</b></td></tr>
+  </table>
+
+  <p><b>消融（直接给平面路点、不给技能补的落足点和高度约束，边推边够）</b>——每格 500 回合，带 95% Wilson 区间：</p>
+
+  <table>
+    <tr><th>变体</th><th>0 N</th><th>200 N</th><th>400 N</th><th>600 N</th><th>800 N</th></tr>
+    <tr><td><b>Metatron（完整）</b></td><td><b>97.4</b></td><td><b>94.8</b></td><td><b>33.0</b></td><td><b>7.4</b></td><td><b>6.2</b></td></tr>
+    <tr><td>Global only（只有世界坐标目标）</td><td>87.6</td><td>87.8</td><td>38.2</td><td>9.6</td><td>6.2</td></tr>
+    <tr><td>Mocap only（去掉合成恢复数据）</td><td>92.0</td><td>84.8</td><td>31.8</td><td>6.4</td><td>5.0</td></tr>
+    <tr><td>No aux.（去掉隐空间辅助损失）</td><td>81.6</td><td>78.8</td><td>29.2</td><td>5.4</td><td>4.6</td></tr>
+    <tr><td>MaskedMimic+（无球面投影，单一大高斯）</td><td><b>98.2</b></td><td>90.0</td><td>27.8</td><td>4.2</td><td>4.6</td></tr>
+    <tr><td>HOVER+（无 CVAE，transformer 换 MLP）</td><td>66.8</td><td>71.0</td><td>30.0</td><td>3.0</td><td>1.2</td></tr>
+  </table>
+
+  <p>读法：<b>完整模型在每一个力度上的观测成功率都高于"去掉恢复数据""去掉辅助损失"两个消融</b>，差距最大在 0–200 N；无推力时 MaskedMimic+ 反而略高（98.2 vs 97.4）。而<b>所有方法在 600 N 以上都掉到 10% 以下</b>——这一行才是真正的信息量：这个接口还远没解决强扰动。</p>
+
+  <h3>需要打折读的五处</h3>
+  <ol class="crit">
+    <li><b>83% vs 39% 不是"接口"的单变量对照。</b>两条参考管线用的是同一个 SONIC 稠密跟踪器，而 Metatron 是自己蒸馏出来的同源专家——<b>监督信号、训练语料、蒸馏目标全都不一样</b>。作者自己写了"这个比较度量的是完整控制管线，没有隔离出是哪个训练或接口选择造成的差异"。所以这个数字的合法读法是"<b>Metatron 这套完整配方打赢了那两套完整配方</b>"，而不是"部分目标接口比参考跟踪接口更好"。</li>
+    <li><b>推抗那列在 600→1000 N 是非单调的（62 → 75 → 75）。</b>作者主动声明"不应被解读为对更强推力更鲁棒"——这是诚实的，但也说明<b>每个力度点的样本量不足以支撑细粒度结论</b>。真正可信的只有那个粗粒度事实：<b>参考跟踪管线在 600 N 以上归零，Metatron 没有</b>。</li>
+    <li><b>真机全部是定性演示，没有一个量化成功率。</b>恢复实验的原文是"展示了从仰躺、趴着、坐姿等倒地姿势的恢复"，没有 N 次试验的成功率、没有失败模式统计。而且因为怕摔坏三指手，<b>所有高动态动作（前滚翻、爬墙）都只在 MuJoCo 里做</b>，没上真机。作者在局限性里承认了这一点，但读者容易把 Fig.7 那几张爬起照片读成"恢复已解决"。</li>
+    <li><b>"技能是普通代码"不等于"技能能随便写"。</b>式 (6) 那条落足规则的形式是<b>人为假设的</b>——周期性的、每只脚一个相位、三个正交方向各一项。coding agent 拟合的是这条曲线里的系数和两个标量函数 \(A(v), f(v)\)，<b>不是曲线的形式</b>。所以它能覆盖的地形就是"平地 + 速度连续变化"；台阶、碎石、斜坡这些需要非周期足印规划的场景，超出这条公式的假设空间，agent 再怎么迭代也拟合不出来。这是"代码即技能"的真实边界：<b>代码的可表达性由人给的结构决定，agent 只在参数空间里搜。</b></li>
+    <li><b>能力上限被训练数据锁死，而且系统没有"我不知道"这个输出。</b>论文举的例子极有说服力：<b>从静止突然命令 2 m/s，策略常常直接前滚翻</b>。这不是 bug，是 prompt 落到了训练分布之外——那条速度从来没在"从静止起步"的上下文里被示范过。他们的补丁是"用指数移动平均把速度指令平滑过渡"，<b>这是工程兜底，不是能力修复</b>。更关键的是：整个系统<b>没有任何机制告诉上层"这个 prompt 我搞不定"</b>，欠定就硬做，做出来的是前滚翻。</li>
+  </ol>
+
+  <div class="box bad">
+    <b>还有一处定位上的错位值得点出：</b>论文标题叫 "Execution Layer"，但它的边界其实是<b>脊髓，不是大脑</b>。目标从哪来？作者明说"任务系统仍然负责目标选择和长程规划"，实验里 G1 是被<b>人搬到</b>沙发边上、再手动给一个"附近有个物体"的 cue——<b>"自己走过去坐下"这个完整任务并没有被演示</b>。感知、定位、长程决策全在系统外。所以它真正替代的是"运动控制栈"，不是"机器人智能"。
+  </div>
+
+  <h3>真正被证成的三件事</h3>
+  <div class="box good">
+    ① <b>"一个冻结策略 + 可编程目标"在真机上成立，而且跨了很远的任务族</b>：走路、被推恢复、遥操作取物、坐家具，共用一个 checkpoint，切模式只改 mask。这比任何单项分数都重要——它意味着<b>新任务的边际成本从"训练"降到"写代码"</b>。<br><br>
+    ② <b>合成恢复数据是性价比最高的一笔投入。</b>消融里"去掉恢复数据"在所有力度上都不如完整模型，而真机上那些别扭姿势的爬起，动捕棚根本录不到。<b>结论可以推广：机器人缺的不是"更多示范"，而是"更多被生成出来的失败状态"。</b><br><br>
+    ③ <b>Coding agent 可以改机器人的技能，而不碰权重。</b>这条路一旦走通，"机器人能力迭代"就变成了软件工程问题——有版本管理、有单元测试（评测场）、有 CI 式的回归。这是这篇论文最值得记住的方向性主张，比 83% 那个数字长远得多。
+  </div>
+
+  <h3>一句话收口</h3>
+  <p>Metatron 做的事，本质上是<b>给"身体"和"意图"划了一条清晰的界</b>：身体的部分训一次就冻住，意图的部分用代码随时改。它用稀疏目标 + 球面投影隐变量解决了"欠定目标对应多峰动作"这个数学障碍，用在线遮罩蒸馏解决了"学生走偏后没人纠正"这个训练障碍，最后用一段三行的落足公式证明了"很多看起来要重训的问题，其实是目标没给全"。它没解决的是另一头：<b>策略会的，仍然只是数据里有的；它不会的时候，也不会说。</b></p>
+</section>
+
+<footer>
+3W1H 第一性原理拆解 · 由 arXiv 2610.38027 解析生成 · 2026-10-30
+</footer>
+
+</div></body>
+</html>
