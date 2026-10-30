@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FineART：1718 小时双臂数据的子任务标注 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:var(--brand-bg);font-weight:600;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>FineART：1718 小时双臂数据的子任务标注<span class="sub">它解决的是「监督密度」，不是「自主可靠性」——自主执行长时序任务的成功率是 0.0%，而 76% 是在人类逐步喂子任务的条件下测出来的 · 公众号「human five」长文导读</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-30</div>
+    <div><b>论文</b> arXiv:2609.36416</div>
+    <div><b>机构</b> Scale AI · Hugging Face · USC · Stanford</div>
+    <div><b>领域</b> 双臂操作数据集 · VLA 中期训练</div>
+    <div><b>关键词</b> 密集子任务标注 · System 1–2 · 知识隔离 · 跨本体迁移</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>长时序操作真正的瓶颈不是「数据不够多」，而是<b>「每一步该做什么」没有被写成可监督的目标</b>。FineART 用 53 万个带时间戳的子任务标签，把「完成任务」这个稀疏目标降维成「执行下一步」这个密集目标——这一步是扎实的。但它同时证明了一件更冷的事：<b>当子任务必须由模型自己生成时，长时序任务的成功率是 0.0%</b>。1,718 小时买来的是监督密度，没买到自主动作序列的可靠性；后者的障碍是复合误差，不是标注量。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">What · 它到底是什么</a>
+  <a href="#why">Why · 为什么缺的不是数据量</a>
+  <a href="#how">How · 标注协议与训练设置</a>
+  <a href="#worth">Worth · 哪些数站得住</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>它到底是什么：一份数据集 + 一个模型 + 三个数字</h2>
+
+  <h3>规模：双臂领域的「全覆盖」是卖点所在</h3>
+  <table>
+    <tr><th>维度</th><th>数值</th><th>说明</th></tr>
+    <tr><td>轨迹数</td><td>40,543 episodes</td><td>全部遥操作采集，单一机器人平台</td></tr>
+    <tr><td>总时长</td><td>1,718 小时</td><td>平均每 episode 152.5 秒，中位数约 2 分钟</td></tr>
+    <tr><td>帧数</td><td>1.855 亿帧</td><td>30 FPS</td></tr>
+    <tr><td>任务数</td><td>151 项</td><td>31 个主要动词，归为 7 种基本操作类型</td></tr>
+    <tr><td>子任务标签</td><td><b>533,913 个</b></td><td>平均每 episode 13.17 个，<b>覆盖全部时长</b>而非部分筛选</td></tr>
+    <tr><td>物体类别</td><td>657 类</td><td>基于标注文本解析统计</td></tr>
+    <tr><td>文本多样性</td><td>110,299 种子任务串 / 23,589 种物体指代</td><td>对照 ABC-130K 为 7,977 / 534</td></tr>
+  </table>
+  <p class="src">数据集格式为 LeRobot v3.0，约 1.86 TB，视觉 360×640@30fps，状态与动作 14 维。原文正文未列出这两项，此处据 Hugging Face 数据集卡片补。</p>
+
+  <h3>机器人本体：一台机器，1718 小时</h3>
+  <p>全部数据来自 <b>Trossen Stationary AI</b> 双臂主从系统：每条从臂配 ALOHA2 夹爪，额定负载 1 kg，控制循环 50 Hz，关节遥测 300 Hz。四台 Intel RealSense D405 分别提供俯视、仰视、左腕、右腕视角。</p>
+  <p>注意一个容易漏掉的细节：<b>仰视相机记录的数据不输入策略</b>。策略只吃俯视 + 双腕三路图像。俯视负责全局布局，腕部负责自身中心的局部操作，仰视负责低角度接触物理——三路分工是有物理含义的，而仰视这一路被留在数据里却排除在训练之外，说明作者认为策略不需要那个视角。</p>
+
+  <h3>模型：在 π0.5 上做中期训练，不是从零训</h3>
+  <p>FineART-VLA 以 LeRobot 公开发布的 π0.5 为起点，扩展了三项原实现没有的能力：子任务训练、知识隔离（KI）、以及「先预测子任务再执行动作」的分层推理。</p>
+  <table>
+    <tr><th>组件</th><th>配置</th></tr>
+    <tr><td>语言主干</td><td>Gemma，2B 参数</td></tr>
+    <tr><td>视觉编码器</td><td>SigLIP</td></tr>
+    <tr><td>动作专家</td><td>Gemma 风格 Action Expert，300M 参数</td></tr>
+    <tr><td>动作生成</td><td>Flow Matching（π0.5 主干）+ FAST tokenization 离散头</td></tr>
+    <tr><td>总参数量</td><td>约 4B</td></tr>
+  </table>
+  <p>单次前向传播同时吐出三样东西：下一段子任务的自然语言描述、离散动作 token 序列、连续动作块。<b>规划与执行在同一个策略里，不是两个模型串起来。</b>论文特别强调这一点——它更接近思维链，而不是 VLM 规划器 + 底层控制器的 pipeline。</p>
+
+  <h3>三个被反复引用的数字</h3>
+  <div class="step">
+    <div class="t">空间指令：32.0% → 100.0%</div>
+    <div class="d">「把甜甜圈放进左侧/右侧/中间的收纳箱」，指令里只有一个空间词能区分目标。无子任务训练的策略 17 次失败<b>全部是放错收纳箱</b>。</div>
+  </div>
+  <div class="step">
+    <div class="t">长时序：16.0% → 76.0%</div>
+    <div class="d">「准备早餐」，组成该任务的子任务在数据里都有，但完整序列没出现过。<b>前置条件是「人类逐步提供子任务指导」</b>——这一条在后文会被反复提起。</div>
+  </div>
+  <div class="step">
+    <div class="t">跨本体：1/10 的微调数据达到相当性能</div>
+    <div class="d">从 ALOHA 迁到 YAM，每任务 25 个 episode 时 FineART-VLA 达 26.4%，而未经中期训练的 π0.5 即使给到 250 个 episode 也只有 18.4%。</div>
+  </div>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么缺的不是数据量，而是「步骤」这个变量</h2>
+
+  <h3>问题的本体：一条指令撑不起三分钟</h3>
+  <p>现有机器人数据集的形态是这样的：DROID 有 76K 条轨迹，Open X-Embodiment 超过一百万条，但<b>绝大多数 episode 只有一条高层指令</b>，比如「收拾桌面」。而在真实家庭里，收拾桌面是三分钟的连续动作：拿盘子、拿吐司、把吐司放盘子上、端走。</p>
+  <p>这中间的鸿沟不是数据量能填的。一百万个「收拾桌面」标签，仍然只告诉你终点在哪，不告诉你第 40 秒该干什么。</p>
+
+  <div class="box bad">
+    <b>稀疏奖励问题在模仿学习里的对应物：</b>监督信号只落在轨迹终点，中间所有时刻的「此刻正确动作是什么」都是未知的。行为克隆能学到「看起来像人类」的动作分布，但学不到「走到第几步了」这个状态量——因为标签里根本没有这个量。
+  </div>
+
+  <h3>为什么扁平 VLA 必然在长时序上退化</h3>
+  <p>论文的论证链是清晰的：扁平化 VLA 直接把「一条指令 + 一幅图像」映射为动作，<b>没有任何机制跟踪任务进度</b>。任务越长，当前观测与最终目标之间的因果距离越远，同一个观测在不同进度阶段该做的动作完全不同，但策略只看到同一个指令——它无法区分「刚开始」和「快结束了」。</p>
+  <p>分层方法（VLM 规划 + 底层策略）本来是解法，但它把规划和执行拆给了两个模型，带来两个新问题：接口处的语义损失，以及两个模型各自训练、误差不可联合优化。</p>
+  <p>FineART 的定位就卡在这里：<b>单个端到端策略内同时做 System-2 语言规划和 System-1 连续控制</b>，用知识隔离挡住动作梯度对预训练 VLM 表征的污染。</p>
+
+  <h3>最关键的一步：把「在线生成」改成「离线标注」</h3>
+  <p>这是本篇和之前所有同类工作真正分道的地方。之前的做法有两类：</p>
+  <ul>
+    <li><b>在线分解</b>：执行时现场把一条指令拆成多个技能，拆完就用，不落盘；</li>
+    <li><b>挖掘式</b>：从无结构 play data 里挖出简短子任务当条件，标签来自挖掘算法而非人工；</li>
+    <li><b>部分标注</b>：像 ABC-130K，给 1,552 小时加了子 episode 标签——但只覆盖部分时长。</li>
+  </ul>
+  <p>FineART 的选择是：<b>人工把 40,543 个 episode 全部标完，标签作为固定训练目标存下来。</b>代价是成本（三支团队、53 万段），收益是标签不会随推理策略漂移。</p>
+
+  <div class="fml">
+    <div class="name">标注形态：连续、互不重叠的时间分段</div>
+    <div>\[ \text{episode} = \bigcup_{i=1}^{n} \left[\, t_i,\; t_{i+1} \right), \qquad \bigcap_{i} \left[ t_i, t_{i+1} \right) = \varnothing \]</div>
+    <div class="exp">任意时刻 \(t\) 的活动子任务 = 起始时间不晚于 \(t\) 的最后一行。LeRobot 为此提供了 <code>active_at</code> 解析器。这个设计的好处是无歧义、可精确对齐到帧；代价是<b>不允许重叠</b>——双臂并行做事（左手稳定花瓶、右手插入）在标签层面必须被压成一条线性的步骤序列，双臂的并发性在标注里就丢了。第 4 节的双臂协调案例（左臂扶瓶、右臂插入）正是这种并发行为的实例。</div>
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：三支团队的标注协议 + 四项消融</h2>
+
+  <h3>3.1 标注：把「采集」和「标注」物理隔离</h3>
+  <p>这是本篇最容易被低估的工程决策，也是 Scale AI 作为数据标注公司真正的展示点：</p>
+  <table>
+    <tr><th>角色</th><th>做什么</th><th>为什么要分开</th></tr>
+    <tr><td>第一支团队</td><td>遥操作采集轨迹</td><td>—</td></tr>
+    <tr><td>第二支团队</td><td>写自然语言子任务描述，<b>不使用 VLM 辅助</b></td><td>避免采集者自己标自己带来的偏差</td></tr>
+    <tr><td>第三支团队</td><td>抽查审核标注质量</td><td>独立第三方把关</td></tr>
+  </table>
+  <p>两个粒度：<b>示范级标签</b>（整段文本总结 + 执行质量与成功与否的元数据）、<b>子任务标签</b>（时间分段的自由文本，不受固定模板限制）。</p>
+  <p>「不用 VLM 辅助」这一条值得单独说。当前很多数据集用 VLM 自动打标来压成本，好处是便宜，坏处是<b>标注错误会系统性地集中在 VLM 的盲区上</b>——而 VLM 的盲区恰好也是策略的盲区，两者相关，误差不可抵消。纯人工标注贵，但误差与模型能力不相关。</p>
+
+  <h3>3.2 数据构成：77% 是日常整理，22.8% 是长尾</h3>
+  <table>
+    <tr><th>类别</th><th>时长</th><th>占比</th><th>性质</th></tr>
+    <tr><td>语义整理（sorting）</td><td>753.5 h</td><td>43.9%</td><td>基础空间操作</td></tr>
+    <tr><td>抓取与放置</td><td>572.7 h</td><td>33.3%</td><td>基础空间操作</td></tr>
+    <tr><td>可变形织物</td><td>126.0 h</td><td>7.3%</td><td rowspan="5">接触丰富长尾</td></tr>
+    <tr><td>工具辅助装配</td><td>111.9 h</td><td>6.5%</td></tr>
+    <tr><td>柔性线性物体布线</td><td>59.4 h</td><td>3.5%</td></tr>
+    <tr><td>柔顺对齐</td><td>50.8 h</td><td>3.0%</td></tr>
+    <tr><td>高精度机械插入</td><td>43.7 h</td><td>2.5%</td></tr>
+  </table>
+  <p class="src">占比按原文口径：前两类合计 1,326.2 h = 77.2%，后五类合计 391.8 h = 22.8%。</p>
+
+  <h3>3.3 训练设置：所有对比都建立在「约 10% 一个 epoch」上</h3>
+  <div class="fml">
+    <div class="name">训练量换算</div>
+    <div>\[ \text{300K steps} \times \text{batch } 64 \;\approx\; 0.1 \times \text{1 epoch} \left(1.855\times10^{8}\ \text{frames}\right) \]</div>
+    <div class="exp">这是全文最重要的一个隐藏前提。<b>所有实验都只训了完整数据集约十分之一个 epoch。</b>作者在局限性里承认了，但没展开它对结论的影响——见第四节第 4 条。</div>
+  </div>
+
+  <p><b>知识隔离（KI）</b>：随机初始化的 Flow Matching 动作专家接到主干上时，其梯度会破坏预训练 VLM 学到的知识。KI 的做法是让 Action Expert 用主干键值的<b>停止梯度副本</b>做注意力，主干只通过 token 级损失更新。论文称 KI 能把收敛速度提高约 7.5 倍。这个数引自 KI 原论文，不是本篇的贡献。</p>
+
+  <p><b>任务均衡采样器</b>：设任务 \(j\) 提供帧数 \(n_j\)，采样概率与 \(n_j^{\tau}\) 成正比。\(\tau=1\) 时按原始频率（大数据集任务主导），\(\tau=0\) 时每个任务等概率。本文取 \(\tau=0.5\)，在两者之间折中。</p>
+  <p>这个选择直接对冲了 77%/23% 的偏斜：如果按原始帧数采样，语义整理会以 17 倍的权重压过精密插入。取 \(\tau=0.5\) 相当于把 17 倍压成约 4 倍。<b>但这也意味着论文报告的「长尾有用」结论，是在已经做过重加权的前提下得到的</b>——不是原始数据分布的自然结果。</p>
+
+  <p><b>语言条件的混合比例</b>：当启用子任务训练时，每个 batch 里 <b>30%</b> 的样本用任务描述 \(l\) 作条件，<b>70%</b> 用子任务描述 \(\ell\) 作条件。这个 30/70 的比例没有做消融。而 4.2.1 中「部分分布内任务上子任务训练表现反而较差，可能说明模型对语言条件过于敏感」这条负面结果，恰好指向这个未调的超参。</p>
+
+  <h3>3.4 四项消融，四个结论</h3>
+  <p>同一本体（Trossen ALOHA）上六项任务，每任务 25 次 rollout，每检查点共 150 次。四种设置：子任务训练 × KI 的 2×2。</p>
+  <table>
+    <tr><th>Run</th><th>子任务训练</th><th>KI</th><th>用途</th></tr>
+    <tr><td>1.1</td><td>✓</td><td>✓</td><td>完整版</td></tr>
+    <tr><td>1.2</td><td>—</td><td>✓</td><td>只测 KI</td></tr>
+    <tr><td>1.3</td><td>✓</td><td>—</td><td>只测子任务</td></tr>
+    <tr><td>1.4</td><td>—</td><td>—</td><td>基线</td></tr>
+  </table>
+
+  <p><b>结论一（OOD 泛化）</b>：子任务训练与 KI 同时启用时，分布外任务表现最好。但<b>分布内出现了反向结果</b>——Shelf 是个接近饱和的单步放置任务，不训子任务但开 KI 的策略达 <b>96.0%</b>，而完整版（子任务 + KI）只有 <b>72.0%</b>。差 24 个百分点。论文的解释是「简单单步任务上额外子任务训练可能反而影响执行」。</p>
+
+  <p><b>结论二（长尾消融）</b>：Run 2.1 移除长尾五类，只保留抓放 + 整理（覆盖 151 个任务标签中的 106 个，占有效训练帧的 71.0%），训练步数不变。整体成功率 <b>24.7% → 14.0%</b>。唯一例外是 Shelf，反而从 64.0% 升到 68.0%。</p>
+  <div class="box good">
+    <b>这条消融是全篇机理最干净的一处。</b>被移除的是长尾类任务，但退化发生在<b>保留下来的任务</b>上。说明提升不是来自「样本被某个任务类别覆盖了多少」，而是来自长尾提供的<b>技能多样性改变了表征</b>。用一句话概括：模型学到的是「怎么用力」，不是「这个任务叫什么名字」。
+  </div>
+
+  <p><b>结论三（空间定位）</b>：单空间词指令任务上，Run 1.3 达 100%（25/25 全成功），Run 1.4 只有 32%。17 次失败<b>全部是放错收纳箱</b>——不是没抓住、不是没走到，是选错了目标。这个失败模式的纯度很高，说明缺陷确实在语言—空间对齐，而不在运动控制。</p>
+
+  <p><b>结论四（长时序）</b>：这是必须逐字读的一段。</p>
+  <table>
+    <tr><th>推理条件</th><th>Run 1.3（有子任务训练）</th><th>Run 1.4（无）</th></tr>
+    <tr><td><b>自主执行</b>（模型自己预测子任务）</td><td><b>0.0%</b> / PR 54.9%</td><td><b>0.0%</b> / PR 54.3%</td></tr>
+    <tr><td><b>人类逐步提供子任务</b></td><td><b>76.0%</b></td><td>16.0%</td></tr>
+  </table>
+  <p>论文的解释是「长时序任务中任何一次失误都可能导致整个 rollout 无法继续完成」。这句话本身是对的，但它同时是一句诊断：<b>系统没有阶段级的失败恢复</b>。</p>
+  <p>76% 与 16% 这个 60 个百分点的差距是可信的（19/25 vs 4/25，Wilson 95% 区间分别约 [56.6%, 88.5%] 与 [6.4%, 34.7%]，不重叠），而且因为两者用的是<b>完全相同的人类指导</b>，差距只能归因于「训练时有没有见过子任务监督」。这个实验设计很干净。</p>
+
+  <h3>3.5 跨本体：从 ALOHA 到 YAM</h3>
+  <p>两个本体的差异是实打实的：Stationary ALOHA 双臂分别装桌面两侧、相向而立；YAM 双臂朝桌子后方。九个自由度以上的运动学重映射。</p>
+  <p>微调数据只含六项评测任务中的五项（Shelf、Towel、Vase、Pegboard、Saucer），<b>Sort tools 与 Prepare breakfast 完全不参与微调</b>，用来测未见任务迁移。</p>
+  <table>
+    <tr><th>每任务微调 episode</th><th>FineART-VLA</th><th>ABC</th><th>MolmoAct2</th><th>原始 π0.5</th></tr>
+    <tr><td>10</td><td>14.4%</td><td><b>24.8%</b></td><td>20.8%</td><td>—</td></tr>
+    <tr><td>25</td><td>26.4%</td><td>—</td><td>—</td><td>18.4%（@250）</td></tr>
+    <tr><td>中等</td><td>—</td><td><b>34.4%</b></td><td>≈20%</td><td>—</td></tr>
+    <tr><td>1,250</td><td><b>33.6%</b></td><td>24.0%</td><td>24.8%</td><td>—</td></tr>
+  </table>
+  <p class="src">表中「—」表示原文未给该档数据。三个基线零样本评测成功率均为 0.0%，说明无论中期训练用哪个数据集，都必须针对目标本体微调。</p>
+
+  <p>未见任务迁移是本篇最有意思的结果：</p>
+  <ul>
+    <li><b>Prepare breakfast</b>（未参与 YAM 微调）：自主分层执行下达 <b>28.0%</b> 成功率 / <b>78.3%</b> 进度率。模型还会自主生成「Adjust」子任务去重新对齐托盘——这个行为出现在 ALOHA 数据里，从未在 YAM 微调数据中出现过。</li>
+    <li><b>Sort tools</b>（未参与微调）：12.0% / 60.0%。</li>
+  </ul>
+  <p>这两个数字要分开看。78.3% 的进度率说明模型「大体上知道该做什么」；28.0% 的成功率说明「完整走完不犯错」的概率不到三成。进度高、成功低，正是复合误差的典型指纹——每一步都差不多对，但连着几十步不出错的概率会指数衰减。</p>
+
+  <div class="fml">
+    <div class="name">复合误差：为什么「每步 99%」在第 100 步只剩 36.6%</div>
+    <div>\[ P(\text{完整成功}) \;\approx\; \prod_{k=1}^{K} p_k \;=\; 0.99^{100} \approx 36.6\% \]</div>
+    <div class="exp">Prepare breakfast 这类任务有 10 个以上阶段、持续数分钟、控制频率 50 Hz。哪怕单步正确率是 99%，串起来也只剩三成多。这解释了为什么 78.3% 的进度率只换来 28.0% 的成功率——也解释了为什么「自主执行 0.0%」不奇怪：它的 K 更大、\(p_k\) 更低。</div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：哪些结论站得住，哪些站不住</h2>
+
+  <h3>站得住的：三件事确实做成了</h3>
+
+  <p><b>一、全覆盖标注这件事本身是真的稀缺品。</b>在此之前，ABC-130K 是唯一同时提供「带时间戳子任务文本 + 原始轨迹」的数据集，且只覆盖 1,552 小时。FineART 覆盖全部 1,718 小时、全部 40,543 个 episode。<b>「覆盖全部」和「覆盖一部分」不是量变，是能不能做无偏评估的差别</b>——如果只标了容易的任务，用这份数据训出来的模型在难任务上的表现就无法归因。</p>
+
+  <p><b>二、长尾消融证明了一个反直觉结论。</b>移除 22.8% 的长尾数据，退化发生在<b>保留下来的任务</b>上（整体 24.7% → 14.0%）。这说明数据价值不按「任务类别是否覆盖」计价，而按「技能多样性是否进入表征」计价。这个结论对数据集设计有直接的指导意义：<b>想做通用策略，就不能只堆主流任务</b>。</p>
+
+  <p><b>三、空间定位那组消融的失败模式很干净。</b>17 次失败全部是放错箱子，没有一次是抓取失败或运动失败。这种「错误集中在单一环节」的失败分布，是把「能力缺口」定位到「语言—空间对齐」的直接证据。而且 25/25 全成功在 Wilson 区间下界仍有 86.7%，这个 100% 不是小样本侥幸。</p>
+
+  <h3>需要打问号的七点</h3>
+  <ol class="crit">
+    <li>
+      <b>「自主执行 0.0%」这个数字被严重低估了它自己的分量。</b>论文把它归因为「一次失误就全盘无法继续」，然后迅速转到「人类指导下 76%」。但 0.0% 是<b>两次独立实验都得到 0.0%</b>（Run 1.3 的 54.9% 进度率、Run 1.4 的 54.3% 进度率，都是走到一半崩）。这意味着至少在「准备早餐」这类 10 阶段任务上，<b>System-2 规划器目前完全不可用</b>。而标题级叙事「让机器人自己拆任务」，依据的其实是「如果人告诉它每一步，它能执行得不错」。这两件事差得很远。
+    </li>
+    <li>
+      <b>76% 的可解释性要打折扣。</b>人类「只有在确认当前子任务完成后才切换下一段」——这个协议意味着<b>人类同时承担了进度监控和错误检测</b>。模型只需在已知「当前该做什么」的前提下产生动作。换句话说，76% 测的是「子任务条件化的执行能力」，不是「长时序任务能力」。真正的长时序能力，是自主条件下的 0.0%。
+    </li>
+    <li>
+      <b>Shelf 的 96.0% → 72.0% 不是「取决于任务类型」，而是子任务监督的固定开销。</b>论文把它解释成「简单单步任务上额外子任务训练可能影响执行」。但机制上更直白：模型即使在不需要分步的任务上，也必须先生成一段子任务文本，再据此产生动作。<b>多了一步自回归，就多了一个可能出错的环节</b>，而且这步不产生任何信息增益（单步任务的子任务就是任务本身）。这不是「分类讨论」，是一个可以在部署时按任务复杂度关掉的开关——但论文没有做「按任务动态切换是否走分层」的实验。
+    </li>
+    <li>
+      <b>所有结论都建立在「约 10% 一个 epoch」上。</b>300K 步 × batch 64，相对 1.855 亿帧只有十分之一个 epoch。这带来一个具体的替代解释：<b>32% → 100%、16% → 76% 这些提升，可能反映的是「欠训练时子任务监督起正则作用」，而非「子任务监督的长期收益」。</b>如果两者都训满 1 个 epoch，差距是否还这么大，论文没有回答。作者在局限性里承认了训练量不足，但没提它对结论方向的影响。
+    </li>
+    <li>
+      <b>「10 倍数据效率」是两个不同曲线上各取一点，不是曲线比较。</b>26.4%@25 episodes vs 18.4%@250 episodes，看起来是 10 倍。但把 FineART 自己的曲线连起来看：14.4%（@10）→ 26.4%（@25）→ 33.6%（@1250），<b>@1250 才 33.6%</b>。而 ABC 在中等数据量就到了 34.4%——比 FineART 的终点还高。更关键的是：<b>最少数据时 FineART 是三者中最差的</b>（14.4% vs ABC 24.8% vs MolmoAct2 20.8%），论文对此的解释是「10 个 episode 不足以适配 ALOHA→YAM 的运动学差异」。这个解释合理，但它同时说明：<b>「10 倍效率」只在数据量达到某个门槛后才成立</b>，而这个门槛大约是每任务 25 个 episode。
+    </li>
+    <li>
+      <b>「覆盖 100%」缺三个关键的质量数字。</b>第三支团队「对具有统计代表性的一部分标注轨迹」做质量检查——但没给：审核覆盖了多大比例、标注者间一致率（IAA）是多少、错误率是多少。这三个数字是「100% 覆盖」这个卖点的全部支撑。<b>覆盖 ≠ 正确。</b>533,913 个标签里如果颜色描述错了 5%，那「81.1% 含颜色修饰语」这个精细度优势反而变成了噪声源。对于一个把标注质量当核心卖点的数据集，这三个数字的缺失是显著的空洞。
+    </li>
+    <li>
+      <b>单一本体是硬约束，而「跨本体」的说服力有限。</b>全部 1,718 小时来自一台 Trossen Stationary AI。所谓跨本体迁移是 ALOHA → YAM，两套都是桌面级双臂、ALOHA 系夹爪、相近的任务空间。<b>这不叫跨本体泛化，这叫同族本体适配。</b>论文自己在局限里承认了「数据集集中于单一机器人平台」，但正文的表述（跨本体中期训练）比这个承认要乐观。
+    </li>
+  </ol>
+
+  <h3>数据构成上的隐忧：长尾够不够</h3>
+  <p>消融证明长尾有用（移除后 24.7% → 14.0%），但「有用」和「够用」是两个判断。精密插入只有 <b>43.7 小时</b>，而语义整理有 <b>753.5 小时</b>，相差 17 倍。取 \(\tau=0.5\) 的采样器把权重差压到约 4 倍，这个补偿是有效的——但它治的是「训练时被淹没」，治不了「绝对量不足」。</p>
+  <p>更值得追问的是：43.7 小时能训练出多强的插入能力？论文没有单独报告精密插入任务的绝对成功率。<b>长尾五类的表现被平均进了「整体成功率」这个数里</b>，而整体成功率受 77% 的主流任务主导。这意味着长尾能力的真实上限，在这份报告里是不可见的。</p>
+
+  <div class="box bad">
+    <b>读这篇最该带走的一句：</b>FineART 真正解决的问题是<b>「监督的稀疏性」</b>——把终点标签换成 53 万个过程标签，让模型第一次有了「走到第几步」这个状态量。这一步是硬的，100% vs 32% 就是它的直接证据。但它没有解决<b>「序列的可靠性」</b>——自主长时序 0.0%，靠人喂步骤才到 76%。这两件事经常被混为一谈：前者是数据问题，可以用钱和人解决（Scale AI 的生意）；后者是复合误差与失败恢复问题，<b>再多的标注也买不到</b>。看到 1,718 小时这个数字时，要问的是：它买到了哪一半。
+  </div>
+
+  <h3>一个跨篇对照：同一个 π0.5，两条后训练路线</h3>
+  <p>库里 10-30 那批还有另一篇《在 Egocentric Data 上对 π0.5 进行后训练》。两篇用的是<b>同一个基座</b> π0.5，做的是<b>同一类事</b>（中期/后训练），结论却截然相反：</p>
+  <table>
+    <tr><th></th><th>Egocentric 后训练</th><th>FineART 中期训练</th></tr>
+    <tr><td>数据来源</td><td>人类第一视角视频（1,306 episode / 3.75 h）</td><td>真机遥操作（40,543 episode / 1,718 h）</td></tr>
+    <tr><td>数据结构</td><td>整段轨迹，无过程标签</td><td><b>53 万段子任务标签</b></td></tr>
+    <tr><td>增益</td><td>+5.5 pp，Holm 校正后 0 项显著</td><td>+68 pp（32→100）、+60 pp（16→76）</td></tr>
+    <tr><td>统计结论</td><td>所有 95% CI 含零</td><td>95% CI 不重叠</td></tr>
+  </table>
+  <p><b>把它们并排看，得到一个比任何一篇单独看都强的结论：换数据来源没用，换数据结构才有用。</b>Egocentric 那篇把「人类视频」这个新来源接进来，量只有 3.75 小时且没有过程标注，结果是噪声级的 +5.5 pp；FineART 没有换来源（还是真机遥操作），只是给数据加了子任务切分，结果是量级级的提升。</p>
+  <p class="src">注：两篇的评测任务、本体、rollout 数均不同，不可直接做数值比较；上述对照只用于比较「哪一类改动产生了可测量的差异」，不是同台竞技。</p>
+
+  <h3>一句商业侧的话</h3>
+  <p>这是 Scale AI 第一次开源机器人数据。1.86 TB 免费放出来，同时附带一个可用的 checkpoint、训练代码和标注工具。动机不难读：语言模型的标注需求见顶，具身智能被当成下一个数据金矿，而机器人数据比文本贵得多、也难 scale 得多。<b>送出一份高质量数据集，等于向所有机器人公司演示「这个苦活我们能规模化干好」。</b></p>
+  <p>这个动机不影响技术价值——数据集是真开源、标注规格是真高（三支团队物理隔离）。但它解释了一件事：为什么标注流程做得比模型创新更重。FineART-VLA 的三项扩展（子任务训练、KI、分层推理）都建立在 π0.5 之上，KI 来自已有工作，真正的原创是<b>那份 53 万段的标注</b>。这也是为什么这篇的技术重心在数据集章节而不在方法章节。</p>
+
+  <p class="src" style="margin-top:16px">原文：《Scale AI 发布FineART：1718小时双臂操作数据集》，公众号「human five」，2026-10-30 02:36 发布（与《在 Egocentric Data 上对 π0.5 进行后训练》为同一次发布，idx=1／idx=2）。数据集格式、体积、分辨率三项原文正文未列出，据 Hugging Face 数据集卡片补。Wilson 置信区间与 $0.99^{100}$ 的换算为本文自行计算，原文未给出。</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号「human five」· 生成于 2026-10-30</footer>
+
+</div></body>
+</html>
