@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从World Models到World Agents</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>从World Models到World Agents<span class="sub">一百万个 token 换一秒：世界模型的上下文账本 · Gordon Wetzstein 演讲复盘 · Genie 3 / FramePack / Bagger / 逆动力学 · 一场自己拆掉自己地基的演讲</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-10-30 01:12</div>
+    <div><b>关键词</b> 视频世界模型 · 因果生成 · Exposure Bias · World Action Model</div>
+    <div><b>一句话</b> 把世界模型当模拟器，花的钱和买到的保真度不在一个量级</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>这场演讲最有价值的地方，不是它讲了什么，而是它<b>自己递给听众的那把尺子</b>：当前最前沿模型有 100 万到 200 万 token 的上下文，而这对视频来说"只相当于多出一秒钟"。拿这句话往下推一步就完了——如果 100 万 token 换一秒，那么一分钟要 6000 万 token，一小时要 <b>36 亿 token</b>。Transformer 的注意力开销随长度<b>平方</b>增长，从 100 万到 36 亿，不是算力贵一点的问题，是差 <b>7 个数量级</b>。而演讲反复强调机器人需要的是"分钟、小时甚至多年"级的记忆。</p>
+  <p style="margin-top:12px">所以这场演讲真正证明的事，跟它想证明的事相反：<b>"把上下文拉长"这条路，在小时级就已经物理封死。</b>后半场出现的 FramePack（时空降采样打包）、显式点云地图（外部锚定）、Bagger（自举纠偏），全部不是"更聪明的世界模型"，而是<b>承认上下文不够用之后的三条退路</b>。世界模型和机器人记忆，撞的是同一堵墙。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">What 是什么</a>
+  <a href="#why">Why 为什么</a>
+  <a href="#who">Who 谁做的</a>
+  <a href="#how">How 怎么做</a>
+  <a href="#math">账本三算</a>
+  <a href="#crit">七处追问</a>
+  <a href="#noise">转写噪声</a>
+  <a href="#cross">跨篇对照</a>
+</div>
+
+<section id="what">
+<h2><span class="tag">WHAT</span>它到底在说什么：一个定义，讲了半场才给</h2>
+
+<p>演讲进行到第 4 节、进度过半时，讲者才给出今天的定义，他自己也承认了这一点（"到这里，我才给出自己的定义。演讲已经进行了一半"）：</p>
+
+<div class="box good">
+<b>视频世界模型 = 实时的 + 动作条件控制的 + 因果式（自回归式）视频生成器。</b><br>
+<span class="src">三个限定词缺一不可。去掉"实时"，它是视频生成模型；去掉"动作条件"，它是视频预测模型；去掉"自回归"，它只是一次性生成长片的扩散模型——都不是能当模拟器用的那个东西。</span>
+</div>
+
+<p>这三个词分别对应三类成本，后面会逐一算账：</p>
+
+<table>
+<tr><th>限定词</th><th>它买到什么</th><th>它要付什么</th></tr>
+<tr><td><b>实时</b></td><td>能替代游戏引擎、能闭环驱动机器人</td><td>每帧要跑完整个去噪链，14B 模型 30–50 步</td></tr>
+<tr><td><b>动作条件</b></td><td>可控：键盘、手部追踪、头部姿态、文本、EEG 都能当输入</td><td>训练时必须成对拿到 (动作, 视频)，这类数据极稀缺</td></tr>
+<tr><td><b>因果/自回归</b></td><td>能无限往下生成，像 LLM 逐 token</td><td>错误会沿时间累积，即 Exposure Bias</td></tr>
+</table>
+
+<p>而 <b>World Action Model（世界动作模型）</b>是在这个基础上再加一层：不只预测未来帧，还预测智能体未来该做的动作。逻辑是"先想象未来长什么样，再反推动作"。这才是演讲标题里 World Agents 的落点。</p>
+
+<h3>与传统模拟器的分工，讲得很清楚</h3>
+
+<table>
+<tr><th></th><th>传统模拟器（状态动力学引擎 + 图形引擎）</th><th>学习型世界模型</th></tr>
+<tr><td>三维状态</td><td>显式：质量、摩擦、速度、玩家位置</td><td><b>无</b>，不可直接访问、不可编辑</td></tr>
+<tr><td>可解释性</td><td>强，可编辑、紧凑</td><td>几乎为零，只能换条件重生成</td></tr>
+<tr><td>实时性</td><td>天然实时</td><td>可能做到，但很不简单（模型太大）</td></tr>
+<tr><td>保真度</td><td>有 sim2real gap：外观不像、动力学也不像（刚体引擎解不了 Navier–Stokes）</td><td>有望照片级真实 + 更真实的动力学</td></tr>
+<tr><td>单次成本</td><td>O(状态维度)</td><td>O(token 数 × 上下文长度)</td></tr>
+</table>
+
+<p>最后一行是我加的，文中没有。而这一行就是整场演讲的命门。</p>
+</section>
+
+<section id="why">
+<h2><span class="tag">WHY</span>为什么非要走这条路：两个数字撑起全部动机</h2>
+
+<p>演讲给出了一组我觉得是全篇最有力的数字，出现在第 9.1 节：</p>
+
+<div class="fml">
+<div class="name">机器人数据的可用比例</div>
+<div>带动作标注的视频 ≈ <b>2,000 小时</b>　（讲者让 Gemini 估的"互联网上有多少带动作标注的视频 token"）</div>
+<div>互联网全部视频 ≈ <b>20 亿小时</b></div>
+<div class="exp">比值 = 2000 / 2×10⁹ = <b>10⁻⁶</b>。<br>讲者用面积比喻：如果红点代表那 2000 小时，蓝圈代表 20 亿小时，按面积比 10⁶ 换算成直径比是 10³——红点直径 6 厘米，蓝圈直径 60 米。他现场说"直径大约需要达到 60 米"，这个数是自洽的。</div>
+</div>
+
+<p>这就是全部动机：<b>监督学习把机器人锁在一百万分之一的可用数据里。</b>破局思路是把问题改写——不从"观测→动作"学，而学"观测→未来观测"，再从未来观测里用<b>逆动力学</b>反推动作。这样就能吃下没有动作标注的海量视频。</p>
+
+<div class="box bad">
+<b>但这里有一个被一句话带过的跳跃。</b>讲者说："实践表明，逆动力学问题非常节省数据。训练一个逆动力学模型并不需要太多数据。"<br><br>
+这句话本身没错——但它省数据的前提是：<b>视频里得看得见末端执行器</b>。逆动力学要从画面反推"手往哪走、抓没抓住"，靠的是末端执行器在画面里的位姿变化。人类第一视角视频里，镜头后面是一只手；机器人的是夹爪、是两指平行钳、是灵巧手。<br><br>
+于是分工其实是这样的：<b>视频生成用蓝圈（20 亿小时，无标注也能用），逆动力学仍要用红点（机器人本体数据）。</b>蓝圈解决了"未来长什么样"，没解决"我的夹爪该往哪走"。"为什么不尝试使用整个蓝色圆圈"这句话，真实覆盖面比听上去小得多。
+</div>
+
+<p>顺带一提，讲者也诚实地给了世界模型作为模拟器的"未完成"状态：</p>
+<ul>
+<li>完美的世界模型可以既提供无限数据、又消除 sim2real gap。但<b>不存在</b>。</li>
+<li>现在的世界模型"很容易被机器人搞失效"——机器人做出训练分布外的动作，模型就崩，因为它没有三维状态可以兜底。</li>
+<li>所以讲者的判断是：也许未来是<b>混合世界</b>，传统模拟器 + 生成式模型拼起来。这句话其实已经放弃"世界模型取代模拟器"的叙事。</li>
+</ul>
+</section>
+
+<section id="who">
+<h2><span class="tag">WHO</span>谁在讲，谁在做</h2>
+
+<p><b>Gordon Wetzstein</b>——Stanford 电子工程系副教授、兼任计算机科学系副教授，负责 <b>Stanford Physical and Spatial Intelligence Lab</b>；同时是 <b>Rhoda AI</b> 联合创始人兼 Scientific Advisor。早期做计算成像、全息显示、可穿戴视觉、神经渲染，近五年转向 Physical AI / Spatial AI。</p>
+
+<p>演讲里的具体工作，基本都能对应到实验室成员（只给了名，没给姓，这是转写稿的通病）：</p>
+
+<table>
+<tr><th>名字</th><th>对应工作</th><th>发表</th></tr>
+<tr><td>Julian</td><td>Oasis：Minecraft 视频世界模型，讲者说"几年前一个本科生写的"</td><td>约 2024</td></tr>
+<tr><td>Luming</td><td>FramePack：上下文时空打包</td><td>2025</td></tr>
+<tr><td>未具名博士后</td><td>显式记忆 / 空间记忆（深度图融点云）</td><td>去年 NeurIPS</td></tr>
+<tr><td>未具名</td><td>Camera Control 1 / 2</td><td>—</td></tr>
+<tr><td>未具名</td><td>Bullet Time：时空分离控制</td><td>今年 CVPR</td></tr>
+<tr><td>Brian、George</td><td>Token 高效生成：判断哪些 token 重要</td><td>进行中</td></tr>
+</table>
+
+<p>值得注意的组织事实：<b>机器人策略那一段（第 9 节）不是实验室做的，是创业公司 Rhoda AI 做的</b>，讲者明说了。学术侧的产出集中在"生成质量与一致性"，工业侧的产出集中在"任务与部署"。这条分界线在文中一直很清楚，反倒比很多把两者混着讲的分享诚实。</p>
+
+<p>算力来源也提了：<b>Marlowe</b>（转写为 "Marlo"），斯坦福校园共享 GPU 集群。讲者原话："没有它几乎是不可能的，因为我们目前拥有的 GPU 数量远远不够。"</p>
+</section>
+
+<section id="how">
+<h2><span class="tag">HOW</span>技术链路：从高斯噪声到机器人动作，五步</h2>
+
+<div class="step">
+<div class="t">第 1 步 · 学一个速度场，把噪声推到数据</div>
+<div class="d">前向过程是在数据与噪声之间做线性插值，可以生成任意噪声水平 \\(t\\) 的样本；反向过程训练网络估计<b>速度</b>（沿轨迹的变化率），损失是简单的 \\(L_2\\)。<b>它不直接预测噪声，也不直接预测干净图像，而是预测"往哪个方向走"。</b></div>
+</div>
+
+<div class="fml">
+<div class="name">反向去噪（Flow Matching / Diffusion 的统一写法）</div>
+<div>\[ \mathcal{L}(\theta) \;=\; \mathbb{E}_{t,\,x_0,\,\epsilon}\Big\|\, v_\theta(x_t,\,t,\,c) \;-\; \big(\epsilon - x_0\big) \Big\|_2^2 \]</div>
+<div class="exp">\\(x_0\\) 是干净样本，\\(\epsilon\sim\mathcal{N}(0,I)\\)，\\(x_t=(1-t)x_0+t\epsilon\\) 是插值结果，\\(c\\) 是条件（文本、动作、上下文帧）。目标速度就是插值速度 \\(\epsilon-x_0\\)。<br><b>关键点</b>：这个形式意味着模型学的是"局部方向场"，不是"全局映射"。它天然适合自回归 rollout——每一帧都能从任意带噪状态开始推几步。</div>
+</div>
+
+<div class="step">
+<div class="t">第 2 步 · 搬进潜空间，用 VAE 把像素压小</div>
+<div class="d">高分辨率像素上直接跑扩散不现实，先用 VAE 压到低分辨率潜变量，整个去噪过程在 latent 里做。去噪网络用 <b>Diffusion Transformer</b>——和 LLM 同一种架构，所以能吃到 LLM 那一整套工程红利。</div>
+</div>
+
+<div class="step">
+<div class="t">第 3 步 · 条件控制：文本走交叉注意力，历史走 KV cache</div>
+<div class="d">文本经编码器变嵌入，通过交叉注意力注入；已经生成的前几帧作为<b>上下文帧</b>，通过 <b>KV cache</b> 注入。这一层是"因果视频生成"名字的由来——和 LLM 逐个 token 预测同构，只不过 token 是帧。</div>
+</div>
+
+<div class="step">
+<div class="t">第 4 步 · 处理上下文不够：三条退路</div>
+<div class="d">
+<b>(a) FramePack（2025）</b>：凭什么每帧都要完整分辨率、完整时间采样率？越久远的内容越不需要高空间分辨率，于是对过去在空间和时间上逐级降采样，再把它们<b>打包进一张高分辨率图</b>，让 CUDA kernel 高效处理。<br><br>
+<b>(b) 显式空间记忆（NeurIPS）</b>：不只生成 RGB，还生成深度图，把深度图融成全局一致的点云，再从当前视角渲染这个点云作为条件。讲者的例子很生动：走到 Hoover Tower 再回来，塔的整体外观应该不变，但每片叶子不必一样——<b>要记住的是空间结构，不是像素</b>。<br><br>
+<b>(c) 地图挤出（Doom 多人）</b>：把二维地图的墙向上挤出成三维，渲染视差图/深度图当条件，多个玩家各跑各的模型，唯一共享的是这张地图。
+</div>
+</div>
+
+<div class="step">
+<div class="t">第 5 步 · 治漂移：Bagger 用"倒放"冒充专家</div>
+<div class="d">DAgger 的思路是：车偏离车道时让远程操作员介入纠正，用专家示范学恢复。但视频里的专家示范从哪来？不可能让人手动修每一个坏视频。<br><br>
+<b>Bagger（Backwards Aggregation）</b>：先 rollout，看着模型自己退化（比如颜色越来越过饱和），然后<b>把这段退化视频反向播放</b>，加一句文本提示"这段视频正在倒放"防止模型理解成鱼在倒着游——于是"倒放"就变成"从坏状态回到好状态"的示范。多轮重复，模型学会自我纠正。
+</div>
+</div>
+
+<div class="fml">
+<div class="name">为什么倒放能当纠偏信号（讲者的隐含假设）</div>
+<div>设正常轨迹 \\(\tau=(s_0,s_1,\dots,s_T)\\)，模型 rollout 出退化轨迹 \\(\hat\tau=(s_0,\hat s_1,\dots,\hat s_T)\\)，其中 \\(\hat s\\) 偏离数据流形。<br>Bagger 构造示范对：\\((\hat s_{t+1} \rightarrow \hat s_t)\\)，即沿退化方向<b>倒退</b>。<br><br>
+<div class="exp">这在数学上等价于假设：<b>退化场是可逆的，且逆场就是纠偏场</b>。颜色过饱和满足这个假设（饱和的逆是褪色）。运动漂移满足吗？一个物体以错误速度滑出去，"倒放"给出的是它滑回来——但真实纠偏需要的是"在这一帧就不要再滑"。<b>两者不是同一个向量场。</b></div>
+</div>
+
+<p>讲者自己的对照实验其实泄露了这件事。他拿三种方法比：</p>
+<table>
+<tr><th>方法</th><th>外观（颜色）</th><th>运动</th><th>说明什么</th></tr>
+<tr><td>History Guidance</td><td class="x">明显过饱和</td><td>尚可</td><td>—</td></tr>
+<tr><td>Self-Forcing</td><td>保持得好</td><td class="x">变得很静态，运动退化</td><td>用分布匹配损失换外观，代价是运动</td></tr>
+<tr><td>Bagger</td><td>好</td><td>好</td><td>两者兼顾</td></tr>
+</table>
+<p>Self-Forcing 那一行是整场最重要的证据，讲者却只用了一句话：<b>外观和运动是两个独立的失效轴，分别治。</b>一个只靠"倒放"构造出来的信号，能同时压住两个轴，这件事本身需要一个解释，而演讲没有给。</p>
+</section>
+
+<section id="math">
+<h2><span class="tag">账本</span>三个数一算，结论就变了</h2>
+
+<h3>账本一 · 上下文：作者自己的换算，推下去是灾难</h3>
+
+<p>演讲里有两处 token 估算，我先把它们并排放好：</p>
+
+<div class="box bad">
+<b>说法 A</b>：低分辨率、32fps、10 秒视频，经 VAE 压缩进潜空间后，"几秒钟内也会产生数十万 token"。<br>
+<b>说法 B</b>："当前最先进的前沿模型可能拥有一百万 token 的上下文长度……但这对于视频来说，可能只相当于多出大约一秒钟的上下文。"
+</div>
+
+<p><b>这两句话内部差 15–20 倍。</b>按 A：10 秒 ≈ 数十万（取 50 万），则 1 秒 ≈ 5 万 token，100 万 token ≈ 20 秒。按 B：1 秒 ≈ 100 万 token。同一个人、同一场演讲，两个数差了一个数量级以上——这说明它们是口头估值，不是实测。但没关系，<b>两个口径都算一遍，结论一样</b>，这反而让结论更稳。</p>
+
+<table>
+<tr><th>需要的上下文</th><th>口径 A 下 token 数（1s≈5万）</th><th>口径 B 下 token 数（1s≈100万）</th></tr>
+<tr><td>1 秒</td><td>5 万</td><td>100 万</td></tr>
+<tr><td>1 分钟</td><td>300 万</td><td>6,000 万</td></tr>
+<tr><td>1 小时</td><td><b>1.8 亿</b></td><td><b>36 亿</b></td></tr>
+<tr><td>1 天</td><td>43 亿</td><td>864 亿</td></tr>
+<tr><td>1 年</td><td>1,570 亿</td><td>3.15 万亿</td></tr>
+</table>
+
+<p>再看注意力的定价。标准自注意力：</p>
+
+<div class="fml">
+<div class="name">单次前向的注意力开销</div>
+<div>\[ \text{FLOPs}_{\text{attn}} \;\approx\; 4\,n^2 d \;+\; 8\,n d^2 \]</div>
+<div class="exp">\\(n\\) = 序列长度（token 数），\\(d\\) = 隐层维度（取 4096 对应 14B 级模型）。当 \\(n\gg d\\) 时，第一项主导，<b>复杂度是 \\(n^2\\)</b>。<br>这意味着：上下文翻 10 倍，算力涨 100 倍，不是涨 10 倍。</div>
+</div>
+
+<p>以 100 万 token 为基线（\\(4n^2d \approx 4\times10^{12}\times4096 \approx 1.6\times10^{16}\\) FLOPs），算到 1 小时：</p>
+
+<table>
+<tr><th>口径</th><th>长度倍数</th><th>算力倍数（n²）</th><th>单帧前向所需算力</th><th>H100 满负荷跑完一帧</th></tr>
+<tr><td>A（1.8 亿 token）</td><td>×180</td><td>×32,400</td><td>5.2 × 10²⁰ FLOPs</td><td><b>约 15 天</b></td></tr>
+<tr><td>B（36 亿 token）</td><td>×3,600</td><td>×1.3 × 10⁷</td><td>2.1 × 10²³ FLOPs</td><td><b>约 17 年</b></td></tr>
+</table>
+
+<p class="src">按单张 H100 BF16 稠密算力 ≈ 4 × 10¹⁴ FLOPs/s 折算，且假设 100% 利用率（真实值通常 30–50%）。</p>
+
+<div class="box bad">
+<b>结论</b>：讲者要的是"分钟、小时甚至多年"级的上下文。而<b>光是一小时</b>的上下文，用他自己最乐观的口径算，生成<b>一帧</b>需要 15 天；用他自己另一句更激进口径算，17 年。<br><br>
+这不是"再买点 GPU"能解决的。这是 \\(n^2\\) 的规律性惩罚，跨 5–8 个数量级。<br><br>
+<b>所以第 5 节"为什么不直接用更长的上下文"这个问题，标准答案"因为代价太高"说得太客气了——不是高，是可达性上不存在。</b>这也正好解释了为什么后面所有的方案（FramePack 降采样、点云外部锚定、地图挤出、token 高效生成、少步蒸馏）本质都是<b>同一个动作：不再试图把上下文变长，而是把需要记的东西从上下文里搬出去</b>。
+</div>
+
+<h3>账本二 · 实时性：为什么"少步蒸馏"被反复提</h3>
+
+<p>讲者提到两个数：14B 参数的 Diffusion Transformer，30–50 步去噪。这两个数放在一起，实时性的账就很清楚了：</p>
+
+<div class="fml">
+<div class="name">单路 32fps 视频的算力需求</div>
+<div>单次前向：\\(2 \times 14\times10^{9} \approx 2.8\times10^{10}\\) FLOPs（只算参数矩阵乘）</div>
+<div>每帧：\\(2.8\times10^{10} \times 40\text{ 步} \approx 1.1\times10^{12}\\) FLOPs</div>
+<div>每秒（32fps）：\\(1.1\times10^{12} \times 32 \approx 3.6\times10^{13}\\) FLOPs/s</div>
+<div class="exp">相对单张 H100 的 4×10¹⁴ FLOPs/s，理论占用约 <b>9%</b>。听起来还行？<br>
+但按真实利用率 30% 折算，<b>一路视频就吃掉约 30% 的一张 H100</b>。<br>
+讲者举的场景是多人游戏——100 个玩家同场，就是 30 张 H100 在跑一个"游戏引擎"。这就是他为什么说"如果你只是想玩一个游戏，你不会按照 token 数量付费，你希望游戏能够响应迅速"。<br><br>
+反过来看"1–2 步代替 30–50 步"这个方向的分量：步数从 40 降到 1，算力降 40 倍，100 玩家从 30 张卡降到 1 张以内。<b>少步蒸馏不是锦上添花，是这套东西能不能商业化的唯一开关。</b></div>
+</div>
+
+<h3>账本三 · 数据：蓝圈里真正能用的那一块</h3>
+
+<p>前面已经算过 10⁻⁶ 的比例。再补一刀：这 10⁻⁶ 是<b>理论上限</b>，实际可用还要再乘两个折损。</p>
+
+<table>
+<tr><th>过滤条件</th><th>为什么必须</th><th>折损方向</th></tr>
+<tr><td>看得见末端执行器</td><td>逆动力学要从画面反推位姿变化</td><td>人类第一视角视频里是手，不是夹爪 → 大量丢弃</td></tr>
+<tr><td>动力学可解析</td><td>遮挡、快速运动、出画都会让位姿估计失效</td><td>再丢一部分</td></tr>
+<tr><td>任务分布匹配</td><td>工业倾倒、分拣、退货处理，和"厨房做饭"不是同一分布</td><td>再丢一部分</td></tr>
+</table>
+
+<p>剩下的部分，量级上更接近红点而不是蓝圈。<b>演讲用面积比喻（红点 vs 60 米大圆）把差距视觉化了，但没提这三个折损。</b>它让"用全网视频训机器人"听上去像"数据问题已经解决"，实际上只解决了其中一环。</p>
+</section>
+
+<section id="crit">
+<h2><span class="tag">追问</span>七处需要停下来想一想的地方</h2>
+
+<ol class="crit">
+<li><b>第 9.1 节有一句自我反驳，被埋掉了。</b>"如果你的目标只是训练一个策略，那么与其先花大量时间训练视频模型，再用视频模型训练策略，不如直接使用原始数据。"<br>
+这句话直接否定了演讲前半场（Waymo / Tesla 用世界模型做数据增强）的核心价值主张。两条论证线在打架：<b>前半场说"世界模型能放大训练数据"，9.1 节说"放大这一步不划算，直接用原始数据"。</b><br>
+真正的价值只能来自别处——推理时的想象（world action model 在部署时 rollout 一小段再反推动作），而不是训练时的数据放大。但演讲没有把这个重心搬过去，仍然用大量篇幅讲数据增强。这是全篇最大的结构裂缝。</li>
+
+<li><b>"记忆"这个词被用了三次，指三件不同的事。</b>FramePack 的上下文打包、点云的长期空间记忆、地图挤出的一致性——三者都被叫作 memory，但机制完全不同：一个是<b>有损压缩</b>，一个是<b>外部存储 + 检索</b>，一个是<b>共享状态变量</b>。混在一起讲，会让人误以为"世界模型已经有记忆了"。实际上只有第二种是真记忆，前两种是省显存。</li>
+
+<li><b>FramePack 的降采样策略，是一个未被检验的先验。</b>它的核心假设是"越久远的内容越不需要高空间分辨率"。这在<b>均匀信息分布</b>下成立。但机器人任务的信息分布极度不均匀——决定成败的那一帧，可能是 30 秒前"物体被碰歪了 2 毫米"的那一帧，而降采样早就把它抹平了。<br>
+这跟上一轮《机器人记忆》那篇是同一个错误：<b>文字摘要是"问题出现前的赌注"，降采样也是"问题出现前的赌注"，只是把赌注从文本搬到了像素。</b></li>
+
+<li><b>Bagger 的"专家"是自己，不是别人。</b>DAgger 之所以有效，是因为专家分布独立于被训练策略——车偏左时，人类知道该打右。Bagger 的示范来自模型自己的倒放，属于<b>自举</b>，没有引入分布外信息。它能压住"模型本来就会犯的那几种退化"，压不住"模型根本想不到的退化"。<br>
+而且倒放改变了时间方向，学到的是"沿退化方向往回走"，不是"在偏离发生的当下做正确的事"——这是两个向量场。讲者用 Self-Forcing 的"外观好、运动死"从反面证明了这一点的存在，却没解释 Bagger 凭什么同时占住两个轴。</li>
+
+<li><b>开放环 / 闭环的二分，漏掉了真实系统的第三种。</b>演讲只给了两档：开放环（上下文全是自己生成的帧）和闭环（真实摄像头帧回灌）。但真实机器人上装的是腕部相机、头部相机——它们看到的是一个<b>局部</b>，手后面发生了什么看不到。这就是部分闭环：<b>可观测维度被真实观测钉住，不可观测维度上的误差仍然自由累积。</b><br>
+"闭环更容易，因为它受到真实观测的约束"这句话在部分闭环下不成立。而工业场景（倾倒、分拣）恰恰全是部分闭环。</li>
+
+<li><b>"幻觉无法消除"这句诚实，价格很高。</b>讲者说得很直白：生成式模型一定会幻觉，因为它就是被训练来生成内容的；能做的是让它始终基于真实物理观测、每次只生成一小段。<br>
+但同一场演讲的问答里也承认："目前我不认为存在一种非常完备、具有严格原则保证的方法，可以提前判断模型生成的物理动作是否一定成功、安全或可行。"<br>
+紧接着还有一句更狠的："我不会使用当前任何一个模型来训练一台准备出售给客户的机器人。"<br>
+<b>这两句话放在一起，等于给"世界模型作为机器人训练器"判了缓刑。</b>而这句话出现在一场以世界模型为主题的演讲里，需要相当大的勇气——也是这篇素材里最不该被剪掉的部分。</li>
+
+<li><b>"世界模型服务于 VLM 的分工"被说清楚了，但那个分工对世界模型不利。</b>讲者的原话：不要让视频模型规划未来几分钟或几小时，"这类任务规划更适合交给 VLM"；VLM 负责高层拆解，视频模型负责下一段运动轨迹，而且"至于抓住物体之后会发生什么，视频模型并不知道"。<br>
+照这个分工，世界模型的位置被压缩到"短程运动规划器"——一个<b>有物理先验的局部控制器</b>。这跟"世界模型是通往 Physical AI 的核心"这种宏大叙事，已经不是一回事了。</li>
+</ol>
+</section>
+
+<section id="noise">
+<h2><span class="tag">噪声</span>这份素材的性质：它是语音转写稿，不是论文</h2>
+
+<p>这一点必须说清楚，否则容易误引。全文有大量专有名词带转写痕迹，讲者自己在文中两处主动标注了"这是原文语音识别结果，可能存在疑点"：</p>
+
+<table>
+<tr><th>文中写法</th><th>可疑之处</th></tr>
+<tr><td>"Pave Lee 的创业公司……两天前刚刚被 AMD 以 80 亿美元收购"</td><td>人名大概率为误听；80 亿美元的收购案需要独立核实，不能直接引用</td></tr>
+<tr><td>"Roda AI" / "Rhoda AI"</td><td>同一家公司，文中两种拼法并存</td></tr>
+<tr><td>"Marlo"</td><td>应为 Marlowe（斯坦福 GPU 集群），文中有两处</td></tr>
+<tr><td>"World Lens 的 Atlas 系统"</td><td>讲者自己标注了存疑</td></tr>
+<tr><td>"Cosmos 3" / "Cosmos 1、2.2"</td><td>版本号前后不一致</td></tr>
+<tr><td>"GPT-6"</td><td>与上下文时间线不符的表述，可能是泛称"最新的 GPT"</td></tr>
+<tr><td>"AMI Labs 是 Yann LeCun 的创业公司，已经融资 10 亿美元"</td><td>需独立核实</td></tr>
+<tr><td>Julian / Luming / Brian / George</td><td>只有名没有姓，无法对应到具体论文作者</td></tr>
+</table>
+
+<div class="box bad">
+<b>引用纪律</b>：这篇里所有数字（2000 小时、20 亿小时、60 米、100–200 万 token、14B 参数、30–50 步、80 亿美元、10 亿美元）都是<b>口头估值或转写结果</b>，没有一个来自论文表格。它们适合用来<b>理解量级</b>，不适合用来<b>做论据</b>。<br><br>
+唯一的例外是那些<b>结构性陈述</b>——"世界模型没有显式三维状态"、"开放环会累积误差"、"幻觉不可能消除"。这些是逻辑判断，不依赖具体数字，可以放心引用。
+</div>
+</section>
+
+<section id="cross">
+<h2><span class="tag">对照</span>放到最近几篇里看，撞的是同一堵墙</h2>
+
+<table>
+<tr><th>文章</th><th>它想解决什么</th><th>卡在哪</th><th>给出的解法</th></tr>
+<tr><td><b>本篇</b> 世界模型 → World Agent</td><td>机器人没有数据，用视频世界模型补</td><td>上下文不够长，\\(n^2\\) 惩罚不可跨越</td><td>压缩（FramePack）、外置（点云）、自举纠偏（Bagger）</td></tr>
+<tr><td>《机器人记忆：索引才是本体》</td><td>机器人记不住昨天的事</td><td>文字摘要天生残缺，视频帧太多存不下</td><td>视频外置存储 + 索引检索，按需取帧</td></tr>
+<tr><td>《FineART：子任务标注的监督密度》</td><td>长时序任务学不会</td><td>自主长时序成功率 <b>0.0%</b></td><td>人工喂子任务标签（53 万段），76% 成绩靠这个</td></tr>
+<tr><td>《π0.5 在 Egocentric Data 上后训练》</td><td>换数据来源能否提分</td><td>+5.5pp，Holm 校正后 0 项显著</td><td>（结论是否定的）</td></tr>
+</table>
+
+<div class="box good">
+<b>四篇连起来看，是一条完整的因果链：</b><br><br>
+<b>①</b> 机器人自己采的数据太少（红点），所以要借外部数据（蓝圈）——<b>本篇</b>。<br>
+<b>②</b> 借来的数据是视频，视频太长，塞不进上下文——<b>本篇 + 机器人记忆</b>同时撞墙。<br>
+<b>③</b> 想绕开长上下文，就得把时间轴压成"结构化标签"——<b>FineART</b> 的做法，53 万段子任务标注。<br>
+<b>④</b> 但有标签 ≠ 有用。FineART 涨的 +68pp，本质是"人工把长时序切成短时序"；而 π0.5 换数据来源只涨 +5.5pp 且不显著——<b>换数据来源没用，换数据结构才有用。</b><br><br>
+<b>所以世界模型的真正瓶颈不在生成质量，在"如何把长时序压成结构"。</b>这场演讲讲了 50 分钟 Diffusion 原理、可控生成、时空控制，最难的那件事只在第 6 节用 8 分钟带过——而第 6 节恰恰是最该展开的。
+</div>
+</section>
+
+<section>
+<h2><span class="tag">结论</span>三句话</h2>
+
+<p><b>一、这场演讲最有用的部分是它自己的算术。</b>"100 万 token ≈ 1 秒视频"这句话一旦当真，长上下文路线在小时级就死了，剩下的所有工作都是"怎么把记忆搬出上下文"。这句话比任何一篇世界模型论文的摘要都更能说明这个领域的真实处境。</p>
+
+<p><b>二、世界模型的定位正在从"模拟器"降到"短程运动规划器"。</b>讲者自己划的分工是：VLM 管任务拆解，视频模型管下一段轨迹，而且"抓住之后会发生什么，视频模型并不知道"。承认这一点之后，"取代物理引擎"的叙事就不成立了，剩下的是"一个有物理先验的局部控制器"——价值真实但远没那么大。</p>
+
+<p><b>三、最该被记住的是那句自我否定。</b>"如果你的目标只是训练一个策略，不如直接使用原始数据。"这句话如果成立，那么世界模型作为<b>训练时数据放大器</b>的商业逻辑就没了；它只能靠<b>推理时想象</b>站住。而推理时想象要实时，实时要高帧率，高帧率要少步蒸馏，少步蒸馏要牺牲质量——整条链回到了原点。<b>这才是这个领域真正的难题，不是生成得不够像，是算不过来。</b></p>
+</section>
+
+<footer>
+  基于公众号「human five / 小言说谈」2026-10-30《从World Models到World Agents》全文（约 1.9 万字、35 图）整理<br>
+  原文为 Gordon Wetzstein 演讲的语音转写，专有名词与数字存在转写噪声，已在正文标注<br>
+  3W1H 第一性原理解析 · 本份仅存档，未推送
+</footer>
+
+</div></body>
+</html>

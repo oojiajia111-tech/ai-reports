@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多模态生成架构：从DiT到Janus</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>多模态生成架构：从DiT到Janus<span class="sub">一张 1024 的图，吃掉整个上下文窗口 · Stable Diffusion / AudioLM / Latte / NExT-GPT / Janus · 三种模态生成路径 + 两种融合路线</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-01 13:36</div>
+    <div><b>正文规模</b> 1.44 万字 · 53 图 · 0 表</div>
+    <div><b>一句话</b> 「统一」不是架构选择，是被 token 预算逼出来的结果</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>这篇文章从头到尾在讲一件事：<b>怎么让 LLM 长出图像、音频、视频的输出能力</b>。它给了两条路线——把外部生成器接上去（Late Fusion），或者把生成能力塞进 LLM 内部（Early Fusion），并且明显偏好后者，用的词是「更加原生」。但全文 <b>1.44 万字、53 张图、没有一个数字</b>：没有参数量、没有 token 率、没有 FID、没有 FVD。所以它讲的是<b>怎么搭</b>，不是<b>值不值</b>。而一旦把账算出来，就会发现所谓「统一架构」从一开始就被一个算术关系锁死了：<b>图像 token 数 = (H/f)×(W/f)</b>，当 f=16 时，一张 1024×1024 的图正好是 <b>4096 个 token</b>——把 Janus 的整个上下文窗口吃掉，一个 token 都不给文字留。这不是模型不够聪明，这是账算不过来。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 算账</a>
+  <a href="#crit">④ 六条批判</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">是什么</span>三层结构：先各自生成，再想办法拼起来</h2>
+
+  <p>这篇文章的组织方式很清晰，是一条从「单模态怎么生成」到「怎么和 LLM 对接」的递进链条。</p>
+
+  <h3>第一层：单个模态的生成机制</h3>
+  <div class="step">
+    <div class="t">图像 = Diffusion + Latent Space</div>
+    <div class="d">Stable Diffusion 五个部件：文本编码器、扩散模型、含噪输入、图像编码器、图像解码器。关键在于扩散<b>不直接在像素上做</b>，而是在 VAE 压缩出来的 latent 张量上做——这一步是速度的来源，也是「预测噪声」这个目标能成立的前提。</div>
+  </div>
+  <div class="step">
+    <div class="t">图像生成的新主角 = DiT</div>
+    <div class="d">把 latent 切成 patch 当 token，用 Transformer Block 替代 U-Net，通过 adaLN（自适应层归一化）注入时间步和标签条件。代表模型 PIXART-α、FLUX.1 Dev。</div>
+  </div>
+  <div class="step">
+    <div class="t">音频 = 两级 Token + 三级 Transformer</div>
+    <div class="d">AudioLM。SoundStream 出 Acoustic Token（音色音高），w2v-BERT 出 Semantic Token（说什么），再由三个串起来 Transformer 依次生成：先语义、再粗粒度声学、最后细节。声音最后由 SoundStream 的 Decoder 重建。</div>
+  </div>
+  <div class="step">
+    <div class="t">视频 = 图像 + 一个时间维度</div>
+    <div class="d">Latte。难点全在 tokenization：逐帧切 patch 再拼（Uniform）还是跨帧切 tubelet（Compression）。作者发现后者更差，推测是压缩丢了时空信息。Block 用空间、时间交替排列（Interleaved Fusion）。</div>
+  </div>
+
+  <h3>第二层：两种把它们接进 LLM 的路线</h3>
+
+  <table>
+    <tr><th>路线</th><th>做法</th><th>可训练参数</th><th>文中代表</th></tr>
+    <tr><td><b>Late Fusion</b><br>输出投影</td><td>LLM 输出特殊 token（[IMG]/[AUD]/[VID]），由一个 MLP 或小型 Transformer 投影成下游扩散模型能吃的条件向量</td><td>只有投影层，<b>百万级</b>；主干全冻结</td><td>NExT-GPT、OmniGen2、BLIP-3o</td></tr>
+    <tr><td><b>Early Fusion</b><br>统一生成</td><td>把图像也变成 token，和文本 token 放进同一条序列，由同一个 LLM 一次生成，再分别解码</td><td>大部分参数都要动，<b>十亿级</b></td><td>Janus</td></tr>
+  </table>
+
+  <p>文中的偏好很明确：称 Late Fusion「很简洁，但很难把 LLM 视为一个统一的多模态实体」，甚至直接说「可以理解为<b>一个 Agent 调用其他生成工具</b>」；称 Early Fusion「更加原生」「通常能够获得更高的准确性」。</p>
+
+  <h3>第三层：Janus 作为 Early Fusion 的样板</h3>
+  <p>Janus 的三阶段训练写得最细：<b>第一阶段</b>只训 Adaptor 和 Image Head，建立视觉与语言的概念联系；<b>第二阶段</b>统一预训练，混着纯文本、多模态理解、视觉生成三种数据；<b>第三阶段</b>用指令数据做 SFT。整个设计只有一个真正的技术选择：<b>理解和生成用两套不同的视觉编码器</b>——理解用 SigLIP，生成用 VQ-GAN。</p>
+
+  <div class="box bad">
+    <b>这个选择就是全文最重要的一句话，但它被当成实现细节写过去了。</b>如果「统一架构」真的成立，那么理解和生成应该能共用一个视觉表征。Janus 恰恰没有这么做。这说明两者需要的东西根本不同，而这一点恰好是后文所有「统一」叙事的地基裂缝。
+  </div>
+</section>
+
+<section id="why">
+  <h2><span class="tag">为什么</span>Janus 的两套编码器，是对「统一」的自我反驳</h2>
+
+  <p>先看这两套编码器到底在做什么。</p>
+
+  <table>
+    <tr><th></th><th>SigLIP（理解）</th><th>VQ-GAN（生成）</th></tr>
+    <tr><td>输出形态</td><td>连续向量</td><td><b>离散 codebook 索引</b></td></tr>
+    <tr><td>训练目标</td><td>图文配对的 pairwise sigmoid loss（对齐语义）</td><td>重建损失 + <b>对抗损失</b>（骗过判别器）</td></tr>
+    <tr><td>优化的是什么</td><td>「这张图和这句话是不是一对」</td><td>「重建出来的图<b>看起来</b>像不像原图」</td></tr>
+    <tr><td>保留的信息</td><td>高层语义，丢掉细节</td><td>细节与纹理，语义不管</td></tr>
+    <tr><td>能不能给 LLM 直接吃</td><td>能（连续向量投影即可）</td><td>能（离散 token 就是词表）</td></tr>
+  </table>
+
+  <p>两者的目标函数是<b>互斥</b>的。SigLIP 追求的是把「同一概念的很多张图」压到同一个点上，细节越少越好；VQ-GAN 的对抗损失追求的是让判别器分不出真假，细节越多越好。你没办法用一个编码器同时最大化这两个目标。</p>
+
+  <div class="step">
+    <div class="t">于是「Early Fusion」这个词需要重新定义</div>
+    <div class="d">Janus 的统一只发生在<b>LLM 内部的 token 序列</b>这一层——两个模态的 token 被拼进同一条序列，由一个 Transformer 处理。但在进 LLM 之前，它仍然是<b>两个塔、两个 adapter</b>。也就是说，它的融合点从「模型外部」搬到了「token 序列里」，而不是消除了融合。</div>
+  </div>
+
+  <div class="box good">
+    <b>换个说法：Janus 做的是「在 LLM 内部做 late fusion」。</b>它真正买到的东西不是「统一表征」，而是<b>联合训练</b>——理解和生成共享同一个 Transformer 的参数，梯度会互相影响。这个价值是真的，但它和「统一架构」是两个不同的卖点，文中把它们混成了一件事。
+  </div>
+
+  <p>这也解释了一个文中有提到、但没串起来的现象：NExT-GPT 的输入侧用 ImageBind 编码，生成侧用 Stable Diffusion，两边完全解耦；Janus 则强行把两边塞进一个 LLM。前者训练只要百万参数，后者要动十亿级。如果「统一」的收益只是「准确率更高」这种没有数字的说法，那这笔账在工程上是算不过的——除非统一带来了别的东西。</p>
+
+  <p>那个「别的东西」确实存在，而且文章没说出来：<b>联合训练让生成过程可以被语言推理引导</b>。你可以让模型先生成一段「我要画一个火烈鸟站在浅水里，倒影在左下」，再生成图。NExT-GPT 做不到这一点，因为它只是把 LLM 当 prompt 生成器。这才是 Early Fusion 真正的护城河，而不是「更统一」。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">算账</span>分辨率天花板是上下文预算决定的，不是模型能力</h2>
+
+  <p>这是全文最该有、但完全没有的一段。把图像变成 token 之后，它就进入了和文本完全相同的资源竞争——上下文长度。</p>
+
+  <div class="fml">
+    <div class="name">图像 token 数（VQ-GAN / VAE 下采样因子 f）</div>
+    \[ N_{img} = \frac{H}{f} \times \frac{W}{f} \]
+    <div class="exp">f 是空间下采样倍数。Stable Diffusion 的 VAE 用 f=8，VQ-GAN 常用 f=16。<br>
+    代入 1024×1024、f=16：(1024/16)² = 64² = <b>4096 个 token</b>。<br>
+    代入 512×512、f=8：(512/8)² = 64² = 同样是 <b>4096 个 token</b>。<br>
+    <b>两个数量级不同的像素量，压缩后撞在同一个数字上——因为 token 数只取决于 H/f，不取决于 H。</b></div>
+  </div>
+
+  <p>再看预算这边。Janus 这类模型的上下文窗口是 4096 个 token。于是：</p>
+
+  <div class="fml">
+    <div class="name">上下文约束</div>
+    \[ N_{img} + N_{text,in} + N_{text,out} \le L \]
+    <div class="exp">L = 4096（Janus 的序列长度）。N_text,in 是一轮对话的 prompt，N_text,out 是要生成的文字。<br>
+    如果生成 1024×1024（4096 token），则 <b>N_text,in + N_text,out ≤ 0</b>。<br>
+    <b>也就是说：1024 分辨率的图，在 4096 上下文里连一个字都装不下。</b></div>
+  </div>
+
+  <p>这解释了 Janus 为什么把生成分辨率定在 384×384：</p>
+
+  <table>
+    <tr><th>生成分辨率</th><th>下采样 f</th><th>token 数</th><th>占 4096 上下文</th><th>留给文字</th></tr>
+    <tr><td>256 × 256</td><td>16</td><td>256</td><td>6.3%</td><td>3840</td></tr>
+    <tr><td><b>384 × 384</b>（Janus 实际配置）</td><td>16</td><td><b>576</b></td><td><b>14.1%</b></td><td>3520</td></tr>
+    <tr><td>512 × 512</td><td>16</td><td>1024</td><td>25.0%</td><td>3072</td></tr>
+    <tr><td>768 × 768</td><td>16</td><td>2304</td><td>56.3%</td><td>1792</td></tr>
+    <tr><td>1024 × 1024</td><td>16</td><td><b>4096</b></td><td><b>100%</b></td><td><b>0</b></td></tr>
+  </table>
+
+  <div class="box bad">
+    <b>所以「统一架构」的真实代价，是把图像生成从「算力问题」变成了「会计问题」。</b>扩散模型时代，提高分辨率的代价是显存和步数，是线性的、可以堆卡的。统一进 LLM 之后，分辨率直接和「模型还能不能说一句话」抢同一个池子，是<b>零和的</b>。这就是为什么 Janus-Pro 要提升生成质量，必须同时扩上下文长度——不是调参，是这两个数被绑死了。
+  </div>
+
+  <h3>顺带修正文中一个说反了的地方</h3>
+
+  <p>文中说 DiT Block「遵循与常规 LLM 类似的模式：多个模块堆叠，并通过 Self-Attention <b>依次</b>处理信息」。这个「依次」用错了。</p>
+
+  <ul>
+    <li>LLM 是<b>自回归</b>的：第 n 个 token 依赖前 n−1 个，所以必须顺序生成，因果掩码是硬约束。</li>
+    <li>扩散是<b>全并行</b>的：整张图在同一时刻一起降噪，每个 patch 同时更新，<b>不存在 token 顺序</b>。</li>
+  </ul>
+
+  <p>DiT 从 LLM 那里借的是<b>参数效率</b>（同样的算力能塞进更多参数、更好并行），不是生成范式。文中自己其实给出了正确归因——「U-Net 依赖跳跃连接的深层卷积，规模扩大后内存消耗增加、优化困难、并行化效率低」——但这段话全部是<b>工程指标</b>，没有一项是<b>生成质量</b>。</p>
+
+  <div class="box bad">
+    <b>也就是说：DiT 赢的是规模化赛道，不是画质赛道。</b>文中把「更容易变大」写成了「更好」，这两件事之间没有推导。要证明 DiT 画质更高，需要同参数量下的 FID 对比——文中一个都没有。有意思的是，文中唯一提到的量化指标 FVD，是用来说明 Latte 里「adaLN 变体优于把时间步当 token」这个局部选择的，而不是用来做架构对比的。
+  </div>
+</section>
+
+<section id="crit">
+  <h2><span class="tag">批判</span>六条经不起推敲的地方</h2>
+
+  <ol class="crit">
+    <li><b>全篇零数字。</b>1.44 万字、53 张图、0 个表格、0 个参数量、0 个 token 率、0 个 FID/FVD 横向对比。文中出现的唯一量化指标是 FVD，且只用于单点消融。这意味着它是一篇<b>架构导览</b>，不能用来做技术选型，也不能用来判断哪条路线更优。</li>
+    <li><b>「Early Fusion 通常准确率更高」没有证据。</b>这句出现在第 7 节结尾，紧接着自己承认「训练成本高得多」，但两者之间没有任何数字。一个更高的收益配一个更高的成本，结论取决于比值——而这个比值文中没有。</li>
+    <li><b>把 Janus 的双编码器当成实现细节。</b>这是全文最关键的技术选择，却只用一句话带过。它实际上推翻了「统一表征」这个前提：如果理解与生成可以共用一个编码器，Janus 没有理由用两个。</li>
+    <li><b>跳过了对抗损失的代价。</b>VQ-GAN 和 SoundStream 都用判别器训练。对抗损失的经典性质是<b>用保真度换感知质量</b>——重建图更像「人眼觉得对」，但像素级误差反而更大。这正好是理解任务不能用的原因（理解要的是准确的语义对应，不是好看的纹理）。文中把判别器说成「让重建更接近原始信号」，隐去了这个权衡，于是 Janus 选两个编码器的原因就只能被读成随意。</li>
+    <li><b>AudioLM 三级级联的代价被略过。</b>语义 → 粗粒度声学 → 细粒度声学，三次自回归串联。代价有两层：一是<b>误差累积</b>（第一级错了，后两级无法纠正，因为它们是条件生成）；二是<b>不可并行</b>（每级都要逐步生成）。SoundStream 常见配置的 token 率在 50/秒量级，10 秒音频就是 500 个 token × 3 级。这是后来语音模型转向单阶段/流式架构的直接原因，也是「为什么 AudioLM 是里程碑但不是终点」的答案。</li>
+    <li><b>53 张图 / 1.44 万字 = 每 271 字一张图。</b>这不是缺点，但它决定了文章的认知形态：所有机制解释都通过示意图传达，文字是图的旁白。示意图能传达「有几个部件、怎么连」，传达不了「哪个部件的哪一项设计带来多少收益」。读者读完会获得一张准确的结构图，和一组无法验证的判断。</li>
+  </ol>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">价值</span>这篇该读什么，不该信什么</h2>
+
+  <h3>该读的三段</h3>
+  <div class="step">
+    <div class="t">Latent Space 这一步为什么要做</div>
+    <div class="d">扩散在 VAE 压缩后的张量上做，不在像素上做——这是整个图像生成效率的基础。理解了这一点，才能理解后面 DiT 为什么能成立（因为 latent 已经被切成小块了，patchify 才有意义）。</div>
+  </div>
+  <div class="step">
+    <div class="t">Latte 的负结果</div>
+    <div class="d">Compression Frame Patch（tubelet）表现<b>不如</b>Uniform Frame Patch，作者推测是压缩丢了时空信息。这是全文唯一一个明确的「我们试了 A 方案，它更差」的记录，比所有正面描述都有信息量。</div>
+  </div>
+  <div class="step">
+    <div class="t">NExT-GPT 的层次化分组</div>
+    <div class="d">把相似的 patch embedding 先聚成「天空」这种概念，再把「天空 + 云」聚成「天气」，然后才投影给 LLM。这是一个很实用的 trick：让 LLM 处理语义概念而不是底层 patch，减少无效 token。做多模态输入工程的人可以直接借鉴。</div>
+  </div>
+
+  <h3>不该信的两处</h3>
+  <ul>
+    <li>「Early Fusion 更准确」——没有数字支撑的路线偏好，用词带情感（「原生」「统一」）。</li>
+    <li>「DiT 优于 U-Net」——文中给的三条理由（内存、优化、并行）全是工程指标，不是质量指标。DiT 的真实优势是<b>能更容易变大</b>，而「变大之后更好」是另一件事。</li>
+  </ul>
+
+  <h3>如果只记一句话</h3>
+  <div class="box good">
+    <b>多模态生成的竞争，最终不是架构之争，是 token 预算之争。</b>把图像变成 token 的那一刻，它就和文字抢同一个池子。分辨率、上下文长度、生成质量三个数被绑在一条式子上：<b>N = (H/f)² + N_text ≤ L</b>。谁能用更少的 token 表达同一张图（更聪明的 tokenizer），谁就赢——而不是谁能把架构画得更统一。
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag">元信息</span>素材说明</h2>
+  <p class="src">
+    <b>原文：</b>《多模态生成架构：从DiT到Janus》，公众号「human five / 小言说谈」，发布 2026-11-01 13:36:33，mid=2247510673，idx=1。<br>
+    <b>正文规模：</b>文字 14,387 字，图片 53 张，表格 0 个。原文自述「通过 50 多张专门制作的可视化图示」讲解。<br>
+    <b>性质：</b>技术综述/架构导览，非论文、非实验报告。文中未给出任何模型参数量、训练数据量、token 率或质量指标的横向对比。<br>
+    <b>本文所有算式均为本解析自行推导，原文未出现：</b>token 数公式中的 f=16 取 VQ-GAN 常见配置，Janus 生成分辨率取 384×384、上下文取 4096，均为公开资料中的该模型配置；若后续版本调整这些参数，表中数字需同步重算。<br>
+    <b>刻意未采用的原文表述：</b>「Early Fusion 通常能够获得更高的准确性」——因无量化支撑，本文将其降级为「信念陈述」，并另行给出 Early Fusion 真正成立的机制（生成过程可被语言推理引导）。
+  </p>
+</section>
+
+<footer>本解析仅本地存档，未推送。 · 3W1H 第一性原理 · 2026-11-02</footer>
+
+</div></body>
+</html>

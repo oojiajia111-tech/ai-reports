@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPT-6 Astra是共识，那非共识是什么</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>GPT-6 Astra是共识，那非共识是什么<span class="sub">一个贵一万倍的「GPT-3 时刻」不是时刻 · 通用模型直接控制机器人 · RoboCurve 19/20 · NVIDIA Astranomy 74.8% · 36.40 美元/回合 · 1000 亿参数端侧</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-02 00:11</div>
+    <div><b>正文规模</b> 6,139 字 · 4 图</div>
+    <div><b>一句话</b> 通用 vs 专用不是能力之争，是摊销结构之争</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>这篇文章的核心断言是：通用模型直接控制机械臂，「机器人领域的 GPT-3 时刻到了」。支撑它的三个数字是——RoboCurve 抓方块放碗 <strong>20 次成功 19 次</strong>；NVIDIA Astranomy 在 120 项模拟任务上 <strong>74.8%</strong>；以及作者自己给出的成本：Agentic 配置下<strong>每个成功回合 36.40 美元</strong>，单次推理 <strong>18.56 秒</strong>。前两个数字被用来证明「时刻」，第三个数字其实推翻了它。GPT-3 之所以是时刻，不是因为它在某个任务上赢了，而是因为它把「做一件语言任务」的边际成本从「雇一个人」压到「几分钱」，于是所有长尾场景同时被打开。<strong>而 36.40 美元对比人类完成同一动作的 0.0035 美元，是 1 万倍。</strong>一个贵一万倍的时刻不是时刻——它更像 2012 年的 AlexNet：方向被证明，但真正的十年发生在成本曲线上。这篇文章的其他判断（数据淘金热、部署成为瓶颈、内存超级周期）大多站得住，唯独那个最响的类比站不住。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 三个数字</a>
+  <a href="#how">③ 算账</a>
+  <a href="#crit">④ 六条批判</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">是什么</span>一篇主张「通用模型吃掉机器人」的产业评论</h2>
+
+  <p>作者的身份没有明说，但从行文看是长期跟机器人与芯片赛道的投资人。文章分两层：前 10 条是热身的判断，后面「以下是 blog 正文」是完整论证。核心主张可以压成一句：</p>
+
+  <div class="box good">
+    <b>「如果我们根本不需要为机器人重新发明通用智能呢？如果我们只需要将现有的通用智能带入物理世界呢？」</b><br>
+    这是全文最有力的一句，也是唯一一个真正的「非共识」。它的力量在于：过去五年机器人行业的默认假设是「物理世界有独特的数据结构和学习难度，必须专门建模」，如果这个假设不成立，整个专用机器人基础模型的赛道都要重估。
+  </div>
+
+  <p>支撑这条主张的证据链有三段：</p>
+
+  <table>
+    <tr><th>证据</th><th>内容</th><th>作者用它证明</th></tr>
+    <tr><td>RoboCurve 实验（9 月 4 日）</td><td>GPT-6 Astra 控制两条机械臂抓方块放碗，<b>20 次成功 19 次</b></td><td>通用模型零微调即可完成有意义的物理任务</td></tr>
+    <tr><td>NVIDIA Astranomy</td><td>120 项模拟操作任务，最佳配置 <b>74.8%</b>，显著超过多个专用机器人模型</td><td>不只是单点 demo，是成规模的基准表现</td></tr>
+    <tr><td>人才与组织的迁移</td><td>OpenAI 围绕 Astra 重组 30–40 人机器人团队；Tesla Optimus 转向通用模型路线</td><td>「组织架构变化比任何演示都更能说明问题」</td></tr>
+  </table>
+
+  <p>在这条主线之外，文章还给了四组延伸判断，质量参差但都值得单独看：</p>
+
+  <ul>
+    <li><b>数据淘金热</b>：百万小时级采购项目出现，部分达数千万小时，每家前沿实验室预算接近 10 亿美元。</li>
+    <li><b>数据质量 &gt; 数据规模</b>：十个人做「拿起一把勺子」会有十种方式，缺精确标注时增加示范只会增加歧义。</li>
+    <li><b>部署成为新瓶颈</b>：模型能力提升速度快过部署速度，壁垒转向系统集成、故障恢复、经济可行性。</li>
+    <li><b>半导体超级周期</b>：1000 亿参数模型 4-bit 量化需约 50 GB 内存，乘以数百万台机器人。</li>
+  </ul>
+</section>
+
+<section id="why">
+  <h2><span class="tag">三个数字</span>每一个都能推出与原文相反的结论</h2>
+
+  <h3>数字一：19/20，它的置信区间下界正好是 74.8%</h3>
+  <p>20 次试验成功 19 次，写出来是 95%。但 20 次是一个极小的样本，必须给置信区间。用 Wilson 区间（比正态近似更可靠，尤其 p 接近 1 时）：</p>
+
+  <div class="fml">
+    <div class="name">19/20 的 Wilson 95% 置信区间</div>
+    \[ \frac{\hat p+\frac{z^2}{2n}\pm z\sqrt{\frac{\hat p(1-\hat p)}{n}+\frac{z^2}{4n^2}}}{1+\frac{z^2}{n}} \;=\; [\,76.4\%,\;99.1\%\,] \]
+    <div class="exp">\(\hat p=0.95,\;n=20,\;z=1.96\)。<br>
+    <b>注意下界：76.4%。</b>而 NVIDIA Astranomy 在 120 项任务上的成绩是 74.8%。<br>
+    <b>两个被当作「独立互相印证」的证据，在统计上可能根本是同一个数。</b></div>
+  </div>
+
+  <div class="box bad">
+    <b>这是全文最关键的一处逻辑断裂。</b>作者用 19/20 和 74.8% 当两条独立证据，互相加强「时刻已到」的分量。但 19/20 的真实信息量只有「成功率大概在 76% 到 99% 之间」——它唯一能排除的是「完全不会」，而它无法把 Astra 与 74.8% 那个结果区分开。<br><br>
+    <b>更准确的读法是：这两个数字不该被相加，而该被合并。</b>20 次试验只能把真实成功率约束在 [76%, 99%] 里；120 项任务给出 74.8%，正好贴着这个区间的下界。把两个估计放在一起，得到的结论不是「95% 和 75% 都很高」，而是<b>「真实能力大概落在 75%–95% 之间的某个位置，而现有数据收不窄」</b>。一个成功率 75% 的操作模型，意味着一百次任务里失败二十五次——这离「时刻」很远。<br><br>
+    样本量在这里不是细节，它决定了「时刻」这个词有没有依据。
+  </div>
+
+  <h3>数字二：36.40 美元，对比人类 0.0035 美元</h3>
+  <p>原文写：「在 NVIDIA 的 Astranomy 研究中，采用 Agentic 配置时，每个成功的模拟 episode 成本约为 36.40 美元，而直接动作生成每次推理调用平均需要 18.56 秒。这种成本和延迟对于今天的许多应用来说都难以接受。」</p>
+
+  <p>作者是诚实的——他把这个数字写出来了。问题在于他没有做下一步：<strong>把它和它的替代方案比。</strong></p>
+
+  <div class="fml">
+    <div class="name">成本对照：抓一个方块放进碗里</div>
+    \[ \text{人类：}3\text{ 秒}\times\frac{30\text{ 元/时}}{3600}\approx 0.025\text{ 元}\approx 0.0035\text{ 美元} \]
+    \[ \frac{36.40}{0.0035}\approx 1.04\times10^{4}\ \text{倍} \]
+    <div class="exp">按 30 元时薪计，差距约 <b>1 万倍</b>；按 20 元时薪计为 <b>1.57 万倍</b>；按 50 元时薪计仍有 <b>6300 倍</b>。<br>
+    即使把人类的动作时间放宽到 30 秒（含走动、确认），差距仍在千倍量级。<br>
+    <b>注意这是「每个成功回合」的成本，已把失败重试摊进去了。</b></div>
+  </div>
+
+  <div class="box bad">
+    <b>「GPT-3 时刻」这个类比的分量，全在成本上。</b>GPT-3 之前，做一件语言任务要么雇人、要么写规则，边际成本是「分钟级人力」；GPT-3 之后是一分钱。真正被打开的不是「能力」——GPT-2 已经能写通顺的段落——而是<b>「便宜到可以随便试」</b>。<br><br>
+    而 Astra 现在是 1 万倍于人力。这不是「贵一点」，这是<b>差了四个数量级</b>。在这个位置上谈「时刻」，类比的对象应该是 2012 年的 AlexNet——它证明了深度网络可行，但 ImageNet 上的 AlexNet 推理一次要几秒，不能实时，也没人拿它做产品。<strong>从 AlexNet 到能用的视觉系统，中间隔的是十年和三个数量级的成本下降。</strong>
+  </div>
+
+  <h3>数字三：1000 亿参数的真正瓶颈是带宽，不是容量</h3>
+  <p>原文算得很对：1000 亿参数 × 4 bit = 400 亿字节 = 50 GB。然后说「还没计算运行时开销和上下文所需的内存」。方向对，但漏了更致命的一半。</p>
+
+  <table>
+    <tr><th>参数规模（4-bit）</th><th>权重体积</th><th>200 GB/s 带宽下的帧率上限</th><th>能否做 50 Hz 控制</th></tr>
+    <tr><td>100 亿</td><td>5 GB</td><td><b>40 Hz</b></td><td>接近（差了 20%）</td></tr>
+    <tr><td><b>1000 亿</b></td><td><b>50 GB</b></td><td><b>4 Hz</b></td><td><b>不行，差 12.5 倍</b></td></tr>
+  </table>
+
+  <div class="fml">
+    <div class="name">内存墙：帧率上限 = 带宽 ÷ 权重体积（dense 模型）</div>
+    \[ f_{\max}\approx\frac{B}{P\cdot b/8} \]
+    <div class="exp">\(B\) = 有效带宽（LPDDR5X 约 100–200 GB/s），\(P\) = 参数量，\(b\) = 每参比特数。<br>
+    代入 P=1e11, b=4, B=200 GB/s：\(f_{\max}\) = 200/50 = <b>4 Hz</b>。<br>
+    <b>控制回路需要 50 Hz（文中 Go2 就是 50 Hz 输出 12 维关节动作）。缺口 12.5 倍。</b></div>
+  </div>
+
+  <div class="box bad">
+    <b>这解释了原文自己引用的那个事实，但作者没用它来检验自己的设想。</b>他写「当前规模低于 100 亿参数的机器人模型已经能够运行在 NVIDIA Thor 上」——对，因为 5 GB 在 200 GB/s 下能跑到 40 Hz，刚好够用。而他设想的「1000 亿参数直接在机器人本地运行」，在带宽上差一个数量级。<br><br>
+    <b>所以「限制部署规模的会是内存容量还是内存带宽」这个问题，答案大概率是带宽。</b>作者把问题提对了，但把答案押在了容量上——而容量恰好是 4-bit 量化已经解决了一半的那一半。<br>
+    <i>注：MoE 架构可以只激活部分参数，能绕过这条约束；但 MoE 的路由开销与显存占用是另一组问题，原文未涉及。</i>
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">算账</span>通用 vs 专用，比的不是能力，是摊销结构</h2>
+
+  <p>文章最实质的判断是这个：「独立机器人模型的价值空间可能会显著收缩。」作者给出的反驳预案是：专用模型公司需要证明「自己究竟能够做到哪些通用模型做不到的事情」。</p>
+
+  <p>这个框架是错的，而且错得关键。它把问题定义成<strong>能力边界</strong>，而真正的分野是<strong>成本结构</strong>。</p>
+
+  <div class="fml">
+    <div class="name">两条成本曲线的斜率不同</div>
+    \[ C_{\text{专用}}(N)=C_{\text{train}}+c_1 N,\qquad C_{\text{通用}}(N)=c_2 N \]
+    <div class="exp">\(N\) = 该任务被执行的次数。\(c_1\) = 本地一次前向的边际成本（接近电费），\(c_2\) = 一次 API 推理的价格。<br>
+    <b>关键在截距：专用模型有 \(C_{\text{train}}\)（一次性），通用模型没有。</b><br>
+    交叉点：\(N^{*}=C_{\text{train}}/(c_2-c_1)\)。<br>
+    代入文中数字：\(c_2\) ≈ 36.40 美元，\(c_1\) ≈ 0.001 美元 → 若训练一个专用策略花 10 万美元，则 \(N^{*}\) ≈ <b>2,747 次</b>。</div>
+  </div>
+
+  <div class="box good">
+    <b>这就是为什么「专用模型会消失」这个结论只在长尾成立。</b><br>
+    一个任务做 2700 次以上，专用模型就开始便宜；做 100 万次（工业分拣、装配、焊接），专用模型便宜 300 倍以上。<br>
+    而工业场景的定义就是<b>高重复</b>——它是靠重复摊薄固定成本才成立的。所以通用模型吃掉的是<b>长尾任务</b>（每次都不一样、无法预先训练的），专用模型守住的是<b>高频任务</b>。<br><br>
+    <b>两者不是替代关系，是按任务频次分层的关系。</b>文中「专属模型价值空间收缩」的说法在长尾端成立，在工业端不成立——而工业端才是机器人市场的主体。
+  </div>
+
+  <p>值得注意的是，作者其实摸到了这个答案的边缘。他写「部署并不只是一个成本中心，它也是专有物理数据产生的地方」——这句话把「部署」同时看作成本和资产，已经接近摊销思维。但他没有走完，最后还是回到了能力边界的框架。</p>
+
+  <h3>另一个自相矛盾：他引用的两个 Scaling Law 证伪了他的论点</h3>
+  <p>文章说「机器人预训练几乎没有表现出 Scaling Laws」，然后紧接着自己写：</p>
+
+  <div class="box bad">
+    「客观地说，数据 Scaling 已经开始展现效果。NVIDIA 的 EgoScale 利用超过 20,000 小时的人类视频展示了性能提升，而 Dyna-2 则利用超过 100 万小时的数据，建立了从人类到机器人迁移的 Scaling Law。」<br><br>
+    <b>这两条恰恰是「数据路线有效」的证据。</b>而 Astra 的物理操作能力，按作者自己的推测，也主要来自「通用多模态预训练」——也就是另一种数据 Scaling。<br>
+    所以「通用模型路线」和「数据 Scaling 路线」不是对立的：「通用模型」只是把数据规模做到了别人做不到的量级。文章把它们对立起来，于是「Astra 暗示了另一条路径」这个说法失去了基础——它不是另一条路，它是同一条路上跑得更远的那个。
+  </div>
+</section>
+
+<section id="crit">
+  <h2><span class="tag">批判</span>六条要打折的地方</h2>
+
+  <ol class="crit">
+    <li><b>「GPT-3 时刻」的类比错在成本维度。</b>36.40 美元 vs 人类 0.0035 美元，差 1 万倍。GPT-3 的本质是边际成本趋零，Astra 现在是边际成本极高。正确的类比是 AlexNet（2012）：方向对，但要等十年和三个数量级。</li>
+    <li><b>19/20 的置信区间下界（76.4%）几乎等于 74.8%。</b>两条被当作独立互证的证据，统计上可能无法区分。用 20 次试验支撑「时刻」这个词，样本量差了几个数量级。</li>
+    <li><b>74.8% 没有给对手的数字。</b>原文只说「显著超过多个专用机器人模型」，一个具体数字都没有。而 74.8% 本身意味着 120 项任务里失败 30 项——哪些类别失败、失败模式是什么，比均值重要得多。</li>
+    <li><b>「80% 的 egocentric video 只能提供有限增量价值」是全文最可能错的一句，而且自相矛盾。</b>如果 Astra 的物理能力来自通用多模态预训练，那这些预训练数据里本身就包含海量的人类操作视频。说「再给 1000 个拿杯子视频没用」，和「通用预训练见过海量拿杯子视频」是同一件事的两面——作者用前者论证「数据不重要」，用后者论证「通用模型够强」，两个论证互相拆台。</li>
+    <li><b>「1000 亿参数端侧」在带宽上不成立。</b>50 GB 权重 × 200 GB/s = 4 Hz，而控制需要 50 Hz，差 12.5 倍。作者自己提了「容量还是带宽」这个问题，却把答案押在容量上。</li>
+    <li><b>自动驾驶那段自我矛盾。</b>一面说「Robotaxi 越来越像是一个已经解决的问题」，一面列出「地理环境泛化、长尾安全问题、监管以及运营经济性仍然是重要挑战」。这两句在同一段里，前一句是结论，后一句否定了它。</li>
+  </ol>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">价值</span>该拿走什么</h2>
+
+  <h3>三条站得住的判断</h3>
+  <div class="step">
+    <div class="t">「部署是下一个瓶颈」</div>
+    <div class="d">这条最扎实。客户工作流程理解、数据采集方案、评测体系、故障诊断、硬件集成——这些工作的量级不会因为模型变强而减少，反而会因为期望变高而增加。<b>而且它是专有物理数据的产地</b>，这一点比「成本中心」的说法重要得多。</div>
+  </div>
+  <div class="step">
+    <div class="t">「数据质量而非规模」</div>
+    <div class="d">「十个人做拿起勺子会有十种方式，缺精确标注时增加示范只会增加歧义」——这句话对做数据的人有直接价值。它对应一个具体设计：<b>标注要描述中间动作和物理上下文，而不只是最终结果。</b></div>
+  </div>
+  <div class="step">
+    <div class="t">System 0 / 1 / 2 的分层</div>
+    <div class="d">「杯子开始滑落时，控制器要在几毫秒内调整抓取力，等前沿模型下一轮推理显然不可行」——这个例子把分层的必要性讲清楚了。<b>它的推论比作者自己说的更狠：只要控制的实时性要求存在，就永远需要一层本地的小模型</b>，区别只在于这一层有多小。</div>
+  </div>
+
+  <h3>必须打折的</h3>
+  <ul>
+    <li>「GPT-3 时刻」——成本差 1 万倍，类比不成立。</li>
+    <li>「专用模型价值空间显著收缩」——只在长尾成立，工业端相反。</li>
+    <li>「机器人预训练没有 Scaling Law」——作者自己引用的两个例子就是反例。</li>
+  </ul>
+
+  <h3>这篇真正的位置</h3>
+  <div class="box good">
+    <b>它是一篇好的「行业情绪校准」，不是一篇好的「成本分析」。</b>它准确地捕捉到了一个真实转折：通用模型第一次在物理任务上给出了不像 demo 的成绩，而且不是机器人公司做的。这个观察是有价值的，值得认真对待。<br><br>
+    但它把一个<b>方向性验证</b>读成了<b>范式更替</b>。两者之间隔着的不是信念，是四个数量级的成本和十几倍的带宽缺口。<br><br>
+    <b>如果只记一句话：通用模型会吃掉长尾任务，专用模型守住高频任务，分界线由「这个任务要做多少次」决定，而不是由「模型有多聪明」决定。</b>
+  </div>
+</section>
+
+<section>
+  <h2><span class="tag">元信息</span>素材说明</h2>
+  <p class="src">
+    <b>原文：</b>《GPT-6 Astra是共识，那非共识是什么》，公众号「human five / 小言说谈」，发布 2026-11-02 00:11:15。<br>
+    <b>原文规模：</b>文字 6,139 字，图 4 张，表 0 个。结构为「10 条判断 + blog 正文五节」。<br>
+    <b>原文性质：</b>产业评论 / 投资观点，非论文、非实验报告。文中数据均转引自他人研究（RoboCurve、NVIDIA Astranomy、EgoScale、Dyna-2）或社媒发言（Elon Musk），原文未附来源链接。<br>
+    <b>本文自行推导、原文未出现的部分：</b>① 19/20 的 Wilson 95% 置信区间 [76.4%, 99.1%]；② 36.40 美元与人类 3 秒劳动成本的 1 万倍差距（按 20/30/50 元时薪三档）；③ 内存带宽约束下的帧率上限（4 Hz vs 需要 50 Hz）；④ 通用与专用的摊销交叉点模型及 2,747 次的估算；⑤ 「两个 Scaling Law 证据证伪自身论点」的分析。<br>
+    <b>本文采用的外部常识假设（原文未给）：</b>人类完成「抓方块放碗」约 3 秒；中国制造业时薪 20–50 元；LPDDR5X 有效带宽 100–200 GB/s；汇率 7.2。这些假设若变化，对应倍数需重算，但均在千倍以上量级，不影响结论方向。
+  </p>
+</section>
+
+<footer>本解析仅本地存档，未推送。 · 3W1H 第一性原理 · 2026-11-02</footer>
+
+</div></body>
+</html>
