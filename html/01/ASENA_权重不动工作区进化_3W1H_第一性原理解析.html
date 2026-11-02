@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASENA：权重一个字没改，成功率从 72% 涨到 98% · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>ASENA：权重一个字没改，成功率从 72% 涨到 98%<span class="sub">NVIDIA GEAR · 让 coding agent 直接编程人形机器人 · ASENA-VLN 4B 单目导航 · 工作区持久进化 · Unitree G1 真机</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-01</div>
+    <div><b>关键词</b> 编程式智能体 · 持久工作区 · 自我进化 · 具身导航</div>
+    <div><b>一句话</b> 进化的载体不是权重，是可读、可组合、可回滚的程序</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>"机器人自我进化"这句话，行业里默认指的是<b>改权重</b>——在线 RL、微调、持续学习。这条路有三个绕不过去的老毛病：灾难性遗忘、需要海量在线数据、以及最致命的一条——<b>你改完之后不知道它为什么变强了，也不知道它什么时候会突然变弱</b>。ASENA 换了一个载体：<b>权重全程冻结，进化发生在"程序 + 笔记"上</b>。智能体读传感器数据、写代码、执行、看录制结果、修 bug，把成功路径存成可复用的技能和笔记。同一批反复出现的 100 个任务，跑十轮之后 R2R 从 <b>72% 涨到 98%</b>、RxR 从 <b>65% 涨到 89%</b>，而模型参数一个都没动。它证明的不是"智能体很强"，而是<b>进化的速度取决于你的经验存成了什么形态</b>：存成权重，就只能靠梯度一点点挪；存成程序，就能被检索、组合、审查和回滚。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么拆</a>
+  <a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：把人形机器人当成一台"可编程设备"</h2>
+  <p>先说明来源：这篇公众号文章本身是 AI椰青 Robotion 社群的一场分享会预告（11 月 6 日 10:00 直播，分享人郑安杰，UCSD 在读博士，师从 Xiaolong Wang，曾实习于 NVIDIA Research 与 Adobe Research，代表作 SpatialRGPT、NaVILA、GR3D）。技术实质来自同一篇论文：<b>ASENA: Self-evolving Agents for Embodied Navigation</b>（arXiv 2609.39207，NVIDIA GEAR，2026-09-30 首版 / 10-12 修订）。</p>
+  <p>ASENA 的定位不是"一个更强的策略"，而是一个<b>统一的机器人执行外壳（robot harness）</b>。它给通用 coding agent 四件事：</p>
+  <table>
+    <tr><th>能力</th><th>干什么</th><th>为什么关键</th></tr>
+    <tr><td><b>读传感器</b></td><td>把相机、位姿、本体状态暴露成可读的数据</td><td>让"程序"能看见世界，而不是只能调用预设接口</td></tr>
+    <tr><td><b>写并执行程序</b></td><td>agent 现场产出代码，直接驱动导航、操作、交互</td><td>行为不再受限于预先定义好的技能库</td></tr>
+    <tr><td><b>检查录制结果</b></td><td>回看执行过程，判断成功还是失败、错在哪</td><td>这是"能修"的前提——没有回看就没有归因</td></tr>
+    <tr><td><b>修失败 + 复用笔记与可执行技能</b></td><td>把改好的程序和结论存进持久工作区</td><td>下一次同类任务直接调用，不再重新摸索</td></tr>
+  </table>
+  <p>在这之上还挂了一个可选工具：<b>ASENA-VLN</b>，一个 4B 参数的<b>单目</b>导航策略。它输出机体坐标系下的轨迹，同时覆盖"长路线"和"短时行为"两种尺度；共享的视觉语言解码器在三种数据上联合训练——路线指令、视觉问答，以及一个新构造的「几何推导出的原子导航任务」数据集。</p>
+  <p>单独的 ASENA-VLN 就已经很强：<b>R2R 68.7%、RxR 70.2%</b>，均为当前最好水平（SOTA）。但论文真正想说的不是这个数字，而是<b>把它当工具塞进 coding agent 之后发生了什么</b>——成功率在两个 agentic 基准上各提升 <b>11 个百分点</b>，同时执行时间下降。</p>
+  <p>真机演示在 <b>Unitree G1</b> 上做，任务包括搜索、视觉检查、空间推理、合成手势，以及<b>不依赖预建地图</b>的移动操作（取物 + 搬运 + 递交）。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：四条公理，把"进化"从权重里挪出来</h2>
+
+  <h3>公理一：权重里的一次更新，是不可读、不可组合、不可审查的</h3>
+  <p>先把"学习"这件事拆到底层。梯度下降做的事情是：在几十亿维的参数空间里挪一小步，让某类输入的输出更接近目标。<b>这一小步没有语义。</b>你没法问它"你学会了什么"，也没法把"学会开门"这段更新单独摘出来，复用到"开抽屉"上。</p>
+  <p>这就导致三个后果，全是老问题：</p>
+  <ul>
+    <li><b>遗忘</b>：新任务的数据会把旧任务的解压掉，因为参数是共享的；</li>
+    <li><b>不可审查</b>：出了问题，你拿不到"它当时是怎么想的"；</li>
+    <li><b>不可组合</b>：学会了 A 和 B，不等于会 A+B，因为两者的更新在参数里纠缠。</li>
+  </ul>
+  <div class="step"><div class="t">推论 1</div><div class="d">如果"进化"的目标只是「下次遇到同类任务做得更好」，那它<b>并不要求改权重</b>。它只要求：这次的解法被<b>以可复用的形态</b>存下来。改权重只是实现这件事的<b>一种</b>手段，而且是最难控制的那种。</div></div>
+
+  <h3>公理二：程序是"人类可读的中间表征"，所以能被复用、组合、回滚</h3>
+  <p>这就是 ASENA 的全部赌注：<b>把经验存成代码和笔记，而不是存成参数扰动。</b></p>
+  <p>代价和收益都很清楚：</p>
+  <table>
+    <tr><th>维度</th><th>存成权重</th><th>存成程序/笔记（ASENA）</th></tr>
+    <tr><td>可读性</td><td>无</td><td>完全可读——就是几行 Python</td></tr>
+    <tr><td>可组合</td><td>纠缠，难拆</td><td>函数调用，天然可拼</td></tr>
+    <tr><td>可回滚</td><td>要存 checkpoint</td><td>删掉那个文件就行</td></tr>
+    <tr><td>可迁移到新本体</td><td>要重训</td><td>改接口适配层即可</td></tr>
+    <tr><td>泛化能力</td><td><b>强</b>——能隐式抓住没见过的相似情形</td><td><b>弱</b>——只覆盖被写下来的情形</td></tr>
+  </table>
+  <p>最后一行是关键，也是这条路线真正的天花板：<b>程序不会泛化，只会积累。</b>它靠"见得够多"来覆盖，不靠"举一反三"。</p>
+  <div class="step"><div class="t">推论 2</div><div class="d">所以这条路线的性能曲线必然是<b>「在重复出现的任务上快速爬升，在全新任务上原地不动」</b>。后面第四节会用这条推论去审它的实验设计——因为论文的评测恰好就是"十轮跑同一批 100 个任务"。</div></div>
+
+  <h3>公理三：能修，必须先能看；能看，必须先有录制</h3>
+  <p>ASENA 的循环里，"检查录制结果（inspect recorded outcomes）"这一步被放在执行之后、修复之前。这个顺序不能颠倒，理由很硬：<b>失败归因需要证据，而证据只能来自过程记录</b>。</p>
+  <p>如果只给 agent 一个"失败"的布尔信号，它只能瞎猜——换个方向再来一次。给了完整录制，它才能定位到"是在第二步转弯角度不够，撞到门框了"。这两者的修复效率差一个量级。</p>
+  <p>这一点和同期另一条技术线正好对上：机器人记忆系统正在解决的，就是"如何低成本取回任务执行时的那 8 秒画面"。<b>会写代码的 agent + 能回看的记忆，是同一个闭环的两半。</b></p>
+
+  <h3>公理四：进化的产出必须能"叠"，否则每次都要从零开始</h3>
+  <p>论文里最硬的一组数字，是"持久工作区演化"（persistent workspace evolution）：让系统<b>反复经过同一批 100 个任务的子集，共十轮</b>，每轮用仿真反馈改工作区。</p>
+  <table>
+    <tr><th>基准</th><th>第 1 轮</th><th>第 10 轮</th><th>净增</th></tr>
+    <tr><td>R2R</td><td>72%</td><td><b>98%</b></td><td>+26 pp</td></tr>
+    <tr><td>RxR</td><td>65%</td><td><b>89%</b></td><td>+24 pp</td></tr>
+  </table>
+  <p>十轮、26 个百分点，权重没动。这条曲线说明工作区里的东西是<b>可累积</b>的：第二轮不用重学第一轮的结论，直接站在上面。如果经验存成权重，这条曲线会更平——因为每一轮的新数据都会冲淡上一轮的更新。</p>
+  <div class="step"><div class="t">推论 3</div><div class="d">"可累积"比"学得快"重要得多。一个每轮涨 2.6pp 且不衰减的系统，十轮就翻倍；一个每轮涨 5pp 但会遗忘的系统，可能三轮后就原地打转。<b>持续学习的真正指标不是单轮增益，是曲线有没有平台期。</b></div></div>
+
+  <div class="box good"><b>公理链收口：</b>权重更新不可读不可组合（公理一）+ 程序可读可组合可回滚（公理二）+ 修复依赖过程录制（公理三）+ 经验必须能叠（公理四）= <b>"权重冻结 + 工作区进化"不是省事的权宜之计，而是在"可解释、可累积"这两个约束下的唯一解。</b>代价是放弃隐式泛化——这个代价第四节要认真算。</div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：一个循环，两种进化</h2>
+
+  <h3>循环：读 → 写 → 跑 → 看 → 修 → 存</h3>
+  <p>ASENA 的一轮任务是：agent 读传感器数据 → 写一段程序 → 执行 → 检查录制结果 → 如果失败就改程序再跑 → 成功后把这段程序和结论写进工作区。</p>
+  <p>注意这里有个和"调用技能库"的本质区别：<b>程序是现场生成的，不是从固定集合里选的</b>。所以它能做技能库里没有的事——论文真机演示里的"合成手势"就是这类，没有哪个预置技能会包含"比一个手势"这种指令，但写成代码就很自然。</p>
+
+  <h3>进化之一：技能层——把成功路径固化成可执行代码</h3>
+  <p>成功之后，那段程序进工作区。下次遇到相似任务，agent 可以直接调用、或改几行再用。这层的收益是<b>减少试错</b>。</p>
+  <p>它和 10 月 27 日那篇 Metatron 讲"技能是普通代码"看起来像，但层次不同：Metatron 说的是<b>控制层</b>——把"身体怎么协调"冻成执行层，把"任务要什么"写成代码，解决的是"一个新任务要不要重训策略"；ASENA 说的是<b>智能体层</b>——把"上次怎么把这件事干成的"写成代码，解决的是"同一个任务第二次还要不要重新摸索"。前者是架构分层，后者是经验积累。</p>
+
+  <h3>进化之二：笔记层——把"世界知识"写成文字</h3>
+  <p>除了可执行技能，工作区里还有笔记（notes）。这类东西不可执行，但能避免重复推理：某扇门往哪边开、某个房间在第几层、上次这个指令被理解偏了要换个说法。</p>
+  <p>两层加起来构成一个很朴素的记忆结构：<b>可执行的存代码，不可执行的存文字。</b>判断标准只有一条——<b>它需不需要被"跑"一遍</b>。</p>
+
+  <h3>导航作为一个"可选工具"，而不是主控</h3>
+  <p>这是设计上最值得学的一处。<b>ASENA-VLN 没有被做进主控回路，而是被注册成一个工具</b>，coding agent 需要时才调用。</p>
+  <p>结果是两个数字：导航接入后，两个 agentic 基准各 <b>+11pp</b>，且执行时间下降。为什么接入一个更强的导航反而更快？因为<b>不用它的时候，agent 得靠"看一帧、想一下、走一步"的方式慢慢挪</b>；把它当工具调一次，就能拿到一段完整轨迹直接执行。</p>
+  <div class="step"><div class="t">这条设计的普适价值</div><div class="d">不要把"学出来的策略"和"写出来的程序"做成主从关系，做成<b>工具与被调用者</b>。策略负责它擅长的（连续、高频、几何），程序负责它擅长的（长程、组合、条件判断）。谁也不用吞掉谁。</div></div>
+
+  <h3>真机：不建图的移动操作</h3>
+  <p>Unitree G1 上演示了搜索、视觉检查、空间推理、合成手势，以及结合取物、搬运、递交的移动操作，<b>全程没有预建地图</b>。这一条容易被忽略，但它才是"编程式"最实在的收益：传统导航栈要先建图再规划，而这里 agent 可以现场决定"先往那边走看看"。代价是效率——没有全局地图，路径一定不是最优的。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：那条 72→98 的曲线，口径要看仔细</h2>
+
+  <h3>它真正证明了什么</h3>
+  <div class="box good">
+  <p><b>1. 给出了"不改权重也能持续变强"的干净证据。</b>行业里"自我进化"喊了很久，但大多停留在概念或单轮 demo。这里给了一条十轮、跨两个基准、可复现形式的曲线（72→98 / 65→89）。<b>曲线形态本身就是论据</b>——它证明经验能叠、不衰减。</p>
+  <p><b>2. 把"策略"降级成"工具"这个做法，工程上非常对。</b>它让学出来的模型和写出来的程序各干各的，不必强行统一。这个接口设计思路可以迁移到任何"模型 + agent"的混合系统。</p>
+  <p><b>3. 真机演示覆盖了"技能库之外"的行为。</b>合成手势、无图搜索这类任务，靠预置技能库是做不出来的——这恰好是"现场编程"相对"技能检索"的核心优势。</p>
+  </div>
+
+  <h3>需要打问号的地方</h3>
+  <ol class="crit">
+    <li><b>72%→98% 的前提是"同一批 100 个任务反复跑十轮"，这恰好是程序化路线最擅长的场景，也是真实世界最不常出现的场景。</b>真实部署里任务是<b>持续出现新分布</b>的，不是同一百个任务循环十次。按公理二的推论，这条路线的强项就是"重复任务上的覆盖"，那这个实验其实是用最强项去考它——它没有回答"第 11 轮来了 50 个全新任务，涨还是掉"。论文没有这个"held-out 新任务"的对照曲线，这是最大的空白。</li>
+    <li><b>98% 是"任务成功率"，不是"任务完成质量"。</b>导航类基准的成功判定通常是"到达目标附近且停止"，不考核路径是否合理、耗时是否可接受、有没有撞到东西。而程序化 agent 有个天然倾向：靠"多试几次、多绕几圈"来提高到达率。论文提到执行时间下降（接入 VLN 后），但没给"每任务尝试次数 / 总移动距离"这些能暴露"暴力搜索"的指标。</li>
+    <li><b>ASENA-VLN 的 68.7% / 70.2% 是 SOTA，但和主系统的 98% 不是一回事，两个数字放一起容易被误读。</b>前者是单次导航策略的离线指标，后者是"十轮迭代后、100 个见过任务"的在线指标。把它们并列会让人以为"导航从 68.7 提升到了 98"——完全不同的口径。</li>
+    <li><b>"权重冻结"省掉了灾难性遗忘，但换来了另一种遗忘：工作区会膨胀。</b>十轮之后工作区里堆了十轮的技能和笔记，哪些还有效？两条笔记冲突了信谁？某个技能因为环境改了（家具挪了位置）已经失效，agent 怎么知道？<b>论文没有提工作区的清理、失效、冲突消解机制。</b>这跟同期视频记忆系统撞上的是同一个问题——<b>缓存在变强，也在变得越来越难以证伪</b>。</li>
+    <li><b>coding agent 的能力上限就是系统的上限，而这一点被当成了外部变量。</b>"进化的速度取决于 coding agent 写代码的能力"。如果底座模型换代，整套系统的表现会跳变——这不是一个自洽的系统，是一个<b>把进步外包给基座模型</b>的系统。这在工程上完全合理（借力打力），但如果被包装成"机器人自我进化算法"，就名不副实了：<b>进化的是工作区，不是智能体本身的能力边界。</b></li>
+    <li><b>真机部分全是定性演示。</b>搜索、检查、手势、取物递交，描述到位但没有数字——没有成功率、没有次数、没有失败案例。这在具身论文里是常见做法，但意味着"真机能跑通"和"真机能稳定用"之间还差着整个可靠性工程。</li>
+    <li><b>"+11pp" 的对照条件要看清。</b>是同一个 coding agent、同样的工具集，<b>只多了 VLN 这一个工具</b>吗？如果是，那 11pp 的分量很足；如果同时还改了提示词或工具描述，那这个数字就说不清归因。论文摘要层面没有交代，需要看正文。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>ASENA 最值得带走的是那个判断：<b>想让系统越用越强，先想清楚"经验要存成什么形态"。</b>存成权重，你得到泛化但失去可控；存成程序，你得到可控但失去泛化。这篇论文选了后者，并且用一条 72→98 的曲线证明它在这个选择上能走多远——但那条曲线的横轴是"同一批任务重复了几次"，而不是"世界变了多少"。这两者的区别，就是 demo 和产品的区别。</p>
+  <p class="src">原文：《ASENA：从具身导航迈向自进化智能体》，公众号 human five，2026-11-01（AI椰青 Robotion 分享会预告，11-06 10:00 直播，分享人郑安杰 / UCSD）。技术来源：An-Chieh Cheng 等，<i>ASENA: Self-evolving Agents for Embodied Navigation</i>，NVIDIA GEAR，arXiv:2609.39207（2026-09-30 v1 / 2026-10-12 v2）。主页：research.nvidia.com/labs/gear/asena。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ 来源：公众号 human five</footer>
+</div></body>
+</html>

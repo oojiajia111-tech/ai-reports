@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GAR：流策略的 5 步去噪，可能一直在算一件根本不存在的事 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>GAR：流策略的 5 步去噪，可能一直在算一件根本不存在的事<span class="sub">Gaussian Action Readout · 冻结主干只换最后一层 · 0.02% 状态拟合 · 1.91× 端到端加速 · 成功率仅掉 0.6pp</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-10-29 · arXiv 2610.40271</div>
+    <div><b>关键词</b> 流匹配策略 · 高斯读出 · 一步采样 · 分布近似</div>
+    <div><b>一句话</b> 不是蒸馏做得好，是教师的分布本来就没那么复杂</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>流匹配（flow matching）策略之所以要跑 4–5 步去噪才吐出一个动作块，是因为它假设：<b>给定当前观测，正确动作有多个峰，解析形式写不出来，只能一步步积分过去</b>。这篇论文拿实测把这个假设捅了一刀——它用 sliced Wasserstein 距离把教师采样的动作分布和高斯分布直接比，发现<b>几乎分不开</b>（Xiaomi 平移全协方差误差 0.8%，高斯采样控制基线 0.7%）。也就是说，那 5 次完整前向很可能是在<b>用最贵的方式采样一个本来就能闭式写出来的分布</b>。GAR 的做法朴素到近乎冒犯：冻结整个预训练网络，<b>只换掉最后那层线性投影</b>，让它直接输出一个高斯的均值和对角方差，一次前向出结果。速度 1.91×，成功率从 58.24% 掉到 57.64%。它真正证明的不是"蒸馏技巧高超"，而是<b>流策略的表达力里有大量冗余，而且这个冗余能用 0.02% 的样本量测出来</b>。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#formula">③ 四个公式</a>
+  <a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：把"迭代采样"换成"一次读出"</h2>
+  <p>先看清被替换的对象。当前最强的机器人控制器里有很大一类是<b>流策略</b>：网络学一个速度场 \(v(m_t,t\mid c)\)，从纯噪声出发，沿这个场一步一步积分，最后落到一个动作块 \(m\) 上。步数 \(N\) 是超参，实测部署配置是：</p>
+  <table>
+    <tr><th>教师策略</th><th>去噪步数 \(N\)</th><th>每次动作块的网络前向次数</th><th>batch=1 延迟</th></tr>
+    <tr><td>Xiaomi-Robotics-1</td><td>5（Euler）</td><td>5 次</td><td>220.25 ms</td></tr>
+    <tr><td>GR00T N1.5</td><td>4（Euler）</td><td>4 次</td><td>68.01 ms</td></tr>
+    <tr><td>Xiaomi-Robotics-0（LIBERO）</td><td>5（Euler）</td><td>5 次</td><td>—</td></tr>
+    <tr><td><b>GAR（本文）</b></td><td><b>1</b></td><td><b>1 次</b></td><td>115.36 / 43.30 ms</td></tr>
+  </table>
+  <p>GAR 的全部改动是：保留教师的视觉编码器、时序主干、以及那层把特征映射成速度的线性投影 \(W_v,b_v\)，<b>其余参数一个不动</b>，然后在同一份读出特征上，另训两个小东西：</p>
+  <ul>
+    <li><b>均值</b>：不用训。用 \(t=0\) 的一步 Euler 就能<b>闭式</b>拿到（下面式 2 会推）；</li>
+    <li><b>方差</b>：一个<b>单隐层 128 单元</b>的 MLP，输入是同一组读出特征，输出逐维方差。</li>
+  </ul>
+  <p>于是采样变成：算一次特征 → 读出均值 \(\mu_\theta(c)\) 和方差 \(\sigma_\theta^2(c)\) → 抽一个高斯噪声乘上去 → 完事。<b>动作块在一次前向里就出来了。</b></p>
+  <p>配套还白送一个东西：因为分布写成了显式高斯，动作块的<b>似然可以闭式算</b>，连积分都不用跑。这一点论文只提了一句，但它的潜力比加速更大，第四节会说。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：六条公理，把"5 步"这个数字逼到墙角</h2>
+
+  <h3>公理一：流策略慢，慢的不是模型大，慢在"采样要迭代"</h3>
+  <p>一个常见的误读是"扩散/流模型慢是因为参数多"。不是。同一个网络，前向一次和五次，参数量完全一样，差别在<b>调用次数</b>。延迟账很清楚：Xiaomi 220 ms 里有固定的视觉语言处理开销，剩下的是 5 次去噪；砍到 1 次，降到 115 ms。GR00T 68 → 43 ms。</p>
+  <p>这也解释了为什么加速比不是 5× 而是 1.91×——<b>固定的那部分开销砍不掉</b>。这条后面会变成一条重要的局限。</p>
+  <div class="step"><div class="t">推论 1</div><div class="d">"去噪步数"是流策略唯一一个<b>不改精度只改延迟</b>的旋钮。所有做实时机器人的团队都在这颗旋钮上妥协——用 5 步而不是 50 步，本来就已经是妥协的产物。</div></div>
+
+  <h3>公理二：迭代采样存在的唯一理由，是"分布复杂到写不出来"</h3>
+  <p>为什么不能一步出结果？因为如果条件分布 \(p(m\mid c)\) 有多个峰（比如绕过障碍可以从左也可以从右），你没法用一个均值加噪声表示它——均值会落在两个峰中间的"山谷"里，那是一个物理上不成立的动作。</p>
+  <p>所以整套迭代机制是一个<b>为多峰性付出的代价</b>：我算不清分布长什么样，那我就一步步走过去，走到哪个峰算哪个。</p>
+  <div class="step"><div class="t">推论 2</div><div class="d">如果实测发现条件分布其实是单峰、近似高斯，那这个代价就是<b>白付的</b>。这不是工程优化问题，是前提假设错了。</div></div>
+
+  <h3>公理三：实测下来，条件分布确实接近高斯——而且这个结论被两路独立证据夹住</h3>
+  <p>这是全文最关键的一节，作者做了两件事，缺一件说服力就减半。</p>
+  <p><b>证据一：直接量距离。</b>对每个固定观测 \(c\)，取教师采样的 512 个样本，拟合一个高斯，然后用 <b>sliced 1-Wasserstein 距离</b>（沿 256 个一维方向投影后比分布）算"教师样本"和"高斯样本"差多远。关键在于他们设了<b>高斯采样控制基线</b>——即用真正的高斯生成 512 个样本，再和拟合出的高斯比，得到的距离就是"有限样本噪声"的下限。</p>
+  <table>
+    <tr><th>教师</th><th>动作组</th><th>全协方差误差</th><th>控制基线</th><th>对角误差</th></tr>
+    <tr><td rowspan="2">Xiaomi</td><td>平移</td><td><b>0.8%</b></td><td>0.7%</td><td>1.8%</td></tr>
+    <tr><td>旋转</td><td>1.8%</td><td>1.6%</td><td>3.0%</td></tr>
+    <tr><td rowspan="2">GR00T</td><td>平移</td><td>4.6%</td><td>3.3%</td><td>9.1%</td></tr>
+    <tr><td>旋转</td><td>9.5%</td><td>6.3%</td><td>19.9%</td></tr>
+  </table>
+  <p>看第一行：<b>0.8% 对 0.7%</b>。这意味着教师的采样分布和高斯分布的差别，几乎就等于"用 512 个样本估一个高斯本身带来的统计噪声"。换句话说，<b>在这个分辨率下，你分不出它是高斯还是不是高斯。</b></p>
+  <p><b>证据二：把拟合误差这个变量排除掉。</b>第一路证据有个漏洞：万一是 GAR 学得不够好，而不是分布本来简单呢？作者补了一个干净的控制实验——<b>直接用教师自己的样本矩</b>（真均值、真协方差，一点学习误差都没有）拟合一个高斯，然后从这个高斯采样去跑任务。结果与教师采样的成功率<b>无显著差异</b>：GR00T +0.20pp，Xiaomi −1.56pp。</p>
+  <div class="box good"><b>这两步合起来才是完整的论证：</b>不是"我学得像"，而是"<b>用真参数拟合高斯也不掉分</b>"。它把"蒸馏质量"这个混淆变量彻底切掉了，剩下的唯一解释就是<b>分布本身没有高斯以外的结构</b>。这是全文最漂亮的一手。</div>
+  <div class="step"><div class="t">推论 3</div><div class="d">既然分布近似高斯，那 4–5 步去噪就是在<b>表达一个不存在的结构</b>。流匹配的表达力优势，在这批任务上被浪费了。</div></div>
+
+  <h3>公理四：均值根本不需要学，它是个恒等式</h3>
+  <p>这是数学上最"便宜"的一环。流匹配用线性插值路径：\(m_t=(1-t)\epsilon+t\,m\)。在 \(t=0\) 处，速度场的定义直接给出</p>
+  <p style="text-align:center;font-size:15px;">\(v(\epsilon,0\mid c)=\mathbb{E}[m-\epsilon\mid m_t=\epsilon,c]=\mu(c)-\epsilon\)</p>
+  <p>移项就得到 \(\epsilon+v(\epsilon,0\mid c)=\mu(c)\)。也就是说：<b>只要在纯噪声点查一次速度，加上噪声本身，就是条件均值</b>。它不需要训练、不需要样本、不依赖高斯假设——是一条恒等式。</p>
+  <div class="step"><div class="t">推论 4</div><div class="d">GAR 剩下要学的只有<b>方差</b>。"蒸馏一个策略"这个听起来很重的任务，实际被压缩成了"拟合一个 \(d_m\) 维的对角协方差函数"。</div></div>
+
+  <h3>公理五：方差藏在"中间时刻"的速度里，而且能用 \(t=0\) 的特征去读</h3>
+  <p>难点在于：\(t=0\) 处的速度只含均值信息，<b>没有方差信息</b>（因为那一点已经落在均值上了）。怎么办？答案是去中间时刻查。</p>
+  <p>在线性插值路径上，速度、位置、方差三者有确定的代数关系：给定 \(0<t<1\) 和某个位置 \(x\)，可以反解出每个维度的"斜率" \(\alpha_i(t,c)\)，再由它算出 \(\sigma_i^2(c)\)（式 3 给了完整表达）。</p>
+  <p>但这里有个工程麻烦：中间时刻的特征需要额外跑一次前向，那不就白省了吗？作者的解法是观察到一个经验事实——<b>\(t=0\) 和 \(t=0.1\) 的读出特征近乎平行，余弦相似度约 0.999</b>。既然方向几乎一样，就可以<b>直接用 \(t=0\) 那次前向的特征</b>去喂方差 MLP，不用多跑。</p>
+  <div class="step"><div class="t">推论 5</div><div class="d">这个 0.999 是整个方法的"力学支点"，但它是个<b>经验观察、不是定理</b>。换一个教师、换一种路径插值（比如不是线性而是端点最优传输），这个数可能就不成立了。第四节会针对这点提一个问题。</div></div>
+
+  <h3>公理六：待拟合的函数有多平滑，看"需要多少样本"就知道答案</h3>
+  <p>论文最惊人的数字不是 1.91×，是 <b>0.02%</b>。</p>
+  <p>合格的训练状态总数是 \(N=26{,}612{,}851\)（Human300 前 100 个演示、剔除留作调优与评估的部分、界面帧 6 到 \(L_d-17\)）。实际只用了 <b>6,000 个 context</b>，即 \(100\times6000/N\approx0.02\%\)。取样规则极其粗暴：300 个任务每个任务随机挑 5 个演示，每个演示取 4 个等间隔内部状态，完事。</p>
+  <p>拟合耗时：均值（CPU 最小二乘）<b>3.7 秒</b>；对角协方差 94.4 秒；全协方差 100.3 秒；命令拟合 16.7 秒；合计<b>约 115–121 秒</b>（不含教师采样和特征提取）。</p>
+  <div class="box bad"><b>反过来说也成立：</b>用 0.02% 的样本就能拟合好，说明这个待拟合函数在状态空间里<b>非常平滑、非常低维</b>。如果它真的依赖精细的接触状态、真的有局部多峰，这点样本连"碰到"那些区域都做不到。所以 0.02% 这个数字既是效率证明，也是一条<b>关于分布简单性的强断言</b>——比成功率表更能说明问题。</div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Math</span>四个公式：从"5 步积分"到"1 次读出"</h2>
+
+  <div class="fml">
+    <div class="name">式 1｜流匹配的插值与速度场（教师怎么训的）</div>
+    \[ m_t=(1-t)\,\epsilon+t\,m,\qquad v(m_t,t\mid c)=\mathbb{E}\left[\,m-\epsilon\mid m_t,\,c\,\right],\qquad \epsilon\sim\mathcal{N}(0,I) \]
+    <div class="exp">
+    <b>大白话：</b>\(m\) 是"正确的动作块"（一段连续几十步的关节指令），\(\epsilon\) 是纯噪声，\(t\) 是一个从 0 到 1 的旋钮。\(m_t\) 就是"噪声和真动作按比例掺起来"的中间态：\(t=0\) 全是噪声，\(t=1\) 全是真动作。<br>
+    \(v\) 是网络要学的东西——<b>在任意一个中间态，指向"真动作在哪边"的方向和速度</b>。注意这个 \(v\) 是条件期望，即"给定这一步看到的东西，平均该往哪走"。<br>
+    <b>关键：</b>训练时只需要回归这个期望，不需要知道分布形状。这正是它能表达复杂分布的来源，也是它"慢"的来源——你没有分布本身，只有"往哪走"，所以只能一步步走。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2｜\(t=0\) 的均值恒等式（GAR 的均值为什么免费）</div>
+    \[ \epsilon+v(\epsilon,0\mid c)=\mathbb{E}[m\mid c]=\mu(c) \]
+    <div class="exp">
+    <b>大白话：</b>把旋钮拧到 \(t=0\)，此时 \(m_t=\epsilon\)，代进式 1 的期望里就是 \(\mathbb{E}[m-\epsilon\mid c]=\mu(c)-\epsilon\)。移项即得。<br>
+    <b>物理含义：</b>站在"纯噪声"这个点上问网络"真动作在哪"，网络答的方向和距离，加上你脚底下这个噪声向量，就是真动作的<b>平均位置</b>。<br>
+    <b>这条为什么重要：</b>它不依赖任何高斯假设，是流匹配自身的性质。所以 GAR 的均值部分<b>零参数、零训练、零样本</b>——真正要学的只剩"这个平均值周围有多散"。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3｜从中间时刻的速度反解方差（GAR 怎么把"散度"读出来）</div>
+    \[ \alpha_i(t,c)=\frac{\left[W_v\,u(c,x,t)+b_v\right]_i-\mu_i(c)}{x_i-t\,\mu_i(c)},\qquad
+       \sigma_i^{2}(c)=\frac{(1-t)\left[1+(1-t)\,\alpha_i(t,c)\right]}{t\left[1-t\,\alpha_i(t,c)\right]} \]
+    <div class="exp">
+    <b>大白话：</b>\(u(c,x,t)\) 是网络倒数第二层的特征，\(W_v,b_v\) 是把它变成速度的那层线性投影（<b>这两样都冻结不动</b>）。<br>
+    第一个式子在算 <b>\(\alpha\)</b>：在中间时刻 \(t\)、位置 \(x\) 处的速度，相对"均值方向"偏了多少、按距离归一化之后偏了多少——可以理解成"这条轨迹的斜率"。<br>
+    第二个式子把它翻译成方差 \(\sigma^2\)：斜率越陡，说明样本在这个维度上散得越开。<b>均值是"靶心"，中间时刻的速度偏移量透露了"弹着点有多散"。</b><br>
+    <b>两个前提要注意：</b>一是要求 \(x_i\neq t\,\mu_i(c)\)，否则分母为零（正好落在均值路径上就反解不出）；二是它假设<b>对角</b>高斯。此外论文靠"\(t=0\) 与 \(t=0.1\) 特征余弦相似度 0.999"这个经验事实，直接用 \(t=0\) 的特征来训方差 MLP，省掉了额外前向。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 4｜实际训练的损失 + 闭式似然（拟合与打分的两端）</div>
+    \[ \mathcal{L}_\mu=\mathbb{E}_{c}\left[\tfrac{1}{d_m}\left\|\mu_\theta(c)-\widehat{\mu}_c\right\|_2^2\right],\qquad
+       \mathcal{L}_\Sigma=\mathbb{E}_{c}\left[\tfrac{1}{d_m^{2}}\left\|D^{-1}\!\left(\Sigma_\theta(c)-\widehat{\Sigma}_c\right)\!D^{-1}\right\|_F^{2}+\lambda_{\mathrm{var}}\,\mathcal{R}_{\mathrm{var}}(c)\right] \]
+    \[ p_\theta(m,b\mid c)=\mathcal{N}\!\left(m;\,\mu_\theta(c),\,\Sigma_\theta(c)\right)\prod_{j}p_{\theta,j}(c)^{b_j}\left[1-p_{\theta,j}(c)\right]^{1-b_j} \]
+    <div class="exp">
+    <b>大白话（上半）：</b>就是两个最朴素的回归。\(\widehat{\mu}_c\)、\(\widehat{\Sigma}_c\) 是<b>教师现场采 384 个样本算出来的经验矩</b>（当"标准答案"），学生去拟合它们。<br>
+    \(\mathcal{L}_\mu\) 是最小二乘。\(\mathcal{L}_\Sigma\) 的 \(\|\cdot\|_F^2\) 是矩阵版最小二乘，\(D\) 是各维尺度归一化（不然米和弧度混在一起算没意义），\(\mathcal{R}_{\mathrm{var}}\) 是对数尺度的方差惩罚（防止某维方差被压到 0 或炸开），\(\lambda_{\mathrm{var}}=0.1\)。<br>
+    细节值得注意：协方差的目标是<b>以教师经验均值为中心</b>算的，让"协方差拟合"和"均值误差"解耦，互不污染。<br>
+    <b>大白话（下半）：</b>连续动作走高斯密度，每个二元命令（开/关、夹/放这类）走一个 probit 模型 \(p_{\theta,j}=\Phi(\eta_{\theta,j})\)，\(\Phi\) 是标准正态 CDF。两边的乘积就是整块动作的似然。<br>
+    <b>它意味着什么：</b>给定一个候选动作块，<b>不用跑网络、不用积分，直接代公式就能算出它有多合理</b>。这给"候选重排、MPC、异常检测"开了门——但论文只提了一句，没往下做，是这轮最可惜的地方。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：数字都对，但口径要看清</h2>
+
+  <h3>成功率到底掉了多少</h3>
+  <table>
+    <tr><th>教师</th><th>分组</th><th>教师（N=5/4）</th><th>原始一步</th><th>仅均值</th><th>对角 GAR</th><th>全协方差 GAR</th></tr>
+    <tr><td rowspan="4">Xiaomi</td><td>Overall</td><td>58.24</td><td>55.76</td><td>56.64</td><td><b>57.64</b></td><td>57.28</td></tr>
+    <tr><td>Atomic seen</td><td>81.11</td><td>81.22</td><td>78.44</td><td>80.56</td><td>81.67</td></tr>
+    <tr><td>Composite seen</td><td>58.75</td><td>52.63</td><td>58.13</td><td>58.00</td><td>57.38</td></tr>
+    <tr><td>Composite unseen</td><td>32.00</td><td>30.25</td><td>30.63</td><td>31.50</td><td>29.75</td></tr>
+    <tr><td rowspan="4">GR00T</td><td>Overall</td><td>23.08</td><td>19.28</td><td>19.72</td><td><b>21.92</b></td><td>20.32</td></tr>
+    <tr><td>Atomic seen</td><td>46.00</td><td>43.00</td><td>44.33</td><td>45.78</td><td>43.89</td></tr>
+    <tr><td>Composite seen</td><td>15.38</td><td>8.13</td><td>7.75</td><td>11.75</td><td>11.50</td></tr>
+    <tr><td>Composite unseen</td><td>5.00</td><td>3.75</td><td>4.00</td><td>5.25</td><td>2.63</td></tr>
+  </table>
+  <p>LIBERO-Long（Xiaomi-Robotics-0）：教师 <b>96.6%</b> → GAR <b>95.4%</b> → 原始一步 96.0%。RoboCasa365 每策略每任务 50 episode。</p>
+  <p>表里有两处最值得盯：</p>
+  <ul>
+    <li><b>对角 GAR 反过来赢过全协方差 GAR</b>（57.64 vs 57.28；21.92 vs 20.32）。算得更准，效果更差。这说明协方差的<b>维度间相关项对任务没用</b>——机器人只关心每维散多少，不关心"关节 3 和关节 7 的误差是否同向"。这是个有价值的实证发现，但论文只用"忽略相关性误差"一句带过，没深挖。</li>
+    <li><b>"仅均值"比"原始一步"还差</b>（Xiaomi 56.64 vs 55.76 是例外方向，GR00T 19.72 vs 19.28 也是升）。但都显著低于采样版。说明<b>噪声本身在干活</b>：执行均值等于动作完全确定，闭环里一旦有小偏差就没有随机性去"抖开"，反而更容易卡住。这是随机策略在接触任务里的老现象。</li>
+  </ul>
+
+  <h3>它的真正价值</h3>
+  <div class="box good">
+  <p><b>1. 加速的入口被降到了"换最后一层"。</b>不动预训练权重、不重训、不需要教师在线，<b>115 秒</b>拟合完成。对任何已有 flow policy 都能套，工程成本极低。这比"提出一个新架构"实用得多。</p>
+  <p><b>2. 它给出了一个可复用的"复杂度体检"方法。</b>sliced Wasserstein + 高斯控制基线，这套做法可以直接拿去问：<b>我手上这个生成策略，到底需不需要那么多步？</b>这是个能迁移到别处的诊断工具，价值可能超过这篇论文本身。</p>
+  <p><b>3. 闭式似然是一扇没推开的门。</b>能对任意候选动作块打分，却没有拿去做候选重排或 MPC——这是留给后续工作最明显的一块空地。</p>
+  </div>
+
+  <h3>要打问号的地方</h3>
+  <ol class="crit">
+    <li><b>0.02% 的采样密度，恰好会漏掉"最该多峰"的那些状态。</b>取样规则是每个演示<b>等间隔取 4 个内部状态</b>，且刻意避开首尾（帧 6 到 \(L_d-17\)）。但机器人真正多峰的时刻，恰恰集中在<b>接触发生、物体滑动、抓握失败的瞬间</b>——这些是时间上的稀疏事件，等间隔采样几乎必然错过。而评测用成功率是全任务平均，这些少数关键帧的退化会被平均掉。<b>所以"成功率不掉"可能只是"平均掩盖了尾部"。</b>论文没有对"接触密集时段"做分层采样或分层评估。</li>
+    <li><b>弱教师上退化明显更大。</b>Xiaomi 掉 0.6pp（相对 1%），GR00T 掉 1.16pp（相对 5%），差了一倍多。Composite seen 那组更狠：15.38 → 11.75。这说明"近似高斯"在数据更少、分布更散的模型上<b>不那么成立</b>。而论文的卖点是"通用方法"，恰恰在最需要它的弱模型上打折最多。</li>
+    <li><b>高斯性只在两个教师、厨房与桌面任务上验过。</b>RoboCasa365（厨房）+ LIBERO-Long（桌面）。这两类任务的共同点是<b>动作维度中等、任务结构重复</b>。而多峰最可能出现的地方——<b>人形全身控制</b>（几十维、平衡约束强）、<b>灵巧多指手</b>（自由度冗余、同一抓取有无穷多解）——完全没测。这两个场景恰恰是"必须多峰"的典型。所以"流策略分布近似高斯"这个结论，目前的适用范围比标题暗示的窄得多。</li>
+    <li><b>一步采样丢掉了"逐步收敛"这个隐式正则。</b>5 步 Euler 每一步都重新查一次速度场，等价于沿路径做了 5 次小修正；一次读出没有这个过程。误差不被修正。成功率是全局平均，看不出"个别 episode 崩得更狠"——如果分布是重尾的，均值相同、尾部可以差很多，而机器人恰恰最怕尾部。论文没有报成功率的分位数或最差任务表现。</li>
+    <li><b>1.91× 被视觉语言编码器吃掉了大半，2× 对高频控制没意义。</b>Xiaomi 115 ms 约等于 <b>8.7 Hz</b>。而全身平衡、接触力控这类任务要 50–1000 Hz。所以这个加速解决的是"动作块生成频率"，不是"控制频率"——真正的瓶颈在 VLM 主干，砍掉去噪器也到不了高频。论文的表述没错，但"2×"很容易被读者误读成"机器人反应快了一倍"。</li>
+    <li><b>多模态行为那段证据太薄，撑不起"高斯也能多峰"这个重要claim。</b>论文用"物理时间扩散" \(s_{k+1}=s_k+\mu(s_k)+\Sigma^{1/2}\xi_k\) 论证同一初始上下文能产生不同成功行为，举的例子是 PackIdenticalLunches 任务 <b>32 次执行里 3 次成功</b>、包含 2 种不同移动顺序。<b>3/32 ≈ 9.4%，这个样本量下"2 种顺序"完全可能是状态微小差异的自然结果，而不是真正的多峰采样。</b>这是全篇最弱的一环，偏偏它承担着"GAR 没有丢掉多峰能力"这个关键辩护。</li>
+    <li><b>\(t=0\) 与 \(t=0.1\) 特征余弦 0.999，是个经验事实而非定理。</b>整个方差读取都架在这个观察上（否则就要多跑一次前向，"1 次评估"的卖点就破了）。换插值路径（比如整流流 / 最优传输路径）、换时间采样策略，这个数会不会掉到 0.95，论文没测。这是个<b>把自己的核心卖点押在一个未加证明的数字上</b>的结构性风险。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>这篇论文最锋利的地方不在"快了一倍"，在于它用一个干净的控制实验（<b>拿教师真样本矩拟合高斯，不掉分</b>）证明了一件事：<b>我们为多峰性付出的那 4 步计算，在这批任务上是在为一个不存在的结构付费。</b>但"不存在"这三个字，目前只在这两个教师、这两类任务上被验过。它更像是给整个具身界提了一个问题：<b>手里的生成式策略，到底有多少表达力是真在用的？</b></p>
+  <p class="src">原文：Youssef Saied, Ziyad Sheebaelhamd, Claire Vernade, François Fleuret. <i>Gaussian Distillation of Flow Policies</i>. arXiv:2610.40271, 2026-10-29. 基准：RoboCasa365（50 任务 / 2500 厨房环境）、LIBERO-Long（10 任务）。教师：Xiaomi-Robotics-1、GR00T N1.5、Xiaomi-Robotics-0。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ arXiv 2610.40271</footer>
+</div></body>
+</html>
