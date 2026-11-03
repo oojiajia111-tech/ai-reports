@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>开源模型也能直接操作机器人！清华 x 伯克利 uni-robot-agent，迈向RUA训练和本地部署</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>开源模型也能直接操作机器人！清华 x 伯克利 uni-robot-agent，迈向RUA训练和本地部署<span class="sub">同一套 harness 下 Astra 拿 51.90、Qwen 拿 31.39，差 1.65 倍 · 只换 harness 让 Astra 涨了 22.93 分，比模型之间的差距还大 · 所以被证明的是"脚手架是瓶颈"，而不是"开源模型更强"</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-03</div>
+    <div><b>正文规模</b> 6,500 字（去标签）· 11 图</div>
+    <div><b>原始工作</b> Democratizing Robot-Use Agents · 清华 × 伯克利 × OpenRUA</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>这套实验真正的被测对象<strong>不是模型，是 harness</strong>。把同一套 harness 固定住，闭源的 GPT-6 Astra 拿 51.90，开源的 Qwen3.8-Flash-Next 拿 31.39——<strong>模型差距是 20.51 分</strong>。而仅仅把 Astra 从 roboprobe 换到 uni-robot-agent，它涨了 <strong>22.93 分</strong>。脚手架贡献大于模型贡献，这才是"开源模型也能操作机器人"这句话真正支撑得住的部分，也是标题最容易读偏的地方。<br>
+  更可迁移的结论在消融里：<strong>给模型一条信息的价值，取决于这条信息解开了它当前卡住的那一环</strong>。深度信息对 Astra 值 0.79 分，对 Qwen 值 4.50 分；相机标定对 Qwen 值 22.26 分。<strong>同一条信息，对不同模型的价值差一个数量级。</strong>所以 harness 该怎么配信息，不该由"任务需要什么"决定，而该由"模型现在最弱的环节在哪"决定。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">先把分数读对</a>
+  <a href="#s2">脚手架为什么值 23 分</a>
+  <a href="#s3">串联瓶颈与代际反常</a>
+  <a href="#s4">成本结构与学习闭环</a>
+  <a href="#s5">它证到了什么、没证到什么</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>先把分数读对：同一张表里藏着两个不同的比较</h2>
+
+  <p>文章的开头是这样的：Qwen3.8-Flash-Next 拿到 <strong>31.39</strong> 分，超过 GPT-6 Astra 此前公开榜上的 <strong>28.97</strong> 分，而成本只有约 6.6%。这句话本身没错——28.97 那档用的是 roboprobe，是另一套 harness。</p>
+
+  <p>但表 1 里还有一行更重要的数字：<strong>GPT-6 Astra 在 uni-robot-agent 这套 harness 下是 51.90 分。</strong></p>
+
+  <table>
+    <tr><th>配置</th><th>RoboDojo 分数</th><th>相对位置</th></tr>
+    <tr><td>GPT-6 Astra + <b>uni-robot-agent</b></td><td><b>51.90</b></td><td>全场最高，是 Qwen 的 1.65 倍</td></tr>
+    <tr><td>Qwen3.8-Flash-Next + uni-robot-agent</td><td>31.39</td><td>本文的主角</td></tr>
+    <tr><td>GPT-6 Astra + roboprobe</td><td>28.97</td><td>被本文超过的那一档</td></tr>
+    <tr><td>DeepSeek-V4.1-Flash + uni-robot-agent</td><td>27.11</td><td>同一 harness 下的另一开源模型</td></tr>
+    <tr><td>GaP（baseline）</td><td>21.01</td><td>baseline</td></tr>
+  </table>
+
+  <div class="fml">
+    <div class="name">式 1　把"换 harness"和"换模型"两件事分开算</div>
+    \[
+    \underbrace{51.90 - 28.97}_{\text{换 harness 的贡献：}Astra} = 22.93
+    \qquad
+    \underbrace{51.90 - 31.39}_{\text{同一 harness 下的模型差距}} = 20.51
+    \]
+    \[
+    \Longrightarrow\quad \Delta_{\text{harness}} > \Delta_{\text{model}}
+    \]
+    <div class="exp">这两个差值都是同一个模型（Astra）内部的差，所以是干净的因果对照：<strong>脚手架带来的提升，超过了这个场景里最强模型与主角模型之间的全部差距</strong>。<br>换句话说，公开榜单上"谁更强"这个问题，在 harness 没对齐之前<strong>没有意义</strong>。Astra 掉到 28.97 不是因为它弱，是因为它当时站在另一套脚手架上。</div>
+  </div>
+
+  <p>这不是在贬低开源。恰恰相反，它把这件事的价值换了一个更结实的说法：<strong>当最先进的前沿模型和一个 1/20 成本的开放权重模型站在同一套 harness 上，差距是 1.65 倍而不是 0——那么把 harness 做好，收益比换一个更好的模型更大。</strong>对大多数拿不到闭源 API、或者拿不到它的研究权重的人，这句话比"开源也能做"实用得多。</p>
+
+  <p>还有一个数字不能漏。真机 Real Eval（双臂夹爪平台，19 个任务，五维度各 20 分）：</p>
+
+  <table>
+    <tr><th>模型</th><th>真机得分</th><th>备注</th></tr>
+    <tr><td>GPT-6 Astra + uni-robot-agent</td><td><b>80.50</b></td><td>同一套 harness</td></tr>
+    <tr><td>Qwen3.8-Flash-Next + uni-robot-agent</td><td>53.50</td><td><b>真机数据一条没见过</b></td></tr>
+    <tr><td>π0.5（在该环境微调过）</td><td>47.75</td><td>专用 VLA 模型，已做环境微调</td></tr>
+  </table>
+
+  <p>Qwen 零真机数据就压过了<strong>在这台机器人上微调过的 π0.5</strong>，这条比仿真表的 31.39 更值得看——它说明通用模型的先验知识量级，远超一个专用小模型在单一环境上能积累到的量。</p>
+
+  <div class="box good">
+    <b>这个对比要读准。</b>它证明的是"通用世界知识 > 少量单环境机器人数据"，<strong>不是"Qwen 的机器人能力更强"</strong>。π0.5 的失败模式跟 Qwen 完全不是一类：前者缺的是这个场景的接地经验，后者缺的是长程串联执行里的某一环。这两件事不能混为一谈。
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>脚手架为什么值 23 分：它决定"模型的错以什么形式暴露"</h2>
+
+  <p>要理解 harness 到底在做什么，得先看清 Agent 跑一个任务时的结构。文中把失败拆成四环：<strong>看懂场景 → 找准位置 → 算对几何 → 理解怎样操作才合理</strong>。这四环是<strong>串联</strong>的。</p>
+
+  <p>harness 的作用不是"帮模型做得更好"，而是<strong>把每一环的失败以可诊断的形式暴露出来，并把反馈延迟压到最短</strong>。三条消融实验，正好对应三种不同的暴露方式。</p>
+
+  <div class="step">
+    <div class="t">消融一：空间信息 —— 决定"找准位置"这一环是否被卡死</div>
+    <div class="d">提供深度时，工具可以把目标像素直接转成三维坐标；移除深度后，模型必须自己在不同视角里找对应点，用三角测量恢复位置。再进一步移除相机内外参，考验变成"从纯 RGB 里自行推断图像方向和距离意味着机器人该往哪走"。</div>
+  </div>
+
+  <table>
+    <tr><th>可用的空间信息</th><th>Astra</th><th>Qwen</th></tr>
+    <tr><td>深度 + 相机标定</td><td>55.83</td><td>35.89</td></tr>
+    <tr><td>仅相机标定</td><td>55.04（<b>−0.79</b>）</td><td>31.39（<b>−4.50</b>）</td></tr>
+    <tr><td>仅 RGB 图像</td><td>31.29（−23.75）</td><td>9.13（<b>−22.26</b>）</td></tr>
+  </table>
+
+  <div class="fml">
+    <div class="name">式 2　一条信息的价值，取决于它解开了哪一环</div>
+    \[
+    \text{价值}(\text{信息},\ \text{模型}) \;\approx\; \frac{\text{该信息解锁的步骤在原方案中被卡住的概率}}{1}
+    \]
+    \[
+    \text{深度信息：}\quad \underbrace{0.79}_{\text{Astra：几乎用不上}}
+    \qquad\text{vs}\qquad \underbrace{4.50}_{\text{Qwen：省掉了跨视角对应}}
+    \]
+    \[
+    \text{相机标定：}\quad \underbrace{23.75}_{\text{Astra}}
+    \qquad\text{vs}\qquad \underbrace{22.26}_{\text{Qwen}}
+    \]
+    <div class="exp">深度对 Astra 只值 0.79 分，因为 Astra 本来就会用标定做三角测量——<strong>它已经能自己完成那一步了，深度是冗余的</strong>。深度对 Qwen 值 4.50 分，因为 Qwen 卡在跨视角对应上，深度直接把这一步跳过去了。<br>而相机标定对两个模型都值 22–24 分，因为<strong>两个模型都卡在这一环</strong>：没有它，模型就得从像素猜方向和距离，Astra 从 55 掉到 31，Qwen 从 31 掉到 9。<br>结论很干净：<strong>信息不是越多越好，而是要发给那个真的卡住的环节。</strong></div>
+  </div>
+
+  <div class="step">
+    <div class="t">消融二：技能库 —— 决定"经验复用"这条路现在值不值得走</div>
+    <div class="d">同时关闭 Qwen 的技能库访问和技能写入能力（保留任务说明、环境描述、基础工具），得分从 31.39 降到 30.31，保留 96.6%，成功率只差 0.42 个百分点。</div>
+  </div>
+
+  <p>这一条最容易被误读成"技能库没用"。它的正确含义是：<strong>当模型的基础能力还不够时，技能库里的任务知识救不了场</strong>。技能库解决的是"这个操作用哪种方式做"，而 Qwen 卡在"能不能算对几何"上——给一份答案不算把能力教给它。文中也补了一句：技能模块为经验复用和后续扩展留了接口，<strong>它现在没用上，不代表它没用</strong>。</p>
+
+  <div class="step">
+    <div class="t">消融三：并行调度 —— 决定"一次尝试能榨出多少经验"</div>
+    <div class="d">耗时的物理动作丢到后台，工具立刻返回任务句柄，模型同时准备不依赖这一步的事；共用同一资源的动作按先进先出排队，计划变了还能撤销未开始的动作。</div>
+  </div>
+
+  <p>这条消融没有给数字，但它的作用位置是清楚的：<strong>它不改单次成功率，它改的是单位时间内能采集多少条经验</strong>。对一套以"交互 → 轨迹 → 训练 → 更好的策略"为闭环的系统，这是唯一会复利增长的量。</p>
+
+  <div class="box">
+    <b>把三条消融合起来，harness 的设计原则可以写成一句话：</b>提供有助于推理的信息，让工具可靠地执行动作、返回有效反馈，<strong>把具体问题留给模型解决</strong>。<br>
+    这条原则的反面同样重要——文中"对齐真实世界"那一条：<strong>不给仿真器里的精确深度、物体 CAD 模型、隐藏标注，任务执行中的分数也不回传给模型</strong>。理由不是道德洁癖，而是：<strong>harness 里回传的每一条特权信息，都是一个潜在的 reward hacking 入口</strong>。分数在真机上不存在，一旦回传，模型就会去优化那个存在的假目标。这也是为什么"给不给深度"必须按模型瓶颈配，而不能按仿真器手里有什么配。
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">为什么</span>串联瓶颈：为什么参数量和发布时间都预测不了机器人表现</h2>
+
+  <p>评测里有个刺眼的反差：<strong>Qwen3.8-27B 已经是能完成部分任务的，而参数量更大的 Qwen3.7 Plus 在这次评测中一次都没成功。</strong>GPT-5.6 Sol 已经展现出一定的机器人操作能力，而某些更新的模型依然做不成。</p>
+
+  <p>参数量和发布时间都解释不了。原因在于四环是串联的：</p>
+
+  <div class="fml">
+    <div class="name">式 3　串联系统的通过率是连乘，不是平均</div>
+    \[
+    P(\text{任务成功}) \;\approx\; P(\text{看懂})\cdot P(\text{定位})\cdot P(\text{几何})\cdot P(\text{操作理解})
+    \]
+    \[
+    \text{几何正确率：}\quad
+    \underbrace{0.19\sim0.53}_{\text{较早的 Qwen Flash / Plus}}
+    \;\longrightarrow\;
+    \underbrace{0.918}_{\text{Qwen3.8-Flash}}
+    \;\longrightarrow\;
+    \underbrace{0.985}_{\text{DeepSeek-V4.1-Flash}}
+    \]
+    <div class="exp">"算对几何"这一步的错误率在老 Qwen Flash / Plus 上是 <strong>47.3%–81.8%</strong>，在 Qwen3.8-Flash 降到 <strong>8.2%</strong>，DeepSeek 是 <strong>1.5%</strong>。<br>这一环从 0.2 到 0.98，差 5 倍。而四个环节相乘意味着：<strong>一个 0.99 的短板足以吃掉其他环节全部的积累。</strong><br>所以"更大的模型反而更差"根本不需要用"退化"来解释——Qwen3.7 Plus 可能只是恰好卡在了另一环上（视觉或长程执行），而<strong>公开的单一分数把所有环节的差异压成了一个标量</strong>，看不出它到底断在哪。</div>
+  </div>
+
+  <p>这个框架还解释了另一个数据：**哪怕是四项里表现最好的 GPT-6.1 Sol，相关调用仍有 31.5% 因对应点不一致、重投影误差过大而标定失败。** 一个接近满分的模型，在"找准位置"这一环上仍然有三分之一的调用是废的。这不是模型的错，是这一环的<strong>信息瓶颈</strong>——单目 RGB 下跨视角的对应，本质上是有歧义的。</p>
+
+  <p>视觉那一条同样如此："把数字 0 认成 9、把倒扣的杯子当成正放"这类未能纠正的视觉错误，在较早的 Qwen Flash 和 Plus 模型中出现在约 <strong>12.2%–23.8%</strong> 的试验里。<strong>而这一条会让操作从一开始就朝错的方向走，后面全废</strong>——这就是串联结构里最前面的那一环为什么权重最大。</p>
+
+  <div class="box good">
+    <b>这套分析给出了一条可操作的训练线索。</b>作者把六个模型的 RoboDojo 表现与具身推理、多模态理解、视觉定位、代码生成四类通用基准比较，发现<strong>四类指标均呈正相关，其中具身推理和多模态理解的关联更强</strong>。作者很克制地补了一句："这虽不足以证明某项能力直接带来了多少提升，却为后续训练提供了明确线索：提升机器人能力，除了学习动作本身，还可以有针对性地训练模型如何观察、定位、计算和判断。"<br>
+    <strong>换句话说：机器人交互中留下的失败轨迹，本身就是最好的训练任务生成器。</strong>它精确指出模型断在哪一环，而那一环恰恰是可以用通用能力（几何、空间推理）单独训练的地方——不需要新的机器人数据。
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">价值</span>成本结构的真正意义：不是省钱，是把学习闭环拿回来</h2>
+
+  <p>成本数字：42 局评测里，Qwen 每局估算 API 成本 <strong>1.09 美元</strong>，Astra 是 <strong>21.29 美元</strong>。跑完 252 局的完整评测，前者不到 300 美元，后者超过 5,000 美元。</p>
+
+  <p>20 倍的成本差，第一层含义当然是"能跑更多次"。但更有价值的是第二层：<strong>数据量可以差 20 倍</strong>。对 RUA 来说，数据是唯一不可替代的输入。</p>
+
+  <div class="fml">
+    <div class="name">式 4　学习闭环的吞吐由"每单位经验的成本"决定</div>
+    \[
+    \text{闭环吞吐} \;\approx\; \frac{\text{单位时间内的交互次数}}{\text{每次交互成本}}\times\text{单位数据的价值}
+    \]
+    \[
+    \text{闭源 API：}\quad \text{付了钱，梯度拿在别人手里}
+    \qquad\qquad
+    \text{开放权重：}\quad \text{跑、训、迭代三件事全部收回本地}
+    \]
+    <div class="exp">文中讲的三道门槛其实是<strong>递进的，不是并列的</strong>：成本（第一道）限制了交互总量；自主性（第二道）决定了能否在自有硬件上跑、能否针对机器人交互优化模型与推理过程；学习闭环（第三道）决定了轨迹能否变成权重更新。<br>第二道是第三道的<strong>前提</strong>——权重不开源，轨迹就无法直接用于更新模型。所以"能不能训"不是第三道门槛，是第二道门槛的直接后果。</div>
+  </div>
+
+  <p>团队给的参照物是编码 Agent 领域的 <strong>mini-swe-agent</strong>：目标是"一个简单、通用、谁都能拿来改的起点"，统一的接口和结构化的记录让不同环境的交互经验能按同一格式收集。当前实现已经支持导出 Codex 的交互轨迹，<strong>这些轨迹正是 SFT 和强化学习的原料</strong>。</p>
+
+  <p>这个类比值得展开。mini-swe-agent 真正的贡献不是它能跑多高的分，而是它<strong>把"轨迹"变成了标准化产物</strong>——于是不同环境、不同任务、不同模型的交互经验可以用同一格式汇总，直接进训练管线。对于 RUA 领域，机器人轨迹的价值恰恰卡在这里：<strong>每条轨迹都昂贵、稀缺、格式各异，所以必须先被标准化，才有批量训练的可能。</strong></p>
+
+  <p>另外两条基础设施性质的证据也值得记一下：<strong>同一套 harness 已经接进 Franka 机械臂与 Sharpa 灵巧手</strong>，只扩展灵巧手相关工具就完成了抓取玩偶、按绿色按钮、把苹果放进盘子这类灵巧操作；以及"跨环境统一"是<strong>从设计之初就为训练准备的</strong>——感知、运动、技能、episode 控制四类工具在仿真和真机里共用一套定义，环境差异交给各自的适配器。这两条合起来说明：<strong>它不是一套评测脚本，是一套训练底座。</strong></p>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">局限</span>它证到了什么、没证到什么</h2>
+
+  <p>这篇文章的分寸感明显好于同类宣传稿——多处主动标注"这不足以证明 X"，也把"对齐真实世界"的取舍讲得清楚。但仍有几处必须替读者补上。</p>
+
+  <ol class="crit">
+    <li><strong>标题的暗示与同 harness 下的事实相反。</strong>"开源模型也能直接操作机器人"成立；但"开源超越闭源"只在跨 harness 比较时成立，而同一 harness 下 Astra 是 51.90 对 Qwen 的 31.39。<strong>这个 1.65 倍才是应该被记住的数字</strong>，因为它才是模型能力的真实差距。文中用 28.97 那档做对比，读者很容易得出相反结论。</li>
+    <li><strong>成本口径不一致。</strong>开头说"约 6.6% 的成本"，但按 $1.09 对 $21.29 算是 5.1%；而且 28.97 那档用的是 roboprobe，Astra 在同一 harness 下跑到 51.90 时成本显然不是 21.29。<strong>"6.6%"的分母没有交代</strong>，读者无法复核。</li>
+    <li><strong>Astra + roboprobe 的 28.97 无法归因。</strong>roboprobe 是什么、配置如何、有没有为 Astra 调过，文中一律没说。如果它是一个没调优的实现，那么这 22.93 分里有多少是 harness 设计、多少只是调优程度，无法分开。<strong>这条对照支撑不起"harness 值得 23 分"的强结论，只能支撑"harness 之间差距很大"。</strong></li>
+    <li><strong>消融实验的统计强度不明。</strong>主表是 3 个 seed × 2 个 layout × 42 个任务 = 252 个任务，这个规格很扎实。但深度消融那三档（35.89 / 31.39 / 9.13）和技能库消融（31.39 / 30.31）都没给任务数与 seed 数。尤其"深度 + 标定"下 Qwen 是 35.89，而主表的 31.39 正好等于"仅标定"那一档——<strong>说明主表跑的是"仅标定"配置，但深度消融的样本量是另一批</strong>，跨表比较时不能直接对齐。</li>
+    <li><strong>技能库消融的"保留 96.6%"是均值掩盖。</strong>文中自己写了"不同能力维度有升有降"。整体接近不代表每项都不退化，尤其 31.39 → 30.31 这种 1 分的差距，在未知 seed 数下完全可能落在噪声里。</li>
+    <li><strong>失败四分类的数据方向是反的。</strong>视觉错误率 12.2%–23.8%、几何错误率 47.3%–81.8%，全部来自"较早的 Qwen Flash 和 Plus"。这些数字用来<strong>解释老模型为什么弱</strong>是合适的；但文中随后把它们当作新模型更好的解释，而<strong>新模型（Qwen3.8-Flash、DeepSeek）的失败分布并没有给出</strong>。真正该看的是新模型现在卡在哪一环——这恰恰是这套 harness 最有价值的输出，而文章没有交付。</li>
+    <li><strong>四类基准正相关，样本量只有六个模型。</strong>n=6 下的相关系数非常脆弱，"具身推理和多模态理解关联更强"更是无法做显著性判断。而且"具身推理"基准本身就是为机器人设计的，<strong>用它预测机器人表现有一定循环性</strong>——除非该基准刻意与 RoboDojo 的任务分布解耦，文中没有交代。</li>
+    <li><strong>Qwen3.7 Plus 的"零成功"样本量不足。</strong>42 个任务里零成功，不等于能力为零，尤其在任务本身可能不可解或存在多种解法的情况下。要支撑"代际与参数量都不预测表现"这个强论断，需要更多 seed 或更多任务。</li>
+    <li><strong>真机评测只有一个平台、一个机器人形态。</strong>19 个任务、5 个维度各 20 分，双臂夹爪平台。Sharpa 灵巧手那边只有视频展示，没有数字。<strong>53.50 对 47.75 的对比里，π0.5 的微调数据量、微调轮数、环境暴露程度都没有交代</strong>——而这正是这个对比里唯一能左右结论的自由变量。</li>
+    <li><strong>真机评测缺少重复性信息。</strong>文中没有给真机分数的 seed 数或置信区间。仿真侧有 3 seed × 2 layout 的严谨规格，真机侧却是一个数字，这两部分的证据强度并不对等。</li>
+  </ol>
+
+  <div class="box bad">
+    <b>一句话总结它的位置：</b>它最扎实的贡献不是"开源模型也能操作机器人"（那需要看同 harness 下的 51.90 对 31.39），而是<b>把"agentic harness"这件事从评测脚本抬升为训练基础设施</b>——跨环境统一的工具定义、模块化可替换的组件、以及"特权信息一律不回传"这条纪律。<br>
+    而它顺手证明了一件更有意思的事：<b>在机器人任务上，脚手架的贡献量级已经超过模型之间的差距量级</b>。这既是好消息也是坏消息——好消息是开源团队不必追上前沿闭源模型也能拿到体面的结果，坏消息是意味着<b>整个领域的进度，一度被"谁家的 harness 写得好"绑架了</b>。
+  </div>
+
+  <p class="src">出处：Democratizing Robot-Use Agents: A Unified Harness with Open Models（arXiv 2611.01560 / HuggingFace Papers），清华大学与加州大学伯克利分校，通讯作者包括丁宁、Pieter Abbeel、刘知远、徐梦迪；研究项目 OpenRUA。基准为 RoboDojo（42 任务，3 seed × 2 layout = 252 任务）与自建真机 Real Eval（双臂夹爪平台，19 任务，五维度各 20 分）。消融包括空间信息三档（深度+标定 / 仅标定 / 仅 RGB）与技能库开关。项目主页 uni-robot-agent.com，博客 openrua.ai，代码 github.com/Open-RUA/uni-robot-agent。</p>
+</section>
+
+<footer>公众号「human five」· 2026-11-03 · 3W1H 与第一性原理拆解</footer>
+</div></body>
+</html>
