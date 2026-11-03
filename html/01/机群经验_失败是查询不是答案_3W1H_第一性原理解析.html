@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>百台真机的机器人学习实验</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>百台真机的机器人学习实验<span class="sub">失败轨迹不该被当成"错题"丢掉，它是索书号 · 专家不能并行、机器人可以，所以瓶颈从来不是轨迹数量 · 96 台 G2 上五项任务 36.3% → 97.3%，但 8 台时反而打不过初始策略 · 这套机制的天花板写在它自己的假设里：答案库里必须先有一本对的书</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-02</div>
+    <div><b>正文规模</b> 5,600 字（去标签）· 7 图</div>
+    <div><b>原始工作</b> Learning from Fleet Experience · 清华 × 智元 × 无问芯穹</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>部署后学习真正的瓶颈不是<strong>轨迹不够</strong>，而是<strong>动作答案长得太慢</strong>——机器人可以并行干活，专家只能逐条看状态。CEL 的全部巧思在于一次语义转换：<strong>失败轨迹不是要被模仿或丢弃的样本，它是一份"查询"</strong>。它不提供动作，只回答"经验池里哪段成功经验值得重读"。这一步把"要专家给答案"换成了"让机器人自己找答案"，于是 97.3% 是在<strong>零新增专家纠正</strong>的条件下拿到的。代价也同样清晰：这套机制<strong>只能复用，不能创造</strong>——库里没有可迁移的先例时，检索会给你一段"长得像但用不上"的动作，8 台规模下成功率低于初始策略就是它的诚实自白。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">成本结构错配</a>
+  <a href="#s2">失败是一种查询</a>
+  <a href="#s3">检索的三个工程决定</a>
+  <a href="#s4">数字与消融</a>
+  <a href="#s5">它证到了什么、没证到什么</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>先把错配点找准：一条轨迹值不值钱，看它有没有"动作"</h2>
+
+  <p>多数人一听"机器人上网学习"就想到"多采数据"。但采集这件事本身不贵——机器人在那儿跑就有数据。贵的是<strong>标注</strong>，而且只贵在某一种标注上。</p>
+
+  <p>文章给了一个特别关键的区分：机器人完成一次尝试后，系统同时拿到两样东西。</p>
+
+  <ul>
+    <li><strong>动作序列</strong>：每个时间步具体做了什么。这是<em>有方向</em>的信息，能直接拿来做监督（SFT、HG-DAgger 都是这么干的）。</li>
+    <li><strong>结果标签</strong>：这一条成功还是失败。这是<em>只有一个 bit</em> 的信息——它告诉你"错了"，但不说"错在哪一步、下一步该怎么做"。</li>
+  </ul>
+
+  <p>这两样东西的生产成本完全不同。结果标签一个操作员扫一眼就能打，动作纠正却必须逐帧判断、亲手示范。所以问题不是"数据量不够"，而是：<strong>机器人数量可以翻倍，能给出动作答案的人不会跟着翻倍。</strong></p>
+
+  <div class="fml">
+    <div class="name">式 1　监督产能的错配（全篇的出发点）</div>
+    \[
+    C_{\text{expert}} \;=\; N_{\text{state}} \times t_{\text{expert}},
+    \qquad
+    C_{\text{robot}} \;=\; \frac{N_{\text{robot}} \times T_{\text{episode}}}{N_{\text{parallel}}}
+    \]
+    \[
+    \text{专家侧：} \ \frac{\partial C_{\text{expert}}}{\partial N_{\text{state}}} = t_{\text{expert}} > 0
+    \quad\text{（只能串行，加人才能加速）}
+    \]
+    \[
+    \text{机器人侧：} \ \frac{\partial C_{\text{robot}}}{\partial N_{\text{robot}}} = \frac{T}{N_{\text{parallel}}}
+    \quad\text{（加机器就加速，边际成本递减）}
+    \]
+    <div class="exp">大白话：专家成本是"状态数 × 每条耗时"，机器人成本是"总时长 ÷ 并行数"。前者随问题规模线性涨且不可并行，后者随机器数摊薄。<strong>所以规模一大，动作监督必然成为唯一的稀缺项</strong>——这不是工程问题，是成本结构决定的，砸钱也买不到并行的人类注意力。</div>
+  </div>
+
+  <p>把这一层想清楚，就能理解为什么 CEL 的设计很有意思：它<strong>没有去提高专家产能，而是去提高已有动作答案的复用次数</strong>。同一段成功轨迹，被不同的失败状态"借用"多次。这在经济学上叫提高存量资产的周转率，而不是追加投资。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>关键一步：把失败从"样本"重新定义成"查询"</h2>
+
+  <p>失败数据在以往的做法里有两种归宿，都很浪费：</p>
+
+  <ul>
+    <li><strong>当负样本</strong>：告诉模型"别这么做"。但一条 3500 步的轨迹里可能只有 20 步是错的，把整条标成"坏"是在给模型教错误的因果。</li>
+    <li><strong>当垃圾丢掉</strong>：更常见。明明里面藏着"我从哪里开始偏了"这条最贵的信息。</li>
+  </ul>
+
+  <p>CEL 走了第三条路，也是整篇最锋利的一刀：<strong>失败轨迹既不提供动作，也不当负样本，它只用来提问。</strong></p>
+
+  <div class="step">
+    <div class="t">失败轨迹的作用：产生一次检索请求</div>
+    <div class="d">"我现在卡在这个状态了。经验池里，哪段别人做成过的事情，和我此刻的处境最像？"</div>
+  </div>
+
+  <p>用图书馆打个比方就通了。你要写一篇关于"接触-rich 抓取"的文章，卡住了。三种应对方式：</p>
+
+  <ol>
+    <li><strong>抄错题本</strong>（= 当负样本）：把上一个人写砸的稿子拿来看，学"不要这么写"。信息量极低，因为烂稿有一万种烂法。</li>
+    <li><strong>把烂稿扔了</strong>（= 丢弃）：手里什么也没有。</li>
+    <li><strong>用索书号去书架上找</strong>（= CEL）：烂稿告诉你"你卡在第三章"，于是你去书架上取一本"第三章写得特别好"的书，<strong>只读第三章</strong>。</li>
+  </ol>
+
+  <p>第三种做法的精髓在"只读第三章"——它不是把整本好书重读一遍，而是<strong>按你卡住的位置做定向调取</strong>。对应到系统里，就是文章反复强调的那句话：失败提供检索线索，成功提供动作目标。</p>
+
+  <div class="fml">
+    <div class="name">式 2　训练目标没变，变的是"谁能进 batch"</div>
+    \[
+    \mathcal{L}_{\text{FERT}}
+    \;=\; \mathbb{E}_{c \sim \mathrm{Sample}(\mathbf{p})}
+    \left\|\, v_\theta(a_t \mid o_t) - (a_{t+1}-a_t) \,\right\|^2
+    \]
+    <div class="exp">注意：损失的<em>形式</em>就是普通的 Flow Matching（对成功 Action Chunk 做速度场拟合），一个字没改。FERT 的全部作用体现在采样分布 \(\mathrm{Sample}(\mathbf{p})\) 上——<strong>它不改"怎么学"，只改"学谁"</strong>。这也是它容易插进现有训练栈的原因：不动模型、不动损失，只动 dataloader 的权重。</div>
+  </div>
+
+  <p>这个设计的哲学意味值得多说一句：它把"失败的价值"从<strong>内容层</strong>（失败里有什么信息）挪到了<strong>索引层</strong>（失败指向哪段成功）。而索引层的成本极低——一条失败轨迹只需要算一个检索表示，不需要任何人给它标动作。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>三个工程决定，决定了这套东西能不能跑在真机上</h2>
+
+  <p>思路漂亮不难，难的是让它在一百台机器人的抖动、延迟、掉线里持续转。文章里有三个决定我认为是真正的骨头，其余都是肉。</p>
+
+  <h3>决定一：视觉编码器必须冻结</h3>
+
+  <p>检索要算"两个状态像不像"，就得先把状态压成一个向量。CEL 的做法是：三个相机视角各自过<strong>冻结的</strong>视觉编码器，得到 16×16 的 token 网格，再做空间平均池化压到 4×4，三视角按固定顺序拼起来，接上 16 维归一化关节状态。</p>
+
+  <div class="fml">
+    <div class="name">式 3　检索表示：64 维，故意做小</div>
+    \[
+    z \;=\; \Big[\,\underbrace{\mathrm{Pool}_{4\times4}\big(\phi(I_1)\big)}_{\text{16 维}},\;
+    \underbrace{\mathrm{Pool}_{4\times4}\big(\phi(I_2)\big)}_{\text{16 维}},\;
+    \underbrace{\mathrm{Pool}_{4\times4}\big(\phi(I_3)\big)}_{\text{16 维}},\;
+    \underbrace{\hat{q}_{16}}_{\text{关节}}\,\Big] \in \mathbb{R}^{64}
+    \]
+    \[
+    \phi \ \text{冻结},\qquad \hat{q} = \frac{q-\mu_q}{\sigma_q}
+    \]
+    <div class="exp">三个视角各 16 维 + 关节 16 维 = <strong>64 维的检索键</strong>。为什么压这么狠？因为检索要在训练中途频繁跑（它是 dataloader 的一部分，不是离线索引）。文章说 3 倍降采样后理论加速 9 倍、实测 6 倍——这个数字只有在表示足够小的时候才有意义。</div>
+  </div>
+
+  <p>冻结 \(\phi\) 的理由，文章讲得很到位，值得单独抄下来：<strong>成功轨迹可能是三个策略版本之前存进去的，而失败查询来自今天的策略。如果编码器跟着策略一起更新，旧轨迹和新查询就落在两个不同的空间里，算出来的"距离"不再有任何意义。</strong></p>
+
+  <p>换句话说，这不是"省算力"，而是<strong>让跨时间的经验还能互相比较</strong>。类比一下：公司的绩效评分标准如果每季度都换，那去年的 85 分和今年的 85 分就没法比了。冻结编码器 = 锁定一把不动的尺子。</p>
+
+  <h3>决定二：失败查询只截尾巴，而且砍掉最后 10 帧</h3>
+
+  <p>一条失败 episode 有几千步，但"失败发生"这个事实只在最后才被系统知道。CEL 的做法是从结尾往前取最多 90 帧，并且<strong>排除最后 10 帧</strong>。</p>
+
+  <div class="fml">
+    <div class="name">式 4　查询窗口：为什么要砍掉尾巴</div>
+    \[
+    \mathcal{Q} \;=\; \big\{\, (o_t, q_t) \;\big|\; t \in [\,T-90,\; T-11\,] \,\big\}
+    \]
+    \[
+    \text{窗口长度} = \frac{80}{30\,\text{Hz}} \approx 2.67\ \text{s},
+    \qquad
+    \text{末端留白} = \frac{10}{30\,\text{Hz}} \approx 0.33\ \text{s}
+    \]
+    <div class="exp">砍掉最后 0.33 秒是在躲三种污染：① 终止状态本身（机器人已经停了，姿态不具代表性）；② 失败信号有延迟（判定"失败"往往比实际出错晚几帧）；③ 环境重置前的动作。<strong>这一段等于在说：我要的是"出事之前的那个处境"，不是"出事后的一片狼藉"。</strong>这个细节很不起眼，但它是全篇我最认可的一处工程直觉。</div>
+  </div>
+
+  <h3>决定三：匹配要用 DTW，而且要往前扩 30 帧</h3>
+
+  <p>两段行为做匹配，最朴素的办法是逐帧比距离。但人和机器人做事都有节奏差——同样一个插花动作，有人 2 秒有人 3 秒，逐帧对齐会全错位。所以 CEL 用带斜率约束的子序列 DTW（S-DTW），允许时间上有伸缩，<strong>但不允许动作顺序被打乱</strong>。</p>
+
+  <div class="fml">
+    <div class="name">式 5　S-DTW 代价与候选扩展</div>
+    \[
+    D(i,j) = \min\begin{cases}
+    D(i-1,j) + w \\
+    D(i,j-1) + w \\
+    D(i-1,j-1) + \big\| z^{\mathcal{Q}}_i - z^{\mathcal{S}}_j \big\|_2
+    \end{cases}
+    \]
+    \[
+    \mathcal{S}^\star = \mathrm{TopK}_{k=10}\Big( \min_{\text{align}} D \Big),
+    \qquad
+    \text{训练用区间} = [\,a^\star - 30,\; b^\star + 30\,]
+    \]
+    <div class="exp">\(w\) 是斜率约束下的步进惩罚，防止把 10 帧硬拉成 100 帧（那就成了"什么都像"）。选出代价最低的 <strong>10 个候选</strong>后，把匹配区间<strong>前后各扩 30 帧</strong>——因为真正要训的不是"那个瞬间"，而是"接近它、执行它、离开它"的完整动作。文章里"去掉前后扩展后 86.7% 掉到 57.5%"这个消融，说明这 30 帧不是可有可无的装饰，它贡献了 29 个百分点。</div>
+  </div>
+
+  <h3>把三者接起来：优先级怎么更新</h3>
+
+  <p>检索找到候选之后，要让对应的 Action Chunk 在后续训练里被更频繁地抽到。规则是：与匹配区间重叠越多，加成越多；历史优先级按系数 \(\rho\) 衰减。</p>
+
+  <div class="fml">
+    <div class="name">式 6　优先级更新与遗忘</div>
+    \[
+    p_c \;\leftarrow\; \rho \cdot p_c \;+\; \Delta \cdot \mathrm{overlap}\big(c,\,[a^\star-30,\; b^\star+30]\big)
+    \]
+    \[
+    \mathrm{overlap} = \frac{|\,c \cap [a^\star-30,\,b^\star+30]\,|}{|\,c\,|} \in [0,1],
+    \qquad \rho = 0.88
+    \]
+    <div class="exp">\(\rho\) 是"记性"：0.88 意味着大约 8 轮之后旧权重衰减到一半。\(\rho\) 太大 → 系统记着三周前的坑，对今天的失败反应迟钝；太小 → 反复出现的同一个坑攒不起权重。<strong>这个参数本质上是"经验的有效期"</strong>，而有效期取决于任务分布变化的速度——所以它注定要按场景调，没有普适值。</div>
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">价值</span>数字很漂亮，但要看清每一格是在什么条件下拿的</h2>
+
+  <p>先摆主结果。评测用的是<strong>两台没有参与数据采集的同型号 AgiBot G2</strong>，每个策略每台跑 60 次、共 120 次，<strong>评测全程不给人接管和纠正</strong>。这个设置是干净的——它测的是策略自己。</p>
+
+  <table>
+    <tr><th>阶段</th><th>五项任务平均成功率</th><th>专家介入方式</th></tr>
+    <tr><td>初始化策略</td><td>36.3%</td><td>—</td></tr>
+    <tr><td>多机器人 HG-DAgger</td><td>81.0%</td><td>专家接管困难状态、给纠正动作</td></tr>
+    <tr><td><b>CEL（FERT）</b></td><td><b>97.3%</b></td><td><b>零新增示范、零新增纠正</b></td></tr>
+  </table>
+
+  <p>平均失败率从 19.00% 降到 2.67%，相对降低 86.0%。在最大机群规模下，五项任务分别落在 93.3%–99.2%。论文还给了横向对比：比 RLT 高 12.3 个百分点，比 RECAP 高 11.5 个百分点。</p>
+
+  <div class="box good">
+    <b>这里最值得肯定的一点，不是 97.3%，而是"这一格没有花专家的钱"。</b>从 81.0% 到 97.3% 这 16.3 个百分点，是在<strong>完全不加人</strong>的前提下拿到的。这正好回应了式 1 的错配——它没有去扩大专家产能，而是提高了存量动作答案的周转率。这个逻辑是闭环的。
+  </div>
+
+  <h3>消融：哪个部件在真干活</h3>
+
+  <p>16 台机器人、Phone Packaging 单任务：</p>
+
+  <table>
+    <tr><th>配置</th><th>成功率</th><th>说明</th></tr>
+    <tr><td>完整 FERT</td><td><b>86.7%</b></td><td>基准</td></tr>
+    <tr><td>去掉失败引导检索</td><td>64.2%</td><td>−22.5pp：检索本身是主力</td></tr>
+    <tr><td>保留检索、去掉前后 30 帧扩展</td><td>57.5%</td><td>−29.2pp：<b>上下文比检索更关键</b></td></tr>
+    <tr><td>\(\rho=0.80\)</td><td>70.8%</td><td>忘太快</td></tr>
+    <tr><td>\(\rho=0.88\)（默认）</td><td>86.7%</td><td>—</td></tr>
+    <tr><td>\(\rho=0.95\)</td><td>82.5%</td><td>忘太慢</td></tr>
+  </table>
+
+  <p>有意思的是第二行：<strong>去掉"前后扩 30 帧"（57.5%）比整个去掉检索（64.2%）还低。</strong>这说明"只给一个孤立时刻"比"不给"还糟——模型被喂了一段没有前因后果的片段，学到的动作在真实时序里落不了地。这是个反直觉但很有说服力的发现。</p>
+
+  <h3>规模：加的必须是"新状态"，不是"新帧数"</h3>
+
+  <p>Phone Packaging 上，训练机器人从 16 台加到 96 台，成功率 86.7% → 98.3%。但同一篇里也写了：<strong>8 台训练时，手机包装和凳子组装的结果都低于初始化策略。</strong></p>
+
+  <p>这两条放在一起，才是这篇文章没说透的核心结论：<strong>机群规模的作用不是"采更多帧"，而是"覆盖更多种类的失败状态"。</strong>如果 96 台机器人都在重复同一个容易的状态，经验池里全是同一种先例，检索再准也没用——因为问题从来不是"匹配不到"，而是"匹配到了但没有新答案"。</p>
+
+  <p>同步间隔的数据也印证了"经验分布"这个概念：每 500 步同步一次 86.7%，100 步时 75.0%，1500 步时 80.0%。同步太快，单个版本攒不够经验；太慢，机器人长时间执行旧策略。这是一个两头都堵的窗口。</p>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">局限</span>它证到的是"同构机群内的经验复用"，不是"集体智能"</h2>
+
+  <p>这篇文章写得比多数宣传稿诚实，主动交代了边界。但仍有几处需要读者自己补上警惕。</p>
+
+  <ol class="crit">
+    <li><strong>97.3% 的适用范围比它听起来窄得多。</strong>评测在"同型号、未参与采集"的两台 G2 上完成——这证明的是<em>同一批硬件之间</em>的经验可以互相迁移。跨本体（换成别的手臂）、跨任务（换成没见过的装配）一概没测。所以"Collective Experience Learning"这个名字里的 Collective，实际含义是"同一型号的机群"，不是"通用集体智能"。</li>
+    <li><strong>8 台低于初始策略这条，是全文最诚实也最被轻描淡写的一句。</strong>它被写成"经验池中缺少相近先例"的一个脚注。但它的含义很重：<strong>这套机制在冷启动时会主动伤害性能</strong>——不是"没帮助"，是"帮倒忙"。因为检索总会返回 top-10，哪怕这 10 个都不合适。缺少一个"检索置信度不足就退回原始策略"的拒绝机制，这是明显的设计缺口。</li>
+    <li><strong>\(\rho\) 的三档差异很可能落在噪声里。</strong>评测是每任务 120 次。86.7% 与 82.5% 相差 4.2 个百分点 ≈ 5 次成功；120 次二项分布的 1 个标准差约 3.1 个百分点，两个标准差约 6.2 个百分点。也就是说 \(\rho=0.95\) 与 \(\rho=0.88\) 的差距<strong>不足以宣称显著</strong>，更不该据此推出"存在最优 \(\rho\)"这样的结论。真正可靠的只有 \(\rho=0.80\) 那档（70.8%，差 16pp≈19 次），它是真的崩了。</li>
+    <li><strong>"失败发生在尾部"是个内置假设，不是事实。</strong>查询窗口只取最后 90 帧、还砍掉尾巴 10 帧——这套设计隐含前提是"失败在终点附近显现，且根因也在附近"。可现实中大量失败是<em>早期就走错</em>：一开始抓错了物体、一开始选错了接近方向。这类失败的根因在 episode 开头，尾部窗口完全看不到，检索会指向"和目标物体相像但根本不对"的片段。文章附录的四个案例（插花第二朵、叠衣服、插头对齐、螺钉放置）恰好都是尾部可归因的任务，这是有利取样。</li>
+    <li><strong>理论分析的条件，基本就是要证的结论。</strong>文中列出四条：成功经验回放方向与成功率梯度对齐、检索权重落在高失败率阶段、阶段独立、检索排序反映局部失败率。这些正是 FERT 想要达到的效果；把它们当<em>前提</em>去证明"足够小的步长下优于均匀回放"，逻辑上是局部成立的，但对"为什么在实践中有效"解释力有限。文章自己也承认实际系统用的是滚动缓冲 + Flow Matching + 异步采集，与理论模型不同。</li>
+    <li><strong>"故障恢复是核心贡献"这个叙事，被它自己的数据削弱了。</strong>96 台跑下来共 9,834 条 episode、30 次故障、涉及 22 台机器人，故障造成 8.3 个机器人小时的损失，占约 660 机器人小时的 <strong>1.3%</strong>。1.3% 的损耗确实值得工程处理，但把它抬到与 FERT 并列的"两大支柱"位置，份量不太够。真正有说服力的是那句反事实：同步采集只能保留 33% 的可回放数据、全系统重启会损失 8%–26%。那是"如果不做会怎样"，比 1.3% 有力得多。</li>
+    <li><strong>任务太窄。</strong>五项全是桌面操作（插花、叠衣、充电、装凳、包手机），成功率顶到 99.2% 已接近饱和。饱和意味着这个基准<strong>已经没有区分度了</strong>——下一个系统做到 99% 和 97% 在统计上分不开。要证明机制可扩展，需要的是更长程、更少见的任务，而不是在这五项上再挤两个点。</li>
+  </ol>
+
+  <div class="box bad">
+    <b>一句话总结它的位置：</b>CEL 解决的是"<b>经验周转率</b>"问题，不是"<b>经验创造</b>"问题。它把已有的成功动作复用得非常充分（86% 的相对失败率下降是硬成绩），但它无法凭空产生一个策略从未达成过的行为。这也正是它 8 台崩盘、97.3% 只敢在同型号上宣称的同一个根因：<b>检索是乘法，不是加法——答案库里先得有一本对的书。</b>
+  </div>
+
+  <p class="src">出处：Learning from Fleet Experience（清华大学 × 智元机器人 × 无问芯穹），提出 Collective Experience Learning（CEL）框架，含 FERT（机群经验检索训练）与 FATS（异步机群运行时）。实验平台为最多 96 台 AgiBot G2，五项桌面操作任务，评测于两台未参与采集的同型号机器人，各 60 次共 120 次，无人工接管。</p>
+</section>
+
+<footer>公众号「human five」· 2026-11-02 · 3W1H 与第一性原理拆解</footer>
+</div></body>
+</html>

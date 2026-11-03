@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RoboDojo刷的这么快真的合理吗？</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>RoboDojo刷的这么快真的合理吗？<span class="sub">重新审视 Robot-Use Agent 的评测 · 原生预算其实只有 8–76 秒 · 99 次成功里 98 次发生在限制之后 · 处方「统一预算」自带 9.5 倍的裂缝 · 技能迁移率 25%，不是「一半」</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-02 14:38</div>
+    <div><b>正文规模</b> 12,806 字 · 7 图 · 2 表 · 13 段代码</div>
+    <div><b>原始论文</b> OpenRUA Team, 2026</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>这篇文章测出的最重要的一件事，不是「谁在刷分」，而是<b>当前排行榜的分数主要度量评测配置，而不是系统能力</b>——RoboDawn 放开预算时 47.1%，收回原生限制只剩 1.0%，而 99 次成功里<b>有 98 次发生在原生限制之后</b>。但它的处方「统一预算」在算术上走不通：原生限制本身在任务间就差 <b>9.5 倍</b>（200 步到 1,900 步 = 8 秒到 76 秒），任何单一数字都不可能同时对所有任务公平。真正的解法不是「一个统一值」，而是<b>按倍数分档，并报告预算-成功率曲线</b>。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">三个漏洞的量级</a>
+  <a href="#s2">原生预算只有 8–76 秒</a>
+  <a href="#s3">处方自带矛盾</a>
+  <a href="#s4">验证器泄露：效应量 vs 噪声</a>
+  <a href="#s5">技能迁移率其实是 25%</a>
+  <a href="#s6">结论</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>三个漏洞，各自的量级差了两个数量级</h2>
+
+  <p>文章把问题切成三类，这是对的分类——预算约束破坏一类，信息约束破坏两类。但三者的效应量差别极大，而文章用「三个漏洞」这种并列措辞把它们抹平了：</p>
+
+  <table>
+    <tr><th>漏洞</th><th>被影响的系统</th><th>量级</th><th>相对降幅</th></tr>
+    <tr><td>① 不公平的计算预算</td><td>RoboDawn</td><td><b>47.1% → 1.0%</b></td><td><b>−97.9%</b></td></tr>
+    <tr><td>① 不公平的计算预算</td><td>Embodied First Exam</td><td>5/5 成功全部超限 → ≈0%</td><td>≈ −100%</td></tr>
+    <tr><td>② 可访问的验证器</td><td>RoboICL</td><td>83.2 → 63.5</td><td>−23.7%</td></tr>
+    <tr><td>② 可访问的验证器</td><td>RoboProbe</td><td>42.0 → 26.1</td><td>−37.9%</td></tr>
+    <tr><td>③ 过拟合的技能</td><td>HexaShell</td><td>跨任务迁移率 25%</td><td>效应最弱</td></tr>
+  </table>
+
+  <p>第一个漏洞不是「抬高了成绩」，而是<b>把成绩几乎全部解释掉了</b>。47.1% 降到 1.0%，意味着原来那个 47.1% 里有 <b>98% 的分数来自预算配置</b>，只剩 2% 属于系统能力。另外两个漏洞是「扣掉一部分」，这一个是「几乎清零」。把它们并列为三个同级漏洞，会让读者低估第一个的严重性——也低估了真正的结论：<b>这一步的差错不是程度问题，是量级问题。</b></p>
+
+  <div class="fml">
+    <div class="name">RoboDawn 的分母自检</div>
+    \[
+    \text{公开结果：}\ \frac{99}{210} = 47.14\% \quad\text{（原文 47.1%）}
+    \]
+    \[
+    \text{收回原生限制：}\ \frac{99-97}{210} = \frac{2}{210} = 0.95\% \quad\text{（原文 1.0%）}
+    \]
+    \[
+    \text{超限成功占比：}\ \frac{97}{99} = 98.0\%
+    \]
+    <div class="exp">三处数字完全自洽，说明「210 个 Episode、99 次成功、97 次发生在原生限制之后」这条链条是可以交叉验证的，不是估算。这是全文证据强度最高的一段。</div>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>原生预算换算成秒，只有 8 到 76 秒</h2>
+
+  <p>文章反复说「RoboDawn 实际上允许了原生步数限制 <b>10 倍</b>的预算」。这个「10 倍」是全文最容易误导读者的一个数，因为它用的是<b>步数</b>口径——而文章自己的核心论点是「不同单位之间不可换算」。</p>
+
+  <p>RoboDojo 原生限制是每任务 200～1,900 个控制步，控制频率 25 Hz。换成墙钟时间：</p>
+
+  <div class="fml">
+    <div class="name">原生预算的真实物理尺度</div>
+    \[
+    \frac{200\ \text{步}}{25\ \text{Hz}} = 8.0\ \text{秒}, \qquad
+    \frac{1900\ \text{步}}{25\ \text{Hz}} = 76.0\ \text{秒}
+    \]
+    \[
+    \text{任务间跨度} = \frac{1900}{200} = 9.5\ \text{倍}
+    \]
+    \[
+    \text{RoboDawn 的 9,000 秒} = \frac{9000}{8} \sim \frac{9000}{76} = \textbf{118 倍到 1,125 倍}
+    \]
+    <div class="exp">原生预算是 8 到 76 秒。RoboDawn 给的是 9,000 秒 = 2.5 小时，相当于最短任务的 1,125 倍、最长任务的 118 倍。用步数说是 10 倍，用时间是 118–1125 倍，两个口径差了两个数量级。</div>
+  </div>
+
+  <p>这就出现一个很有意思的自我指涉：<b>文章的核心批评是「不同研究用了不可换算的单位，所以成绩不可比」，但它自己在描述 RoboDawn 时，用的是「10 倍」这个最保守的步数口径。</b>如果换成它自己主张的墙钟时间口径，RoboDawn 超出的幅度不是 10 倍，是三到四位数量级。</p>
+
+  <div class="box bad">
+    <b>更重要的推论：98% 的成功发生在 8–76 秒之后，说明这个 Benchmark 的原生预算与 Agent 类系统根本不匹配。</b>不是「Agent 多用了预算所以虚高」，而是「在原生预算内，这类系统基本不可能成功」。这两句话的处方完全相反：前者要求收紧预算，后者要求<b>换一种基准设计</b>。而收紧到原生值的结果，就是所有 Agent 都落在 1% 附近——评测失去区分度。
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>「统一预算」这个处方，自身有一道 9.5 倍的裂缝</h2>
+
+  <p>文章的第一条规则是：不同研究应该使用相同的限制，并明确报告控制步数、Wall-clock Time、交互轮数。方向对，但「相同」这个词没有定义清楚——是<b>相同的绝对值</b>，还是<b>相同的倍数</b>？这两种理解给出完全不同的公平性。</p>
+
+  <h3>统一绝对值 = 不公平</h3>
+  <p>拿 EFE 的实际做法检验：它设了一个 15,000 次动作的上限。这个上限对不同任务有多宽松？</p>
+
+  <div class="fml">
+    <div class="name">一个统一数值，九种宽松度</div>
+    \[
+    \frac{15000}{200} = 75.0\ \text{倍}, \qquad
+    \frac{15000}{500} = 30.0\ \text{倍}, \qquad
+    \frac{15000}{1900} = 7.9\ \text{倍}
+    \]
+    \[
+    \text{宽松度离散度} = \frac{75.0}{7.9} = 9.5\ \text{倍}
+    \]
+    <div class="exp">同一个 15,000 的上限，对 general_pickup（200 步）是 75 倍，对 play_Xylophone（500 步）是 30 倍，对最长的任务（1,900 步）只有 7.9 倍。</div>
+  </div>
+
+  <p>所以「统一成 15,000」并没有消除不平等，只是把不平等<b>翻转</b>了：原来的问题是「有人放开、有人不放」，现在变成「放开的幅度按任务不同差 9.5 倍」。对短任务极度宽松、对长任务相对严格——这恰好是最坏的一种偏向，因为它<b>系统性地奖励了在简单任务上刷分的系统</b>。</p>
+
+  <div class="box bad">
+    <b>这道裂缝的根源不在研究者的选择，而在 Benchmark 自己的设计：原生限制在 200 到 1,900 之间浮动。</b>只要原生限制本身差 9.5 倍，任何单一替代值都不可能同时对所有任务公平。这是一个数学事实，不是执行问题。文章提出了「统一」这个正确方向，但没有意识到「统一绝对值」会重新引入它想消除的那个偏差。
+  </div>
+
+  <h3>正确的解法是倍数，不是数值</h3>
+  <div class="step">
+    <div class="t">把预算写成原生预算的倍数，而不是绝对数字</div>
+    <div class="d">即 \(\text{budget} = k \times \text{step\_lim}\)，报告 \(k=1, 3, 10, 100\) 四档。这样「1 倍预算」对每个任务都含义相同——都是原生的 8 到 76 秒。<b>公平不是所有人拿到相同的数，而是所有人拿到相同的比例。</b>这是 taxation 和 benchmark 共享的同一条原理。</div>
+  </div>
+  <div class="step">
+    <div class="t">报告预算-成功率曲线，而不是单点</div>
+    <div class="d">RoboDawn 的真实信息不是「47.1%」也不是「1.0%」，而是这两个点之间的那条曲线。如果从 1% 到 47% 需要 118 到 1,125 倍的预算，那这条曲线的形状本身就是结论：<b>这类系统不是「更会做」，而是「更能坚持」。</b>单点数字把这个形状完全丢掉了。</div>
+  </div>
+
+  <p>这两条合起来，才能同时解决「公平」和「区分度」：按倍数分档保证同一档内可比，曲线保证不同档之间的能力差异可见。文章的三条规则里缺的正是这一步——它把「统一」当成终点，而「统一」只是让比较成为可能的前提。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">哪里不对</span>验证器泄露：效应量是噪声地板的 2.5 倍</h2>
+
+  <p>第二个漏洞（可访问的验证器）是文章论证最完整的一段，而且它做了一件很漂亮的事：把「Agent 是否会自己判断任务完成」这个能力单独隔离出来测。做法是只加一个 <code>done()</code> 工具，其他一切不变。</p>
+
+  <table>
+    <tr><th>系统</th><th>原始 Harness</th><th>加 done() 后</th><th>Δ</th><th>相对</th></tr>
+    <tr><td>RoboICL（gpt-6-astra xhigh）</td><td>83.2</td><td>63.5</td><td><b>−19.7 pp</b></td><td>−23.7%</td></tr>
+    <tr><td>RoboProbe（gpt-6-astra medium）</td><td>42.0</td><td>26.1</td><td><b>−15.9 pp</b></td><td>−37.9%</td></tr>
+  </table>
+
+  <p>两个案例都很有说服力：RoboICL 在剪刀还留在桌面上时就调用了 done，得 0 分；RoboProbe 声称三个碗都堆好了，验证器只认两个，得 15 分。<b>「判断任务是否完成」本身是一项独立能力，而它从来没有被单独评过</b>——这是全文最该扩散出去的一句话。</p>
+
+  <h3>但效应量的置信度要打个折</h3>
+  <p>文章很诚实地写了一行小字：RoboProbe 作者公开报告在<b>相同 50 个布局</b>上的平均得分是 <b>48.3</b>，而本文自己复现的原始 Harness 基线是 <b>42.0</b>。</p>
+
+  <div class="fml">
+    <div class="name">复现落差 vs 效应量</div>
+    \[
+    \text{复现落差} = 48.3 - 42.0 = 6.3\ \text{分}
+    \]
+    \[
+    \text{泄露效应} = 42.0 - 26.1 = 15.9\ \text{分}
+    \]
+    \[
+    \frac{\text{效应量}}{\text{噪声地板}} = \frac{15.9}{6.3} = 2.5
+    \]
+    <div class="exp">不改变任何 Harness 设置，仅「换一个团队复现」，分数就差了 6.3 分。而验证器泄露的效应是 15.9 分，只有复现落差的 2.5 倍。</div>
+  </div>
+
+  <p>这不是否定结论。2.5 倍仍然是可以站住的效应量，而且 RoboICL 那一侧（−19.7 pp）加上 13/50 的误判率（26%）构成了一条证据链。但它意味着：<b>这个实验只跑了 seed 0、5 种布局</b>。一个种子的实验，其噪声地板量级已被证明是 6 分级别，那么 15.9 分的结论应该带上区间，而不是当作精确值使用。</p>
+
+  <div class="box good">
+    <b>这里要给文章记一分：它主动选了自己复现的 42.0 作为基线，而不是作者公开的 48.3。</b>用 48.3 的话降幅是 −22.2 pp，故事更好看。它选了更保守的那个——这说明作者在效应量上没有夸大，反而是往回收的。这种自控在批判性论文里不常见。
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">哪里不对</span>技能迁移率其实是 25%，文章说成「一半」</h2>
+
+  <p>第三个漏洞的实验设计是最漂亮的：冻结在任务 A（cover_blocks）上演化出的技能，搬到另外四个任务，和不使用技能、使用各自任务技能三种设置对比。</p>
+
+  <table>
+    <tr><th>任务</th><th>Baseline</th><th>用 A 的技能</th><th>提升</th></tr>
+    <tr><td>A · cover_blocks（自身任务）</td><td>0</td><td>80</td><td><b>+80</b></td></tr>
+    <tr><td>B · swap_T</td><td>—</td><td>—</td><td><b>0（无提升）</b></td></tr>
+    <tr><td>C · press_by_number</td><td>20</td><td>60</td><td>+40</td></tr>
+    <tr><td>D · pour_balls_into_vase</td><td>—</td><td>—</td><td><b>0（无提升）</b></td></tr>
+    <tr><td>E · stack_blocks_by_language</td><td>28</td><td>68</td><td>+40</td></tr>
+  </table>
+
+  <div class="fml">
+    <div class="name">迁移率的两种算法</div>
+    \[
+    \text{文章口径（只看有改善的 C、E）：}\ \frac{40}{80} = 50\%
+    \]
+    \[
+    \text{全量口径（四个任务都算）：}\ \frac{(0+40+0+40)/4}{80} = \frac{20}{80} = 25\%
+    \]
+    <div class="exp">文章说「提升幅度大约只有各任务使用自身技能时的一半」——这句话只在 C 和 E 上成立。把 B 和 D 的零提升算进去，整体迁移率是 25%。</div>
+  </div>
+
+  <p>这个差别不是措辞问题。**「一半能迁移」和「四分之一能迁移，且有一半任务完全无效」对实践的指导完全不同。**前者会让人愿意去做技能迁移，后者会让人只在同族任务上迁移。</p>
+
+  <div class="box bad">
+    <b>文章在最该狠的地方手软了。</b>它在前两个漏洞上给了精确到小数点的测量（47.1%、83.2、42.0），到第三个漏洞却用「大约一半」这种模糊表述，而真实的数字（4 个任务里 2 个零提升）比自己说的更严重。<b>批判性论文的自我一致性要求：对自己不利的数字也要给准。</b>
+  </div>
+
+  <h3>顺带一个跨篇呼应</h3>
+  <p>HexaShell 在这个库里不是陌生名字——10-30 那篇《HexaShell：率先突破RoboDojo 40大关！让 Coding Agent 从使用工具，到迭代与创造工具》讲的就是它。现在它成了这篇文章里第三个漏洞的主要案例，而且文章还引用了一个 HexaShell 作者自己做的审查结果：</p>
+
+  <div class="box good">
+    「HexaShell 的作者在开发结束后审查了工具，发现其中<b>七个任务的工具包含固定的物体几何信息</b>，例如零件尺寸和场景固定组件的模板。随后，他们将这些常量替换为 Episode 执行过程中实际测量得到的信息。」
+  </div>
+
+  <p>这句话值得单独拎出来。<b>一个团队在发表后自己做了审计，发现了七处特权信息泄漏，并主动修掉了。</b>这是自我纠错的样本，比任何批评都更有说服力——因为它证明了「过拟合的技能」不是道德问题，而是<b>工程流程里没有「这件信息部署端拿得到吗」这道检查关卡</b>。加上这个关卡就能修，成本是一轮代码审查。</p>
+</section>
+
+<section id="s6">
+  <h2><span class="tag">结论</span>三条规则的评价，以及它能推出的那句更狠的话</h2>
+
+  <h3>三条规则：两条扎实，第一条需要改写</h3>
+
+  <table>
+    <tr><th>规则</th><th>评价</th><th>需要补什么</th></tr>
+    <tr><td>① 资源预算：报告控制步数、墙钟时间、交互轮数，并保持一致</td><td>方向对，<b>但「一致」定义不清</b></td><td>改成「按原生预算的 <b>k 倍</b>分档」，并报告预算-成功率曲线</td></tr>
+    <tr><td>② 执行期特权信息：只给本体感知、URDF、带内参 RGB、任务指令；工具返回值不得泄露进度；Agent 自行结束</td><td><b>最扎实的一条</b></td><td>建议加一条可执行的检查：「工具的每个返回字段，部署端能拿到吗」</td></tr>
+    <tr><td>③ 开发期特权信息：任务特定上下文不得与 Zero-shot 比较，必须报告新任务表现</td><td>原则对，<b>但缺可操作定义</b></td><td>需要一个「任务特定上下文」的判定标准（例如：是否用过验证器标签、是否看过场景常量）</td></tr>
+  </table>
+
+  <h3>这篇文章真正说了什么</h3>
+  <div class="box good">
+    <b>它实际上给出了一条可以推广到任何 Benchmark 的公理：</b>
+    <p style="margin-top:8px">一个排行榜的公信力，等于它<b>不可协商项的集合大小</b>。RoboDojo 允许 Harness 替换 <code>step_lim</code>，允许工具返回值携带验证器判定，允许在测试任务上迭代技能——每放开一项，这个集合就少一个元素。当三步都能改的时候，它衡量的已经不是系统能力，而是「参赛者愿意把配置推到多远」。</p>
+    <p>所以 47.1% → 1.0% 这个数字的意义不在 RoboDawn，而在 Benchmark：<b>一个能被一行代码改掉 46 个百分点的地方，不叫 Benchmark，叫可调参数集。</b></p>
+  </div>
+
+  <h3>这篇最该被记住的一句话</h3>
+  <p>文章最后一段写得很好，而且它道出了整个问题的根源：</p>
+  <div class="box bad">
+    「真实机器人没有自动验证器，也很少会提前练习它即将面对的确切任务。<b>世界也不会在模型思考时暂停。</b>」
+  </div>
+  <p>最后这半句是全文最锋利的地方，因为它点出了一个连文章自己都没深挖的特权信息：<b>仿真环境在 Agent 思考时是冻结的，真实世界不是。</b>一个跑了 9,000 秒墙钟时间的 Episode，在仿真里机器人等待了 2.5 小时而世界纹丝不动；在真实世界里，2.5 小时足够物体被碰倒、被人拿走、被光照改变。所以「预算」不只是算力问题——<b>它同时是一个物理合理性问题，而这一条连文章的三条规则都没有覆盖。</b></p>
+
+  <p>如果要在这三条规则上加第四条，应该是：<b>Agent 的思考时间必须计入环境的物理时间。</b>否则所有长时间 deliberation 的系统都会得到一个真实世界不存在的优势。</p>
+
+  <p class="src">原文：OpenRUA Team, «Behind the RoboDojo Boom: Revisiting Embodied Evaluation of Robot-Use Agents», 2026 · https://openrua.ai/revisiting-rua</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 基于公众号原文 12,806 字 · 所有换算式、一致性检验与迁移率重算均为自行计算</footer>
+
+</div></body>
+</html>

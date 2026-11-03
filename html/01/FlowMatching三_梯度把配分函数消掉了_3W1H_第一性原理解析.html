@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>【开学】Flow Matching and Diffusion Models（三）</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>【开学】Flow Matching and Diffusion Models（三）<span class="sub">扩散模型最要命的那个数字，是被求导干掉的 · 配分函数 Z 算不出来，但它的梯度恒等于零 · 于是「学密度」换成「学海拔的梯度」，山还是那座山，雾却散了 · 而这场换语言的交易只在一条路上成立：高斯路径。走出去就没有回程票</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-02</div>
+    <div><b>正文规模</b> 8,300 字（去标签，公式经 MathJax 渲染）· 第 4 章 Score Functions and Score Matching</div>
+    <div><b>内容类型</b> 讲义连载第三篇 · 理论推导为主</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>扩散模型不是另一套理论，它是<strong>同一件事换了一种语言</strong>：Flow Matching 学的是"往哪走"（向量场），扩散模型学的是"哪边海拔更高"（得分）。换的理由只有一个，而且极其朴素——<strong>任何一个概率密度都带着一个算不出来的归一化常数 \(Z\)，而求一次梯度，\(Z\) 就没了</strong>。这是扩散模型能成立的全部秘密，也是它最容易被讲成玄学的地方。但这场交易有标价：两种语言能自由互译<strong>只在高斯概率路径上成立</strong>，离开这条路，"学得分就等于学向量场"这句话就不再是恒等式，而是一个假设。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">一个算不出来的数</a>
+  <a href="#s2">求导为什么能消掉它</a>
+  <a href="#s3">两套语言怎么互译</a>
+  <a href="#s4">加了随机性，边缘分布为什么不变</a>
+  <a href="#s5">可训练性从哪来</a>
+  <a href="#s6">这套漂亮体系的边界</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>所有生成模型都卡在同一个数上</h2>
+
+  <p>先别看公式，先看一个所有人都遇到过的场景。</p>
+
+  <p>你在大雾的山里，想下山。你手里有两条可能的信息：</p>
+
+  <ul>
+    <li><strong>等高线图</strong>：告诉你每一点的海拔绝对高度，比如"这里是 1247 米"。</li>
+    <li><strong>坡度箭头图</strong>：只告诉你每一点"哪边是上坡、哪边是下坡、坡有多陡"，不告诉你任何绝对高度。</li>
+  </ul>
+
+  <p>要下山，<strong>坡度图完全够用，而且更好用</strong>——因为等高线图要想有意义，得先约定"海平面在哪"；坡度图不需要，它天然与基准面无关。</p>
+
+  <p>这就是扩散模型干的事。密度函数 \(p(x)\) 就是等高线图，得分函数 \(\nabla_x \log p(x)\) 就是坡度箭头图。而生成，需要的只是坡度。</p>
+
+  <div class="fml">
+    <div class="name">式 1　为什么密度不可学，而得分可学</div>
+    \[
+    p_\theta(x) \;=\; \frac{1}{Z_\theta}\, e^{-E_\theta(x)},
+    \qquad
+    Z_\theta \;=\; \int e^{-E_\theta(x)}\,\mathrm{d}x
+    \]
+    \[
+    \nabla_x \log p_\theta(x)
+    \;=\; \nabla_x\big[ -E_\theta(x) - \log Z_\theta \big]
+    \;=\; -\,\nabla_x E_\theta(x) \;-\; \underbrace{\nabla_x \log Z_\theta}_{=\;0}
+    \]
+    <div class="exp">关键在最后一步：<strong>\(Z_\theta\) 是一个数，不是 \(x\) 的函数</strong>，所以它对 \(x\) 求导恒为 0，整个 \(- \log Z_\theta\) 项在梯度里彻底消失。大白话：<em>基准面定在哪里，跟你脚下往哪边是上坡毫无关系。</em>于是——一个<strong>无法计算</strong>的量，在求导之后<strong>不需要计算</strong>了。</div>
+  </div>
+
+  <p>这个变换的价值怎么强调都不过分。在此之前，所有基于似然的生成模型都得直面 \(Z_\theta\)：要么做变分下界（VAE，绕过去但松了）、要么做重要性采样（慢且高方差）、要么做对抗（GAN，干脆不碰似然但训练不稳）。扩散模型是第一个<strong>把 \(Z\) 从"要算的东西"变成"不存在的东西"</strong>的路线。</p>
+
+  <div class="box good">
+    <b>这里必须说清一件事，否则容易理解成"扩散模型解决了归一化问题"：</b>它没有解决。\(Z\) 依然算不出来。它做的是<b>换了一个不需要 \(Z\) 的问题</b>——从"这个分布长什么样"换成"在这个点上往哪走"。问题被绕开了，不是被攻克了。这个区别很重要，因为凡是"必须知道绝对概率"的场合（比如精确的似然评估、模型比较），扩散模型依然没有优势，甚至更麻烦。
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>得分的物理意义：一条永远指向上坡的箭头</h2>
+
+  <p>把 \(\nabla_x \log p(x)\) 逐字拆开：\(\log p\) 是"对数似然"，梯度是"变化最快的方向"。所以得分就是一个向量，指向<strong>该点上概率密度增长最快的方向</strong>。数据密的地方，箭头指向更密的地方；数据稀的地方，箭头指向最近的密集区。</p>
+
+  <p>这个图像的用处非常大：<strong>如果我能知道空间每一点的箭头，我就可以把一团噪声"顺着箭头推"成数据。</strong>这就是采样的全部内容——从纯高斯噪声出发，每步沿得分走一小段，加上一点噪声，再走一小段。</p>
+
+  <div class="fml">
+    <div class="name">式 2　Langevin 采样：沿得分爬山 + 抖动</div>
+    \[
+    x_{k+1} \;=\; x_k \;+\; \eta\,\nabla_x \log p(x_k) \;+\; \sqrt{2\eta}\;\varepsilon_k,
+    \qquad \varepsilon_k \sim \mathcal{N}(0, I)
+    \]
+    <div class="exp">\(\eta\) 是步长：第一项"沿箭头上坡"，第二项"随机抖一下"。为什么要抖？因为只爬坡会卡在局部高峰，抖动能帮它跳出小坑、最终按密度比例分布在整个高概率区。<strong>没有抖动 → 只能找到众数；有抖动 → 才能采样出整个分布。</strong>这也是采样器温度参数在物理上的根。</div>
+  </div>
+
+  <p>但式 2 有个致命前提：它需要的是<strong>数据分布的</strong>得分 \(\nabla \log p_{\text{data}}\)。而我们只有样本，没有 \(p_{\text{data}}\) 的解析式。整章后半段（4.3 节）就是在解决"怎么从样本里把得分学出来"。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>互译公式：一个高斯路径下的恒等式，撑起了两套语言的等价</h2>
+
+  <p>讲义在这里做了一件很聪明的事：它不重新建一套体系，而是<strong>把已经学过的 Flow Matching 翻译成得分的语言</strong>。翻译的桥梁是命题 1。</p>
+
+  <p>先说结论：在高斯概率路径 \(p_t(x \mid x_1) = \mathcal{N}(\alpha_t x_1,\, \sigma_t^2 I)\) 下，条件向量场和条件得分之间有一个<strong>封闭的线性变换</strong>。你可以只学其中一个，另一个白拿。</p>
+
+  <div class="fml">
+    <div class="name">式 3　命题 1：向量场 ⇄ 得分的换算（高斯路径专有）</div>
+    \[
+    \nabla_x \log p_t(x \mid x_1) \;=\; -\,\frac{x - \alpha_t x_1}{\sigma_t^2}
+    \;=\; -\,\frac{1}{\sigma_t^2}\Big(x - \alpha_t x_1\Big)
+    \]
+    \[
+    u_t(x \mid x_1) \;=\; \frac{\dot\alpha_t}{\alpha_t}\,x \;+\; \Big(\dot\sigma_t - \frac{\dot\alpha_t \sigma_t}{\alpha_t}\Big)\sigma_t \,\nabla_x \log p_t(x\mid x_1)
+    \]
+    <div class="exp">第二行就是"换算公式"：它把得分乘上两个随 \(t\) 变化的标量、再加上一项 \(x\) 的倍数，就得到向量场。<strong>注意它只用到 \(\alpha_t, \sigma_t\) 及其导数</strong>——也就是路径的形状，与数据无关。所以：<em>学了速度场 = 同时得到了得分，一分钱没多花。</em></div>
+  </div>
+
+  <p>再往下一步，讲义引入了"去噪器"这个更直观的量：</p>
+
+  <div class="fml">
+    <div class="name">式 4　去噪器 = 后验均值 = 得分的另一种写法</div>
+    \[
+    \mathbb{E}\big[x_1 \mid x_t\big]
+    \;=\; \frac{x_t + \sigma_t^2\,\nabla_x \log p_t(x_t)}{\alpha_t}
+    \]
+    <div class="exp">读法：<strong>"看到带噪的 \(x_t\)，猜干净的原图 \(x_1\) 是什么"</strong>。右边说明它恰好可以由 \(x_t\) 和得分算出来。这就把三种说法缝在了一起——学向量场、学得分、学去噪，<strong>在高斯路径上是同一件事的三种口音</strong>。这也解释了为什么图像扩散模型训练时用的目标看起来像"预测噪声"：噪声和干净图的差，正比于后验均值，也就正比于得分。</div>
+  </div>
+
+  <div class="box bad">
+    <b>但请注意这套互译的适用条件，这是全文最容易被忽略的一句。上半段推 \(p_t(x|x_1)=\mathcal{N}(\cdot)\)，整个命题 1 都靠它。</b>换句话说：<b>"扩散 = Flow Matching"这个漂亮的等价，只在高斯概率路径上成立。</b>一旦换成非高斯的条件路径（比如某些整流流、或人为设计的确定性插值），这个封闭换算就没有了。<strong>讲义用"命题"而不是"定理"来命名它，用词是准确的——它不是普遍真理，是一条特定路径上的恒等式。</strong>
+  </div>
+
+  <h3>一个不太显眼但很关键的细节：为什么要"重参数化"</h3>
+
+  <p>讲义提了一句"从数值/训练的角度看，这样做甚至可能更可取"——这句话值得展开。当网络直接输出得分 \(\nabla \log p_t\) 时，这个量的<strong>尺度是 \(1/\sigma_t^2\) 量级</strong>：\(t\) 接近 0 时 \(\sigma_t \to 0\)，得分会爆到极大；\(t\) 接近 1 时它又很小。方差跨越好几个数量级，训练会非常难。</p>
+
+  <p>所以实践中几乎不直接回归得分，而是回归<strong>去噪器或噪声</strong>——因为这两者与得分之间只差一个 \(\sigma_t\) 的乘除法，而这个因子正好把尺度归一化了。这就是为什么"预测噪声"、"预测 \(x_0\)"、"预测速度"这三种参数化在文献里打得不可开交：<strong>它们在数学上等价，在数值上天差地别。</strong></p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">怎么做</span>加噪声却不改分布：福克-普朗克方程里的那一次抵消</h2>
+
+  <p>到这里讲义干了一件更狠的事：把采样从 ODE 推广到 SDE。也就是说，不止可以沿确定性的速度场走，还可以<strong>在走的过程中随机乱晃，而最终分布一模一样</strong>。</p>
+
+  <div class="fml">
+    <div class="name">式 5　定理 17：SDE 扩展技巧</div>
+    \[
+    \mathrm{d}X_t \;=\; \Big[\, u_t(X_t) \;+\; \frac{g(t)^2}{2}\,\nabla_x \log p_t(X_t) \,\Big]\,\mathrm{d}t \;+\; g(t)\,\mathrm{d}W_t
+    \]
+    \[
+    \forall\, g(t) \ge 0:\quad X_1 \sim p_1 \;\Longrightarrow\; X_0 \sim p_0
+    \]
+    <div class="exp">三个部分：\(u_t\) 是原来的确定性速度场；\(\nabla \log p_t\) 是得分（负责把随机晃出来的偏差拉回去）；\(g(t)\) 是<strong>随便你选的</strong>扩散强度。结论是：<em>不管你选多大的 \(g\)，边缘分布在 \(t=0\) 处都不变。</em>这就是"免费"两个字的来源——你可以事后、训练完、不重训的情况下，任意换采样器的随机性。</div>
+  </div>
+
+  <p>为什么能这样？讲义用福克-普朗克方程给了证明，逻辑链条很干净：</p>
+
+  <div class="fml">
+    <div class="name">式 6　福克-普朗克方程：多出来的一项刚好被抵消</div>
+    \[
+    \frac{\partial p_t}{\partial t}
+    \;=\; -\,\nabla\cdot\big(p_t\, u_t\big)
+    \;+\; \underbrace{\frac{g(t)^2}{2}\,\Delta p_t}_{\text{扩散项（Laplacian）}}
+    \]
+    \[
+    \text{而}\quad \frac{g^2}{2}\Delta p_t
+    = \frac{g^2}{2}\nabla\cdot\big(p_t \nabla \log p_t\big)
+    \quad\Longrightarrow\quad
+    \frac{\partial p_t}{\partial t}
+    = -\nabla\cdot\Big[\,p_t\Big(u_t + \tfrac{g^2}{2}\nabla\log p_t\Big)\Big]
+    \]
+    <div class="exp">看第二行：Laplacian 项被改写成"散度 × 得分"的形式，于是它和原来的漂移项<strong>合并进同一个散度括号里</strong>。这意味着——你注入的随机性，恰好等价于给速度场加了一个"沿得分方向"的分量；两者在分布层面<strong>完全抵消</strong>。物理上：这跟热传导方程里的扩散项是同一项，热在介质里铺开，但总量守恒。数学上：噪声只改变<em>路径</em>，不改变<em>终点</em>。</div>
+  </div>
+
+  <div class="box bad">
+    <b>"任意 \(g(t)\) 都成立"是本章最容易被误读的一句。</b>讲义自己紧跟了一句诚实的补充，但力度不够：定理对任意 \(g\) 成立，<b>但那只在"网络完美、模拟无限精细"时成立</b>。真实系统里有两重误差——网络逼近误差、数值积分误差。\(g\) 越大，单步注入的噪声越多，离散化误差被放大得越快，需要的时间步长就越小。所以实践中存在一个<b>最优 \(g\)，而且只能靠实验调出来</b>。<em>理论给的是自由度，不是免费午餐。</em>把"可以任意选"读成"任意选都一样好"，是这一章最贵的误读。
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">怎么做</span>可训练性：把"算不出的边缘得分"换成"能采样的条件得分"</h2>
+
+  <p>剩下的核心难题是：边缘得分 \(\nabla \log p_t(x)\) 依然算不出来，因为它需要对所有可能的 \(x_1\) 做积分。讲义的第 4.3 节给出解法，思路和 Flow Matching 里"条件向量场 → 边缘向量场"完全同构。</p>
+
+  <div class="fml">
+    <div class="name">式 7　得分匹配 vs 去噪得分匹配</div>
+    \[
+    \mathcal{L}_{\text{SM}}(\theta)
+    = \mathbb{E}_{t,\,x \sim p_t}\Big\|\, s_\theta(x,t) - \nabla_x \log p_t(x) \,\Big\|^2
+    \quad\text{（算不出来）}
+    \]
+    \[
+    \mathcal{L}_{\text{DSM}}(\theta)
+    = \mathbb{E}_{t,\; x_1 \sim p_{\text{data}},\; x_t \sim p_t(\cdot \mid x_1)}
+    \Big\|\, s_\theta(x_t,t) - \nabla_{x_t} \log p_t(x_t \mid x_1) \,\Big\|^2
+    \quad\text{（能算）}
+    \]
+    <div class="exp">差别只在"用哪个得分"。边缘得分要对全体数据积分，没法算；条件得分在给定 \(x_1\) 时<strong>就是个高斯，闭式可写</strong>（式 3 已经给了）。而两者的期望相等——所以最小化 DSM 就等于最小化 SM。大白话：<em>我不去求"全城的平均坡度"，我只取一条已知的坡道量一下，多量几条，平均下来就是全城的。</em></div>
+  </div>
+
+  <p>这一步之所以成立，靠的是"边缘得分 = 条件得分的后验加权平均"这个恒等式：</p>
+
+  <div class="fml">
+    <div class="name">式 8　边缘得分是条件得分的期望（训练可行性的根）</div>
+    \[
+    \nabla_x \log p_t(x)
+    \;=\; \mathbb{E}_{x_1 \sim p(x_1 \mid x_t)}\big[\, \nabla_x \log p_t(x \mid x_1) \,\big]
+    \]
+    \[
+    \text{而}\quad
+    \nabla_x \log p_t(x \mid x_1) = -\frac{x - \alpha_t x_1}{\sigma_t^2}
+    \quad\text{是闭式的}
+    \]
+    <div class="exp">这个式子值得停一下：它说的是<strong>"全局的方向 = 局部方向的加权平均，权重是'这个 \(x_1\) 有多可能是真的源头'"</strong>。它同时也暴露了困难所在——期望要对后验采样，而真实后验在训练时只有<em>一个</em>样本。用单样本估计这个期望，<strong>无偏但方差很大</strong>。这正是扩散模型为什么要大 batch、要训练那么久的数学原因，不是工程没优化好。</div>
+  </div>
+</section>
+
+<section id="s6">
+  <h2><span class="tag">局限</span>这套体系的漂亮，建立在三个不太被强调的前提上</h2>
+
+  <p>这一章推导干净、结构漂亮，但它是一份讲义，讲义的任务是把理论讲通，不是把边界讲全。作为读者，需要自己补三块。</p>
+
+  <ol class="crit">
+    <li><strong>"等价"是有条件的，条件就是高斯路径。</strong>命题 1 的整个证明都依赖 \(p_t(x|x_1)\) 是高斯这个前提。讲义用"命题"而不是"定理"，用词是准确的，但正文的叙述语气（"引人注目""反之亦然"）很容易让人读成普遍等价。<b>实际影响：</b>当你看到一个方法号称"统一了 Flow Matching 与 Diffusion"，第一个该问的问题就是"在什么路径上"。在非高斯路径上，这二者只是<em>共享同一个框架</em>，不是<em>可以互相换算</em>。</li>
+    <li><strong>"\(Z\) 消失了"只对了一半。</strong>式 1 确实让 \(Z\) 从梯度里消失，但 \(Z\) 并没有离开这个体系——它跑到了<strong>路径设计和采样起点</strong>里。你之所以能从标准高斯起步、沿得分走到数据，隐含地用了"两个分布之间的传输代价"这类量，而那些量里 \(Z\) 又以 KL 散度、似然比的形式回来了。所以准确的说法是：<strong>\(Z\) 从"每步都要算"变成了"在设计阶段一次性处理"。</strong>这不减损这个技巧的价值，但把它说成"解决了归一化问题"是夸大。</li>
+    <li><strong>得分在低密度区是"编"出来的，而且编得很危险。</strong>数据实际集中在一个低维流形附近，流形之外几乎没有样本。神经网络在流形外输出的得分，是纯粹的<strong>外推</strong>，没有任何约束保证它指向"正确的"方向。这解释了两件在实践中反复出现的现象：① 采样跑偏之后<em>无法自救</em>，因为没有真实数据在那附近"拉住"它；② 必须精心设计加噪调度（\(\sigma_t\) 的调度），本质是<strong>用噪声人为地把低密度区填上样本</strong>，让网络在那儿也有得学。这不是实现细节，是这套理论的固有缺陷。</li>
+    <li><strong>Langevin 的收敛性，讲义用了"相当一般的条件"这个说法带过。</strong>这在数学上没错，但工程上那句话的重量很大：有限步数下不收敛是常态，收敛速度强烈依赖分布的形状（多峰、窄谷都很难）。所以现实中的扩散采样器动辄几十上百步，不是"理论上需要这么多"，而是"有限步近似需要这么多"。</li>
+    <li><strong>GLASS Flows 只给了"可以"，没给"代价"。</strong>讲义在备注 21 提到用纯 ODE 复现 SDE 的随机转移，这在概念上很漂亮（既保留随机搜索的好处、又不丢 ODE 的效率）。但它省掉了最关键的信息：<em>这个等价需要多少额外计算？误差如何累积？</em>介绍性讲义这样处理可以理解，但读者不该把"存在这样的技巧"读成"这个技巧划算"。</li>
+  </ol>
+
+  <div class="box good">
+    <b>把这一章压缩成一句话：</b>扩散模型的全部魔法，是<b>把"这个分布长什么样"换成"在这一点上往哪走"</b>，而这次替换之所以合法，是因为<b>求导会杀掉那个算不出来的常数</b>。代价是：你从此只知道方向、不知道绝对高度，而且这个"知道方向"的承诺，只在高斯概率路径这条路上兑现。<b>它是一场极其划算的以物易物，不是一次免费的升级。</b>
+  </div>
+
+  <p class="src">内容为讲义《Flow Matching and Diffusion Models》第 4 章 Score Functions and Score Matching 的中文整理，覆盖：条件/边缘得分函数（4.1）、得分与向量场在高斯路径下的互译（命题 1）、去噪器解释（备注 16）、SDE 扩展技巧与福克-普朗克方程证明（定理 17 / 定理 19）、Langevin 动力学（备注 20）、GLASS Flows（备注 21）、得分匹配与去噪得分匹配（4.3）。</p>
+</section>
+
+<footer>公众号「human five」· 2026-11-02 · 3W1H 与第一性原理拆解</footer>
+</div></body>
+</html>

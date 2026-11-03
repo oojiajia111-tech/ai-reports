@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Re-timing：模仿加速的崩溃不是统计学问题，是物理学问题 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>Re-timing：模仿加速的崩溃不是统计学问题，是物理学问题<span class="sub">控制器每周期只能走一格，合并命令等于承诺一个它做不到的位移 · Can 上 1.5/2/3× 的越界率 0.30/0.60/0.72 对应成功率 87%/60%/1% · 而这套「唯一参数」规则的代价写在作者自己的局限里：没证明能加速预训练 VLA</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-10-31 · arXiv 2611.00539</div>
+    <div><b>机构</b> University of Georgia · Georgia Tech</div>
+    <div><b>实验规模</b> robomimic 4 任务 × 200 held-out seeds · G1 人形 429 段参考动作</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>"模仿策略跑快了就崩"这件事，过去被归因为<strong>分布漂移</strong>，于是大家去做更聪明的分段策略——哪些片段该加速、哪些不该。这篇论文说：归因错了。真实原因是<strong>一个纯物理约束</strong>——控制器每个控制周期只能实现有界的一步位移，而你把连续几步合并成一步，就等于在训练数据里写下了一句<strong>"从这里走到那里"的承诺，而这句承诺机器人根本兑现不了</strong>。策略学到的是承诺，执行到的是被截断的结果。所以崩溃不是因为"数据分布变远了"，而是因为<strong>训练对本身是假的</strong>。这一句话把方法论从"怎么选片段"改成了"怎么保证每一对都可兑现"，而答案只有一个参数。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">先看一个被忽略的事实</a>
+  <a href="#s2">承诺与兑现</a>
+  <a href="#s3">为什么是跳崖而不是滑坡</a>
+  <a href="#s4">唯一参数的规则</a>
+  <a href="#s5">数字</a>
+  <a href="#s6">它没做到什么</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>人类示范的慢，是"均匀的慢"，不是"难的地方慢"</h2>
+
+  <p>所有从遥操作学出来的策略都继承了操作员的节奏，而这个节奏很慢。论文开头给了一个很容易被忽略、但极其关键的观测：</p>
+
+  <div class="box good">
+    <b>人类操作员只用了控制器允许位移的 1/3 到 2/3。而同一任务上机器生成的策略，几乎用满了这个范围。</b>
+  </div>
+
+  <p>更关键的是下一句：这种慢<strong>是均匀的</strong>，不是集中在难的地方。数据是——操作员在"远离物体"时的速度，是"靠近物体"时的 <strong>0.88 到 1.33 倍</strong>。也就是说，慢速散布在整条轨迹上，没有明显的"这里需要小心所以慢"的结构。</p>
+
+  <p>这个观测之所以重要，是因为它直接否掉了一整类方法的隐含前提。如果慢是<em>有结构的</em>（难点慢、平路快），那"找出可以加速的片段"就是对的思路，各种按熵、按语义、按视频标签分段的做法也就站得住。但实测是"均匀的慢"，那意味着<strong>时间冗余不是局部现象，而是全局现象</strong>——那么问题的关键就不在"选哪段"，而在"压缩这件事本身的约束是什么"。</p>
+
+  <div class="fml">
+    <div class="name">式 1　控制器能兑现什么：可实现集 \(\mathcal{R}\)</div>
+    \[
+    \mathcal{R} = \big\{\, \delta \;:\; \|\delta\|_\infty \le \Delta_{\max} \,\big\}
+    \qquad\text{（操作空间逐轴截断，本文用 0.05 m／周期）}
+    \]
+    \[
+    \mathcal{R} = \big\{\, \delta \;:\; |\delta_j| \le \bar{v}_j \tau \,\big\}
+    \qquad\text{（全身跟踪器的逐关节速度包络）}
+    \]
+    \[
+    \mathcal{R} = \lambda\,\mathcal{R}_{\text{doc}}
+    \qquad\text{（有效极限只是标称值的一个比例 } \lambda\text{）}
+    \]
+    <div class="exp">三行是同一个概念的三种外衣：<strong>一个控制周期内，机器人最多能挪多远</strong>。第一行按操作空间逐轴卡（本文主力）；第二行按关节速度卡（人形用）；第三行说"文档写的极限未必是真的极限"——更硬的控制器在大步长上会过冲，实际能兑现的比标称的少。<em>凡是<strong>出界</strong>的命令，控制器一律截断，不会报错、不会警告，就这么默默地少走一点。</em></div>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>合并命令 = 写下一句兑现不了的承诺</h2>
+
+  <p>加速示范的办法其实只有一招：<strong>把连续 \(f\) 步的命令合并成一步</strong>。原来要走 3 个周期才到的位置，现在要求 1 个周期就到。这既是"加速"的定义，也是它唯一的技术手段。</p>
+
+  <p>问题就出在这一步上。假设连续三步各走 3 cm，合计 9 cm。但控制器一周期只认 5 cm。于是：</p>
+
+  <div class="step">
+    <div class="t">训练时写下的</div>
+    <div class="d">"在观测 \(o_t\) 下，执行 9 cm，然后你会到达 \(o_{t+3}\)。"</div>
+  </div>
+  <div class="step">
+    <div class="t">执行时发生的</div>
+    <div class="d">执行 9 cm 的命令 → 控制器截断成 5 cm → 实际只到了 \(o_{t+3}\) 之前的某处。</div>
+  </div>
+
+  <p>所以这条训练对的<strong>标签本身就是错的</strong>。注意这不是"执行有噪声"——噪声是零均值、可以平均掉的；这个是<strong>系统性单向偏差</strong>（永远走不到、永远少一截），而且是在<strong>训练数据生成的那一刻</strong>就已经写死了。论文把它叫作 <em>covariate shift built into the dataset before any rollout</em>：在策略还没开始跑之前，分布漂移已经被烤进数据里了。</p>
+
+  <div class="fml">
+    <div class="name">式 2　越界率 \(\rho\) 与节奏 tempo（全文两个核心量）</div>
+    \[
+    \rho \;=\; \frac{1}{K}\sum_{k=1}^{K}
+    \mathbf{1}\!\left\{\, \sum_{t \in G_k} \delta_t \;\notin\; \mathcal{R} \,\right\},
+    \qquad
+    \text{tempo} \;=\; \frac{n}{K}
+    \]
+    <div class="exp">把示范切成 \(K\) 组（每组并成一条训练对），\(n\) 是原始步数。<strong>\(\rho\) 就是"有多少比例的训练对是兑现不了的"，tempo 是"快了多少倍"。</strong>这两个量天然互斥：你要 tempo 大，\(K\) 就得小，\(\rho\) 就上去了。<em>这是全篇的权衡轴，而作者的立场是：\(\rho\) 优先，因为它是硬约束；tempo 是结果，不是目标。</em></div>
+  </div>
+
+  <p>这句话是整个方法论转向的关键，值得原样记住：</p>
+
+  <div class="box good">
+    <b>均匀重定时固定 \(|G|=f\)，接受任何由此产生的 \(\rho\)；本文的方法固定 \(\rho=0\)，接受任何由此产生的 tempo。</b><br>
+    翻译成人话：传统做法是"先定我要快几倍，剩下的崩不崩看运气"；这篇是"先定我一对都不许假，能快多少算多少"。
+  </div>
+
+  <p>为什么这个转向这么重要？因为它把"调参"变成了"测量"。原来的问题是"加速到几倍才不崩"——这只能靠试。新的问题是"数据里有多少假承诺"——这<strong>在训练之前、在任何 rollout 之前就能数出来</strong>。论文强调的正是这一点：<em>what none of them measures is the quantity the shift is a shift in</em>。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">为什么</span>后果不是滑坡，是跳崖——这才是最难解释的部分</h2>
+
+  <p>如果只是"承诺打点折扣"，直觉上应该是精度慢慢变差：偏 1 cm 差一点，偏 5 cm 差更多，线性退化。但实验测到的完全不是这样。</p>
+
+  <p>做法很巧：在名义速度下跑一遍，然后从同一个随机种子重跑，在某一个 16 步的窗口里加一个随机倍率，同时记录这个窗口自己的路径偏移量 \(d_w\) 和最终成败。每个任务每个策略类约 1000 个标签。</p>
+
+  <div class="fml">
+    <div class="name">式 3　两段式阶跃，比 logistic 更贴数据</div>
+    \[
+    P(\text{成功}) \;\approx\;
+    \begin{cases}
+    p_0, & d_w \le d^\star \quad (d^\star \in [40,\,90]\ \text{mm}) \\[2pt]
+    p_{\text{floor}}, & d_w > d^\star \quad (p_{\text{floor}} \in [15\%,\,40\%])
+    \end{cases}
+    \]
+    <div class="exp">\(d_w\) 是窗口内的路径偏移，\(d^\star\) 是那个阈值。含义：<strong>偏移在 40–90 mm 以内，成功率几乎不掉；一旦越过去，就直接掉到一个"地板"，而且不管偏多远都停在那儿不掉到 0。</strong>论文做了模型比较——两段阶跃在 \(\log d_w\) 上，在 6 个拟合里有 5 个比 logistic 斜率更好，好过它多出来的那一个参数所能解释的程度。</div>
+  </div>
+
+  <p>这个"地板"的存在，比"跳崖"本身更能说明问题。经典复合误差理论预测的是<strong>持续衰减</strong>——误差越大，越可能一路错下去，成功率趋向 0。但数据是<strong>有地板的</strong>：偏出多远都还剩 15–40%。</p>
+
+  <p>什么机制会产生地板？<strong>"离开训练支撑区，但仍有固定概率自己爬回来"</strong>。一旦偏出一个范围，策略就进入它没见过的状态；在那些状态里它靠的已经不是学到的能力，而是碰巧——所以有一个固定的失败/恢复比例，跟偏多远无关。</p>
+
+  <div class="box bad">
+    <b>这个发现直接决定了方法必须是"零容忍"而不是"平均最优"。</b>如果损失是线性的，那"让平均短缺最小"就是对的；但既然存在阈值，<b>"把越界率从 30% 降到 10%"并不会让结果好三倍——只要还留着一些越界对，那些对就足以把策略推过阈值。</b>所以要推的是 \(\rho \to 0\)，而不是"少一点"。<em>这是阈值型系统里最常见、也最容易被搞错的一个推理。</em>
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">怎么做</span>唯一参数的规则：贪心地合并，直到下一口吃不下去</h2>
+
+  <p>诊断一旦成立，方法就没有自由度了。如果崩溃是"训练对兑现不了"导致的，那加速器就<strong>必须一对都不产生兑现不了的</strong>。剩下的唯一问题是：在这个约束下，数据最多能压多紧。</p>
+
+  <div class="fml">
+    <div class="name">式 4　可合并条件（整个方法就这一行）</div>
+    \[
+    \mathrm{Feasible}(G) \;\Longleftrightarrow\;
+    \underbrace{\sum_{t \in G} \delta_t \in \mathcal{R}}_{\text{① 和必须可实现}}
+    \;\wedge\;
+    \underbrace{|G| \le f_{\max}}_{\text{② 组不能太长}}
+    \;\wedge\;
+    \underbrace{\sigma \text{ settled on } G}_{\text{③ 夹爪等设定通道不动}}
+    \]
+    <div class="exp">三个条件都极其朴素。① 是硬约束的来源：合并后的和必须落在可实现集内。② 是一个安全阀，防止单组太长导致策略要一次预测太远（本文主结果用 \(f_{\max}=2\)）。③ 是"第二个执行器"：夹爪是设定值通道，它有自己的响应时间，在一组之内不能变——<strong>这条在 Lift／Can 上无所谓（仿真夹爪几周期就闭合了），但在精度任务上要命：Square 上穿过夹爪闭合动作合并，flow-matching 策略掉 26 个点。</strong></div>
+  </div>
+
+  <p>算法就是左端贪心：从当前步开始，能吞就吞，吞不下去就断开、开新组。复杂度 \(O(n)\) 线性，不需要策略模型，一个参数。</p>
+
+  <p>"构造性成立"这个词在这里用得准确：<strong>只要每条原始命令自己就是可实现的，那么 \(\rho = 0\) 是算法保证的，不是调出来的。</strong>因为单步组永远被直接接受、无需测试，也不存在比它更短的东西可以修。</p>
+
+  <div class="fml">
+    <div class="name">式 5　这样得到的节奏上限是多少</div>
+    \[
+    \text{tempo} \;\le\; f_{\max},
+    \qquad
+    \text{tempo} \;\le\; \frac{1}{\max_j \bar{u}_j}
+    \quad(\text{无符号抵消时})
+    \]
+    \[
+    \bar{u}_j = \text{第 } j \text{ 轴的平均利用率}
+    \]
+    <div class="exp">第二条是真正的约束：<strong>节奏的上限等于"利用率最高的那个轴"的倒数</strong>。直觉很直白——如果某个关节平均已经用掉了 80% 的额定速度，那它最多还能快 1.25 倍，别的轴再闲也没用。<em>瓶颈永远在最忙的那根轴上。</em>实测：Can 上这个界是 1.77×，但随着 \(f_{\max}\) 放大，实际能到 1.42× 就到顶了（因为组变长后容易撞到瞬时峰值）；主结果用 \(f_{\max}=2\) 时是 1.25×；机器生成的 Can 只有 1.14×（因为它本来就几乎用满了）。</div>
+  </div>
+
+  <h3>一个漂亮的自我审计：这条贪心规则离最优有多远</h3>
+
+  <p>"最少分组数"这个问题，在只选边界的情况下其实等价于步边界上的最短路，可以 \(O(n f_{\max})\) 精确求解。贪心什么时候达到最优？<strong>当可行性是"可继承的"（hereditary）时</strong>——一个组可行，它的任何子组都可行。逐轴截断（arc 形式）满足这个性质；但本文实际用的"弦"形式<strong>不满足</strong>（两点之间的实际运动是直线弦，不是原来的折线），所以贪心只是近似。</p>
+
+  <p>差多少？论文实测：<strong>在弦形式下贪心与精确解相差 0.1% 以内。</strong>而且它又做了第二重审计——把"命令约束"问题换成"转移约束"问题，即直接测量"合并命令执行后的终点，和原序列执行后的终点差多少"（replay gap \(\hat{\eta}\)）：</p>
+
+  <div class="box good">
+    截断条件本身已经排除了几乎所有昂贵的合并——<b>越界组的 replay gap 中位数是 21 mm，越界组内是 0.0 mm</b>。在这个 gap 度量下精确求解，总 gap 只降不到 5%，只改动 6% 的组边界，重训成功率 96.2% vs 95.7%（3 个种子、600 对配对 episode）。<b>也就是说：这条一行规则，在它自己的目标类里已经接近最优了，剩下的空间在轨迹级目标里，不在更好的分组里。</b>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">价值</span>数字：赢在"该赢的地方"，也诚实地输在 Square 上</h2>
+
+  <p>先看主表。四个 robomimic 任务，每格 200 个 held-out 种子（1000–1199），配对 McNemar 检验。格子里是"成功率 @ 成功 episode 平均步数"，方括号是重定时数据的节奏。</p>
+
+  <table>
+    <tr><th>路线</th><th>Lift</th><th>Can</th><th>Square</th><th>ToolHang</th></tr>
+    <tr><td>冻结策略（名义速度）</td><td>94% @ 45</td><td>92% @ 110</td><td>62% @ 168</td><td>16% @ 536</td></tr>
+    <tr><td>均匀重定时 1.5×</td><td>96% @ 33</td><td>87% @ 91</td><td>72% @ 131</td><td>8% @ 450</td></tr>
+    <tr><td>均匀重定时 2×</td><td>96% @ 27</td><td>60% @ 83</td><td>64% @ 110</td><td><b>0%</b> @ 304</td></tr>
+    <tr><td><b>限内重定时 f=2</b></td><td><b>98%</b> @ 33 [1.40]</td><td><b>96%</b> @ 92 [1.25]</td><td><b>76%</b> @ 115 [1.49]</td><td><b>24%</b> @ 339 [1.51]</td></tr>
+    <tr><td>限内重定时 f=4</td><td>99% @ 30 [1.57]</td><td>96% @ 85 [1.37]</td><td>61% @ 101 [1.74]</td><td>23% @ 251 [1.89]</td></tr>
+  </table>
+
+  <p>Can 是最干净的案例：<strong>96% 对 60%，节奏差不多（1.25× 对 2×），9 个种子配对全赢，\(p<10^{-15}\)。</strong>ToolHang 是最难的、差距也最宽：24% 对 0%，而均匀 2× 和 3× 在那儿 200 个 episode 里最多解出 1 个。</p>
+
+  <p>而越界率与成功率的对应关系，是全文最锋利的证据：</p>
+
+  <table>
+    <tr><th>Can 上的均匀加速</th><th>越界率 \(\rho\)</th><th>重训成功率</th></tr>
+    <tr><td>1.5×</td><td>0.30</td><td>87%</td></tr>
+    <tr><td>2×</td><td>0.60</td><td>60%</td></tr>
+    <tr><td>3×</td><td>0.72</td><td><b>1%</b></td></tr>
+  </table>
+
+  <p>三个点排成一条近乎直线。<strong>这是"机制解释"而不是"现象描述"的标志——它能把崩溃的程度用一个训练前就能算出来的量排好序。</strong></p>
+
+  <h3>两个反直觉的发现</h3>
+
+  <p><strong>其一：把命令缩回限内、保持方向，反而更糟。</strong>直觉上你会想"那我就把 9 cm 按比例缩成 5 cm，方向不变不就行了"。实测 Can 2× 上这样只有 <strong>48%</strong>——比截断还差。原因很直接：截断至少还兑现了 5 cm 的位移，等比缩放虽然方向对了，但<strong>兑现的位移更少</strong>，偏移反而更大。<em>方向正确不等于位移够用。</em></p>
+
+  <p><strong>其二：越界率不是充分统计量——作者自己主动交出了这一点。</strong>这可能是全篇最诚实、也最容易被读者忽略的一节。他们做了一个"相位剥离"实验：四份 Can 的重定时，<strong>节奏相同、每组的越界率也相同（都是 0.20）</strong>，唯一的差别是"保留下来的越界落在哪个相位"。</p>
+
+  <table>
+    <tr><th>越界留在哪</th><th>tempo</th><th>\(\rho\)</th><th>replay gap 中位／p90</th><th>成功率</th></tr>
+    <tr><td>分散在所有相位</td><td>1.33</td><td>0.20</td><td>11.3 / 27.5 mm</td><td>90% @ 95</td></tr>
+    <tr><td>transport 相位清空</td><td>1.33</td><td>0.20</td><td>13.1 / 39.0 mm</td><td><b>84%</b> @ 101</td></tr>
+    <tr><td>approach 相位清空</td><td>1.33</td><td>0.20</td><td>11.7 / 29.8 mm</td><td>91% @ 95</td></tr>
+    <tr><td>contact 相位清空</td><td>1.33</td><td>0.20</td><td>9.4 / 22.2 mm</td><td>92% @ 92</td></tr>
+  </table>
+
+  <p>节奏一样、越界率一样，<strong>结果差 8 个百分点</strong>，而且 replay gap 的排序与成功率排序完全一致。所以：<em>同样多的假承诺，写在"搬运"上比写在"接触"上更具破坏性。</em>这让"\(\rho\) 是那个量"这个说法需要加限定——它是必要的第一序指标，不是充分指标。</p>
+
+  <h3>跨具身：同一条规则，换一种控制器</h3>
+
+  <p>在 Unitree G1 上，用官方 SONIC 跟踪器跟参考动作（没有显式截断，用逐关节速度包络），429 段原生速度不摔的片段：</p>
+
+  <table>
+    <tr><th>路线</th><th>节奏</th><th>成功率</th><th>不摔率</th></tr>
+    <tr><td>均匀时间缩放 1.25×</td><td>1.25×</td><td>95%</td><td>96%</td></tr>
+    <tr><td>均匀时间缩放 2×</td><td>2.00×</td><td>51%</td><td>90%</td></tr>
+    <tr><td>均匀时间缩放 3×</td><td>3.00×</td><td>27%</td><td>87%</td></tr>
+    <tr><td><b>限内重定时 k=2</b></td><td>1.65×</td><td><b>87%</b></td><td><b>97%</b></td></tr>
+    <tr><td><b>限内重定时 k=4</b></td><td><b>2.32×</b></td><td><b>71%</b></td><td><b>96%</b></td></tr>
+    <tr><td>匹配节奏的乱序放置</td><td>2.32×</td><td>52%</td><td>92%</td></tr>
+  </table>
+
+  <p>按越界率分组看：<strong>\(\rho=0\) 的片段成功 97%，\(\rho>0.4\) 的只剩 31%；摔落比例在同一分组上从 2% 升到 16%。</strong>跨形态、跨控制器类型，这条规律依然成立。</p>
+
+  <h3>VLA 上，它赢了基线，但没赢标称</h3>
+
+  <p>SmolVLA-base 微调 12k 步、两个 128×128 渲染视角 + 本体感知、不给物体位姿，三个种子各 200 episode：</p>
+
+  <table>
+    <tr><th>路线</th><th>节奏</th><th>训练越界率</th><th>成功率</th></tr>
+    <tr><td>冻结（名义）</td><td>1.00</td><td>0.00</td><td><b>87%</b> @ 114</td></tr>
+    <tr><td>均匀 2×</td><td>1.99</td><td>0.59</td><td>49% @ 86</td></tr>
+    <tr><td>限内 f=4</td><td>1.39</td><td>0.00</td><td>71% @ 87</td></tr>
+  </table>
+
+  <div class="box bad">
+    <b>这张表必须原样读：71% 打赢了 49%，但 71% 和 87% 是输的。</b>也就是说——<b>在预训练 VLA 上，这个方法让"加速后的策略"从"崩掉"变成了"变差"，仍然没有变成"可用"。</b>作者在局限里自己写了这句：<em>"that experiment does not demonstrate a useful acceleration of the pretrained policy"</em>。这句话的分量，比主结果里任何一个百分点都重。
+  </div>
+</section>
+
+<section id="s6">
+  <h2><span class="tag">局限</span>把作者自己交出来的底牌，一条条摊开</h2>
+
+  <p>这篇的局限章节写得比多数论文的结果章节更值得读。逐条：</p>
+
+  <ol class="crit">
+    <li><strong>最重的一条：它没有证明能有效加速预训练 VLA。</strong>SmolVLA 上 71% vs 标称 87%，节奏只有 1.39×。也就是说，这个方法在"小策略 + 状态观测 + 仿真"上成立，在"大模型 + 图像观测"上只是"没那么崩"。而后者恰恰是现在真正部署的形态。这不是小瑕疵，这是适用边界的核心。</li>
+    <li><strong>全部在仿真，零真机。</strong>而且主要是状态观测、小网络。真机上有更多未被建模的约束：摩擦、间隙、通信抖动、控制器积分饱和。论文给的物理约束是一阶的（只看单条命令的位移），而真机的绑定约束经常是二阶的（加速度、力矩）。</li>
+    <li><strong>一阶约束在"加速度绑定"的机器人上会漏。</strong>如果瓶颈是关节加速度而非位移，一份 \(\rho=0\) 的数据集依然可能要求执行不出的加速度。作者承认贪心规则<em>无法</em>处理这种耦合（它只选边界，必须无条件接受"单步组"，所以约束收得越紧、它自己反而违反得越多）：<em>0.58Δmax 时 3.6% 的转移违例，0.25Δmax 时升到 21%，同时节奏从 1.31 掉到 1.15。</em>修法是把"上一组长度"放进状态、做成 \(O(n f^2)\) 精确最短路——这又回到了"需要调更多东西"。而更耐人寻味的是：<strong>两种分区在任务成功率上没有差别</strong>，所以真正开放的问题是"到底该把哪个预算写下来"，而不是"怎么优化一个已知的预算"。</li>
+    <li><strong>那个 40–90 mm 的阈值是拟合出来的，不是推出来的。</strong>它跟策略、控制器、任务都有关，论文明确说"empirical and not derived"。这意味着换一个机器人、换一个速度档，你可能得重新测一遍。理论的锋利度在这一格上确实是打折的。</li>
+    <li><strong>增益的上限非常窄，而且这是设计使然。</strong>人类示范 1.25–1.89×、机器生成 1.10×、僵硬臂 1.06×。想要更快，就必须在执行时抬高极限——而那会在接触任务上直接掉成功率。<strong>所以这个方法的正确定位是"把示范里白送的那部分速度收回来"，不是"让机器人变快"。</strong>把它宣传成后者，就是误读。</li>
+    <li><strong>Square 是反例，而且作者没掩饰。</strong>在这个任务能吸收的节奏附近，均匀、乱序、低熵引导、限内四种做法都落在 70–76%（对冻结的 62%），2× 时一起掉到 59–66%。也就是说，<strong>"放在哪里"在 Square 上基本不重要</strong>——这与另外三个任务的排序相反。而且 Square 上 \(f_{\max}=4\) 反而比 \(f_{\max}=2\) 差（61% vs 76%），说明"更大的 cap 更好"不成立。</li>
+    <li><strong>文献基线是作者自己的重实现</strong>，不是原系统（原方法用了他们没有的视觉语言分割）。所以"赢了 entropy-guided / speed-conditioned"这类结论的强度要打折——赢的可能是实现，不一定是思想。</li>
+    <li><strong>人形上只测了"重定时"，没测"重训"。</strong>跟踪器是固定的，所以那条"数据 → 策略"的闭环在 G1 上并没有被验证，只验证了"按包络重定时参考动作，跟得住"。这两件事的难度不在一个量级。</li>
+    <li><strong>当示范本身没余量时，方法就退化成什么都不做。</strong>机器生成的示范已用掉 95% 的范围，规则几乎不合并，原样返回名义策略（Lift 上 65% 对冻结 66%，基本持平）。这是正确的行为，但也说明它<strong>不能凭空创造速度</strong>——它只是个"别把数据写坏"的纪律。</li>
+  </ol>
+
+  <div class="box good">
+    <b>最后给一个定位建议：</b>这篇论文真正的贡献不是那个 1.25–1.89×，而是<b>把一个被普遍当作"统计问题"的现象，还原成了一个可以在训练前数出来的物理量</b>。它最大的价值在"<em>下次有人说加速崩了是因为分布漂移，你可以先数一下 ρ</em>"。而它最该被记住的一句话，是作者自己写的：<b>在预训练 VLA 上，这还没被证明是一次有用的加速。</b>
+  </div>
+
+  <p class="src">出处：Zongtan Li, Tianming Liu, Ye Zhao. <em>Faster Imitation by Re-timing Demonstrations Within the Controller Limit.</em> University of Georgia / Georgia Institute of Technology. arXiv:2611.00539v1 [cs.RO], 31 Oct 2026. 实验：robomimic（Lift / PickPlaceCan / NutAssemblySquare / ToolHang）× robosuite，Panda + 原装操作空间控制器，20 Hz，\(\Delta_{\max}=0.05\) m／周期；Unitree G1 + SONIC 跟踪器，429 段参考动作；SmolVLA-base 三个种子。</p>
+</section>
+
+<footer>3W1H 与第一性原理拆解 · 2026-11-03</footer>
+</div></body>
+</html>

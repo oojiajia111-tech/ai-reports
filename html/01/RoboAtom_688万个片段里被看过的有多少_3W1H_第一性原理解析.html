@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上海AI Lab开源RoboAtom：1.6万小时机器人数据的子任务标注</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>上海AI Lab开源RoboAtom：1.6万小时机器人数据的子任务标注<span class="sub">688 万个片段里，真正被人看过的是种子 · 12 万倍便宜的是六步流水线里的一步 · 85% 与 75% 差 20 个百分点 · 正确定位：把边界从视觉问题降级为信号问题</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-02 12:58</div>
+    <div><b>正文规模</b> 4,709 字 · 7 图 · 2 表</div>
+    <div><b>项目</b> InternRobotics/RoboAtom</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>688 万这个数字的正确读法不是「688 万条标注」，而是「几千个任务 × 每个任务的少数几条种子，再沿时间轴复制 435 遍」。这篇文章真正有价值的东西不是规模，而是它做的一次<b>问题降级</b>：把「这个动作从第几帧开始」从视觉理解问题，改写成夹爪开合、底盘起落的信号对齐问题。代价是——它<b>只看得见有物理信号的那几类技能</b>；而它宣称的「比人工便宜 12 万倍」，比的是一个完整六步流程里的第一步。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">是什么：规模换算</a>
+  <a href="#s2">为什么：12 万倍买的是哪一步</a>
+  <a href="#s3">怎么做：把视觉问题降级成信号问题</a>
+  <a href="#s4">哪里不对：85% 与 75% 的矛盾</a>
+  <a href="#s5">哪里不对：三处增量零基线</a>
+  <a href="#s6">结论</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>先把「145 万条轨迹、688 万片段、1.69 万小时」换算成能感觉到的量</h2>
+
+  <p>文章开头给了一串规模数字，但它们放在一起才说明问题。三个数两两相除，得到的是这个数据集真正的<b>形状</b>：</p>
+
+  <div class="fml">
+    <div class="name">RoboAtom-Data 的基本粒度</div>
+\[
+\frac{6{,}880{,}000\ \text{片段}}{1{,}450{,}000\ \text{轨迹}} = 4.74\ \text{段/轨迹}
+\]
+\[
+\frac{1.45\times10^{6}\ \text{轨迹}}{1.69\times10^{4}\ \text{小时}} = 85.8\ \text{轨迹/小时} \;\Rightarrow\; \text{平均每条轨迹 } 42.0\ \text{秒}
+\]
+\[
+\frac{6.88\times10^{6}}{1.69\times10^{4}\times3600} \;\Rightarrow\; \text{平均每段 } 8.84\ \text{秒}
+\]
+    <div class="exp">4.74 段、42 秒、8.84 秒——这三个数决定了在这个数据集上「子任务」是什么尺度的事情。它不是「把整个 episode 分成三段」那种粗标注，而是平均每 9 秒切一刀。</div>
+  </div>
+
+  <table>
+    <tr><th>换算项</th><th>数值</th><th>含义</th></tr>
+    <tr><td>片段 / 轨迹</td><td>4.74</td><td>一条轨迹平均 5 个动作，与基准「动作数中位数 5」吻合</td></tr>
+    <tr><td>轨迹 / 小时</td><td>85.8</td><td>0.7 分钟一条，是短片段数据，不是长时序任务</td></tr>
+    <tr><td>轨迹 / 任务</td><td>≈435</td><td>145 万 ÷ 3,334 个任务</td></tr>
+    <tr><td>片段 / 任务</td><td>≈2,064</td><td>688 万 ÷ 3,334 个任务</td></tr>
+  </table>
+
+  <p>最后两行是关键。<b>每个任务有 435 条轨迹，但它们是「同一件事做了 435 遍」。</b>文章自己写了传播机制：先用 Gemini 3.6 Flash 出候选、人工修正得到<b>种子标注</b>，再由 PhysExtend 把种子传播到同一任务的其余轨迹。也就是说，一个任务的 435 条轨迹共享同一份边界信息。</p>
+
+  <div class="box bad">
+    <b>所以「688 万」这个数字要除以 435。</b>如果每个任务平均保留 5 条种子标注，全库的<b>独立</b>人工标注量大约是 \(3334 \times 5 \approx 1.67\) 万条，而不是 688 万条。剩下的 99.8% 是同一条判断在时间轴上被复制了 435 次。这不代表数据没用——复制本身是有价值的，它把监督密度做上去了；但「688 万段标注」和「688 万段互相独立的人工判断」是两个量级完全不同的事实，而文章的表述让人读成后者。
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>「便宜 12 万倍」比的是六步流程里的第一步</h2>
+
+  <p>文章最抓人的一句话是：PhysExtend 处理每小时视频成本约 <b>0.000028 美元</b>，GPT-5.6-sol 为 3.510 美元，便宜约 12 万倍；而人工逐条精修每小时约 <b>100 美元</b>。把这两个数并排，读者自然会算：便宜 357 万倍。</p>
+
+  <div class="fml">
+    <div class="name">成本对比的真实覆盖范围</div>
+\[
+\frac{100\ \text{USD/h}}{0.000028\ \text{USD/h}} = 3.57\times10^{6}
+\]
+\[
+0.000028 \times 16{,}900\ \text{h} = 0.47\ \text{USD} \quad\text{（整个传播步骤的总花费）}
+\]
+    <div class="exp">0.47 美元产出 688 万个片段，平均每个片段 6.8×10⁻⁸ 美元。这个数字在算术上是对的，问题在于它对应的是哪一步。</div>
+  </div>
+
+  <p>把文章自己描述的构建流程拆开，一共是六步：</p>
+
+  <table>
+    <tr><th>#</th><th>步骤</th><th>用的是什么</th><th>计入 0.000028？</th></tr>
+    <tr><td>1</td><td>生成候选片段</td><td>Gemini 3.6 Flash</td><td>❌</td></tr>
+    <tr><td>2</td><td>标注员修正 + 模型复核 → 种子</td><td>人 + 模型</td><td>❌</td></tr>
+    <tr><td>3</td><td><b>PhysExtend 传播到同任务其余轨迹</b></td><td><b>纯 CPU</b></td><td><b>✅ 只有这一步</b></td></tr>
+    <tr><td>4</td><td>动作描述校正</td><td>Qwen3.8-27B + GPT-5.6-sol</td><td>❌</td></tr>
+    <tr><td>5</td><td>人工确认</td><td>人</td><td>❌</td></tr>
+    <tr><td>6</td><td>全数据源人工抽检</td><td>人</td><td>❌</td></tr>
+  </table>
+
+  <p>第 4 步尤其被低估了：<b>动作描述校正是对每一条轨迹都做的</b>，不是一个可选环节。文章原话是「先由 Qwen3.8-27B 对照多视角画面检查，再由 GPT-5.6-sol 结合参考标注和统一词表修正，最后人工确认」。也就是 145 万条轨迹每一条都过了 GPT-5.6-sol。</p>
+
+  <div class="box bad">
+    <b>文章从未给出整条流水线的总成本。</b>它给的是「最便宜的那一步 0.000028」和「最贵的那种做法 100」。把这两个数放在同一句里比较，读者得到的是「AI 标注比人工便宜 357 万倍」，而真实的全流程成本必然远高于 0.47 美元——光是第 4 步对 1.69 万小时视频跑 GPT-5.6-sol，就绝不可能只有几毛钱。
+  </div>
+
+  <p>这不是说 PhysExtend 不便宜。它<b>确实</b>便宜，而且是这篇文章里最扎实的工程贡献。问题只在于「12 万倍」这个数字被放在了一个它没有覆盖的位置上。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>PhysExtend 真正的贡献：把边界从视觉问题降级成信号问题</h2>
+
+  <p>这才是本文最值得记住的一句话，它藏在技术细节里：</p>
+
+  <div class="box good">
+    「Repeat 执行的技能顺序相同，但速度、停顿各不相同，时间戳不能照搬。<b>PhysExtend 用机器人自身的信号定位边界</b>：夹爪由开到合对应抓取，由合到开对应放置，底盘速度起落标出移动阶段。」
+  </div>
+
+  <p>这句话的信息量远大于任何准确率数字。它做的是<b>问题类型的转换</b>：</p>
+
+  <div class="step">
+    <div class="t">原问题：这是个视频理解问题</div>
+    <div class="d">输入是图像序列，输出是「第 120 帧到第 340 帧是 Pick」。难点在于视觉语义：手有没有真的碰到物体、抓稳没有、什么时候算「放好」。这需要模型理解物理接触，是最贵的地方——也正是 GPT-5.6-sol 在 Skill F1@0.7 上只有 35.0 的原因。</div>
+  </div>
+  <div class="step">
+    <div class="t">PhysExtend：这是个一维信号的分段问题</div>
+    <div class="d">输入是夹爪开合度、底盘速度这类<b>本体状态时间序列</b>，输出是「状态跳变点」。这类信号的拐点检测是经典信号处理，可以用动态规划精确求解，复杂度低、可解释、不需要看一张图。</div>
+  </div>
+
+  <p>成本差 12 万倍的根本原因在这里：<b>不是模型更聪明，而是它根本没读像素。</b>文章里有个数字印证了这一点：单个 CPU 每小时可处理约 1.6 万条轨迹，换算下来是<b>每小时 CPU 处理 186 个视频小时</b>。一个 9B 视觉模型在任何硬件上都不可能跑到这个吞吐，纯信号处理可以。这是设计选择，不是优化成绩。</p>
+
+  <div class="box bad">
+    <b>但这个降级有明确的作用域。</b>用本体信号定边界，只对「边界同时是一次物理状态跳变」的技能成立。文章给了 29 类统一技能，而 PhysExtend 举的例子只有三类有干净信号：抓取（夹爪由开到合）、放置（由合到开）、移动（底盘速度起落）。剩下的 26 类里，有多少类存在同样干净的信号通道？文章没有说。
+    <ul class="crit">
+      <li>「把杯子翻过来」——没有夹爪开合，也没有底盘速度变化，只有视觉上的朝向改变</li>
+      <li>「把线缆理顺」——全程夹爪闭合、底盘静止，边界几乎完全在视觉语义里</li>
+      <li>「拧开瓶盖」——力矩信号可能有，但这取决于数据集是否记录了力矩</li>
+      <li>「插USB」——同上，且插入成功的判定本身就需要视觉或力觉的精细判断</li>
+    </ul>
+    如果这 26 类技能的边界实际上仍然由第 4 步的 GPT-5.6-sol 来定，那么「PhysExtend 让规模成为可能」这句话的适用范围要打一个很大的折扣，而成本对比也要重算——因为那些任务根本没走 0.000028 这条路。
+  </div>
+
+  <p>这不是否定方法，而是给它划一条线。<b>「用机器人自己的信号定边界」是一个非常好的思路，它的边界等于「哪些技能会在本体状态上留下可辨跳变」。</b>这个问题的答案决定了这个方法能从 3 类技能扩展到多少类。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">哪里不对</span>「逐段 85%」和「整条 75%」在算术上差 20 个百分点</h2>
+
+  <p>文章给了两个质量数字：各数据源<b>子任务准确率都高于 85%</b>（仿真达 95%），整条轨迹<b>所有片段全对的比例都高于 75%</b>（仿真超 90%）。这两个数看起来一致——整条更难，所以更低。但只要算一下就知道，它们对不上。</p>
+
+  <div class="fml">
+    <div class="name">两条口径的一致性检验</div>
+\[
+P(\text{整条全对}) = p^{n}, \quad n = 4.74\ \text{段/轨迹}
+\]
+\[
+p = 0.85 \;\Rightarrow\; 0.85^{4.74} = 46.2\%
+\]
+\[
+\text{要让整条达到 } 75\%,\ \text{需要}\quad p = 0.75^{1/4.74} = 94.1\%
+\]
+    <div class="exp">若逐段准确率真是 85%，整条全对率只有 46.2%；若整条全对率真是 75%，逐段准确率必须是 94.1%。两个「都高于 85% / 都高于 75%」的说法不可能同时成立。</div>
+  </div>
+
+  <p>二者必有一个口径被放宽了，或者误差不是独立的。后一种情况其实最可能，而且它指向一个比「数字对不上」更重要的事实：</p>
+
+  <div class="box bad">
+    <b>误差是任务级聚簇的——简单任务几乎全对，难任务几乎全错。</b>只有这样，才能同时出现「逐段均值 85%」和「整条全对 75%」：大部分轨迹属于简单任务、一条都不错；少部分轨迹属于难任务、几乎全错，把这些错误摊到全库，就把逐段准确率拉到 85%。
+  </div>
+
+  <p>如果是这样，「85%」这个数字对下游使用者几乎没有信息量。因为一个想用这批数据训练自己任务的人，真正需要知道的是<b>「我这个任务落在哪一档」</b>，而不是全库平均。文章给了 16 个数据源的逐源数字，但没有给<b>按任务难度分档</b>的数字。</p>
+
+  <p>更值得注意的是仿真那一档：逐段 95%、整条 90%。反推一下：</p>
+
+  <div class="fml">
+    <div class="name">仿真数据的内部一致性</div>
+\[
+0.95^{4.74} = 78.6\% \quad\text{vs}\quad \text{报告值 } >90\%
+\]
+\[
+\text{要求}\ p = 0.90^{1/4.74} = 97.8\%
+\]
+    <div class="exp">仿真档的缺口比真实数据档更大（78.6% vs 90%）。这反而支持了「误差聚簇」的解释：仿真数据来源少、任务同质，难任务占比更低。</div>
+  </div>
+
+  <p>顺带一个可以佐证的细节：文章说 GPT-5.6-sol 在短序列上「切出真值 1.48–1.70 倍的片段」，在长序列上「又只有 0.51–0.65 倍」。取中位数估一下它的预测段数：短序列真值约 3 段 → 预测约 4.8 段；长序列真值约 20 段 → 预测约 11.6 段。<b>真值从 3 变到 20（6.7 倍），预测只从 4.8 变到 11.6（2.4 倍），斜率约 0.4。</b>也就是说，通用模型只响应了真实变化量的四成——它心里有一个近似固定的分段数，而不是一个时间尺度。这不是「能力差一点」，这是<b>根本没有这个维度</b>。</p>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">哪里不对</span>三处「提升了几个点」，一个绝对基线都没给</h2>
+
+  <p>文章最后验证「这批数据对控制有没有用」，给了三个增量：</p>
+
+  <table>
+    <tr><th>基准</th><th>报告值</th><th>绝对基线</th></tr>
+    <tr><td>LIBERO-Long</td><td>+3.20 个百分点</td><td>❌ 未给</td></tr>
+    <tr><td>LIBERO-Plus（10,030 个扰动任务）</td><td>+4.13 个百分点（物体变化 +6.63）</td><td>❌ 未给</td></tr>
+    <tr><td>RoboTwin 双臂</td><td>+1.80 个百分点</td><td>❌ 未给</td></tr>
+  </table>
+
+  <p>这三个数字都无法解释。<b>+4.13 个点可以是 60% → 64.13%，也可以是 90% → 94.13%。</b>前者说明这套标注救活了一个几乎不工作的策略，后者说明它在天花板附近又挤出了一点点。这两种结论对「要不要用 RoboAtom」的决策是完全相反的，而文章给的信息不足以区分。</p>
+
+  <p>这个问题在一周内的另一篇文章上对比得更明显。同一批订阅里 10-31 那篇《理解机器人数据集》讲的是另一套子任务标注（Scale AI 的 FineART），两者都是给 π0.5 加子任务监督：</p>
+
+  <table>
+    <tr><th></th><th>FineART（10-30）</th><th>RoboAtom（11-02）</th></tr>
+    <tr><td>规模</td><td>1,718 小时 · 53 万段</td><td>1.69 万小时 · 688 万段</td></tr>
+    <tr><td>倍率</td><td>1×</td><td><b>9.8× / 13.0×</b></td></tr>
+    <tr><td>基座</td><td>π0.5</td><td>π0.5</td></tr>
+    <tr><td>增益</td><td><b>+68 pp（32→100）、+60 pp（16→76）</b></td><td><b>+4.13 pp（基线未给）</b></td></tr>
+    <tr><td>基线是否公开</td><td>✅ 给了绝对成功率</td><td>❌ 只给增量</td></tr>
+    <tr><td>统计检验</td><td>95% CI 不重叠</td><td>无</td></tr>
+  </table>
+
+  <p>13 倍的数据量，换来的是十六分之一量级的增益。这个反差不能简单归因于「RoboAtom 不如 FineART」，因为评测场景不同——RoboAtom 用的是 LIBERO-Plus 的 10,030 个<b>扰动</b>任务，这类基准本来就压在低分区，天花板低；FineART 报的是自己设计的任务套件，从 32% 起步，离天花板很远。但正因为存在这个解释，<b>不给绝对基线就更不可接受</b>：读者无法判断 +4.13 是因为方法弱，还是因为基准已经饱和。</p>
+
+  <div class="box bad">
+    <b>还有一个反向的分布问题。</b>RoboAtom-Bench 是 500 条轨迹、4,018 个片段，即 <b>8.04 段/轨迹</b>；而训练数据是 <b>4.74 段/轨迹</b>。基准比模型见过的数据切得细 <b>1.69 倍</b>。而基准的 Edit 指标恰恰惩罚「把几步合成一步」。一个在 4.74 段分布上训出来的模型，被放到 8.04 段的基准上考「你会不会切太少」，这个失配是结构性的，不是能力问题。
+  </div>
+
+  <p>这一点也解释了为什么 RoboAtom-Anno 的「预测片段数与真值之比从 1.20 降到 0.99」是个好消息：说明 GRPO 确实把切分密度校准到了基准的分布上。<b>但校准到基准的分布，和校准到部署任务的分布，不是一回事。</b>如果真实部署的任务平均只有 3 段，那 0.99 这个比值反而意味着过度切分。</p>
+
+  <h3>9B 打赢 GPT-5.6-sol 的 8.7 分，是同分布对异分布</h3>
+  <p>RoboAtom-Anno-9B 在 RoboAtom-Bench 上 30.1，GPT-5.6-sol 21.4，高 8.7 分，成本低 722 倍（0.006 vs 4.330 美元/视频小时）。这个结果的成立条件需要看清楚：</p>
+  <ul>
+    <li>Bench 来自 <b>15 个数据源</b>，训练数据来自 <b>16 个数据源</b> —— 几乎完全重叠；</li>
+    <li>Bench 的 500 条轨迹由专家从 800 条候选里复核，候选来源与训练数据同源；</li>
+    <li>GPT-5.6-sol 是零样本，没见过这个分布，也没见过这套 15 类技能词表。</li>
+  </ul>
+  <p>所以「高 8.7 分」度量的是<b>「见过这个分布」与「没见过」的差</b>，不完全是「9B 与前沿模型的差」。文章自己提供了更可信的外部证据：在 WGO-Bench Robot 上高出最强参考模型 17.0 分，27B 在 WGO-Bench Ego 上达到 28.3（约最强参考的 2 倍）。<b>这两个才是真正说明问题的数字，因为它们不在训练分布里。</b>可惜它们被放在正文最后一小段，而不是摘要。</p>
+</section>
+
+<section id="s6">
+  <h2><span class="tag">结论</span>这篇该被记住的和该被打折的</h2>
+
+  <div class="box good">
+    <b>该被记住的（三条，都很扎实）</b>
+    <ol>
+      <li><b>问题降级是这类工作的正解。</b>「边界在哪」不必是视觉问题。用夹爪开合、底盘速度这类本体信号去定，把一个需要理解物理接触的任务，变成一维时间序列的拐点检测。这是全篇最有迁移价值的一句话，可以直接搬到自己的数据处理流程里。</li>
+      <li><b>骨架信号 + 动态规划，而不是逐帧分类。</b>「把所有边界放进一次带顺序约束的动态规划中求解」——这个设计保证了输出的片段序列是合法的（有序、不重叠、覆盖完整）。逐帧二分类做不到这一点，会产生碎段。这是工程上的正确选择。</li>
+      <li><b>承认传播会放大错误，并为此设计了修正环节。</b>「参考标注出错会把错误带到同任务的所有轨迹上」——这句话是自我批评，也是这套方法最大的风险点。团队用抽检和种子交叉核对来对冲，方向是对的。</li>
+    </ol>
+  </div>
+
+  <div class="box bad">
+    <b>该被打折的（三条，都关乎数字能不能用）</b>
+    <ol>
+      <li><b>「688 万段标注」应读作「≈1.7 万条独立判断 × 435 次复制」。</b>规模是真的，但不是独立信息的规模。判断这批数据价值时，该问的是种子数，不是片段数。</li>
+      <li><b>「便宜 12 万倍」只覆盖六步流程里的第三步。</b>第 1、2、4、5、6 步都排除在外，其中第 4 步（GPT-5.6-sol 描述校正）是对全部 145 万条轨迹执行的。全流程成本文章没给。</li>
+      <li><b>「+4.13 个百分点」没有基线，无法解释。</b>而同一周同基座（π0.5）的 FineART 给了 32→100 这种完整数字。这里的不对称不是巧合，是选择性披露。</li>
+    </ol>
+  </div>
+
+  <h3>如果只能追问一个问题</h3>
+  <p>追问这个：<b>29 类技能里，有多少类的边界能在本体信号上留下可辨跳变？</b>这个数直接决定了 PhysExtend 的适用范围，也决定了「1.69 万小时」里真正走了 0.000028 美元那条路的是多少。如果答案是 3 类，那这套方法覆盖的是「抓放搬」这一大类；如果答案是 20 类，那它确实重新定义了机器人数据标注的成本结构。文章没有给这个数——而这恰恰是判断「要不要跟进」唯一需要的数。</p>
+
+  <p class="src">项目主页：https://internrobotics.github.io/RoboAtom/ ｜ 代码：https://github.com/InternRobotics/RoboAtom ｜ 数据：https://huggingface.co/datasets/InternRobotics/RoboAtom ｜ 模型：https://huggingface.co/InternRobotics/RoboAtom</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 基于公众号原文 4,709 字 · 所有换算与一致性检验均为自行计算</footer>
+
+</div></body>
+</html>
