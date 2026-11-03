@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机器人策略能否跨物理引擎迁移？</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>机器人策略能否跨物理引擎迁移？<span class="sub">同一个策略在四个引擎里是 49/50 与 11/50，而在训练引擎里它们无法区分 · 迁移丢的不是精度，是策略对某一个接触刚度的力矩预算 · 只换一个 solver 就能把 20% 拉到 84%，所以"哪个引擎更好"根本不是良定义问题</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-03</div>
+    <div><b>正文规模</b> 3.7 万字符（含附录）· 8 节</div>
+    <div><b>对比对象</b> MuJoCo-Warp · Genesis · PhysX · Newton</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>物理引擎不是"世界的近似"，而是一台把<strong>力矩指令</strong>翻译成<strong>接触力与位移</strong>的算子。策略在训练中学会的从来不是"该用多大力"，而是"该产生多大位移"——因为力它观测不到，位移是它唯一能间接控制的量。而<strong>位移到力的换算系数由引擎给</strong>：接触刚度量级 \(k_c\propto m/\tau^2\)。策略把这个系数当成了常数写进参数里，换一个引擎，系数变了，同一句指令就变成了另一个力。<br>
+  所以迁移损失不是一个"引擎属性"，而是一个<strong>内积</strong>：\(\Delta \approx \langle \Delta_e,\ S_\pi\rangle\)。引擎差异向量 \(\Delta_e\) 是固定的，策略敏感度 \(S_\pi\) 逐 seed 不同，乘积才是你测到的那个数字。这解释了全部四个反常现象：为什么同一引擎里 49/50 与 11/50 无法区分、为什么两个方向损失不对称（20pp vs 29pp）、为什么改一个标量就能复现整个失败、为什么关掉随机化之后<strong>两个引擎的排名直接翻转</strong>。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">丢的是哪一层</a>
+  <a href="#s2">成功率为啥预测不了迁移</a>
+  <a href="#s3">三条有效路径与排查顺序</a>
+  <a href="#s4">三个打穿叙事的反例</a>
+  <a href="#s5">它证到了什么、没证到什么</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>跨引擎丢的不是精度，是策略对某一套接触算子的承诺</h2>
+
+  <p>最容易的误读是把这件事理解成"仿真器不够准"。但文章第一组数据就否掉了这个读法：一个<strong>不学习、纯按几何解算的 scripted controller</strong>，在 MuJoCo、Newton、Genesis 里都是 50/50，到 PhysX 才掉到 44/50。几何世界是同一个，差的是<strong>接触怎么被算出来</strong>。</p>
+
+  <p>差异分三层，必须按顺序排查——因为越靠前的那层，越容易被误认成"物理差异"。</p>
+
+  <div class="step">
+    <div class="t">第一层：接口。joint 的顺序。</div>
+    <div class="d">Newton 按 <b>每条腿</b>排列 12 个关节，PhysX 按 <b>joint type</b> 排列。同一个 Newton 训练出来的策略，按<strong>名字</strong>映射关节后可以在 PhysX 正常行走；不做映射时，16 个机器人的检查里 <strong>62.5% 的 episode 摔倒，而且系统不报任何错</strong>。这一层与物理无关，是索引问题。任何"迁移率"如果没过这一关，测的都是登录错误。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第二层：参数解析。同一个 authored value，读出两个物理量。</div>
+    <div class="d">ANYmal 足部的 friction 作者写了 0.8（sticking）/0.6（sliding），地面写 1.0。PhysX 把两者<strong>相乘</strong>，得到 0.8 和 0.6；Newton 取两者中的<strong>较大值</strong>，得到 1.0。<strong>同一个 asset 文件，两个引擎读出了不同的摩擦系数。</strong>于是 320 个 PhysX 训练出来的 ANYmal 放进 Newton 时，摔倒次数在 2 到 11 次之间浮动——取决于用哪个解析值、配哪个 solver。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第三层：接触算子。软约束 vs 硬约束、cone 形状、solver 迭代。</div>
+    <div class="d">MuJoCo 用 soft elliptic friction cone（impratio 100），Kamino 用硬约束 + 精确圆形 Coulomb cone，PhysX 用 TGS/PGS。这三者的差别不在"数值精度"，在于<strong>同一句力矩指令被翻译成多大的接触力</strong>。</div>
+  </div>
+
+  <p>第三条最有价值的地方，是作者把它压缩成了一个标量：<strong>接触时间常数 \(\tau\)</strong>。在 13 组 MuJoCo 变体里（physics step 0.5/0.25 ms、friction 0.1/0.5、更软或更硬的 impedance、pyramidal cone、更高 impratio、noslip iteration），<strong>只有 \(\tau\) 会显著改变结果</strong>。把 \(\tau\) 从 20 ms 降到 2 ms，seed 4 的成功从 50/50 掉到 14/50，峰值力中位数从 10 N 升到 48 N——失败形态和 PhysX 里一模一样。</p>
+
+  <div class="fml">
+    <div class="name">式 1　策略真正控制的是位移，力是引擎替它算的</div>
+    \[
+    F_n \;\approx\; k_c\,\delta,
+    \qquad
+    k_c \;\propto\; \frac{m}{\tau^{2}}
+    \]
+    \[
+    \tau: 20\,\text{ms}\rightarrow 2\,\text{ms}
+    \quad\Longrightarrow\quad
+    k_c \uparrow 100\times
+    \quad\Longrightarrow\quad
+    \text{同样的 }\delta\text{ 换来 }100\times\text{ 的法向力}
+    \]
+    <div class="exp">策略的动作空间是位姿增量（每次最多 0.25 mm / 0.002 rad），它看不到接触力，只能通过"推了之后有没有到位"间接推断。所以它学到的不是"用多大力"，而是<strong>"在 \(k_c\) 这个换算系数下，推多少刚好到位"</strong>。\(k_c\) 一变，同一句指令就越过了 40 N 的停止线。<br><strong>这才是"记住仿真器"的准确含义：它把引擎给的换算系数当成了物理常数。</strong></div>
+  </div>
+
+  <p>这也顺带解释了一个容易被忽略的细节：四个引擎里 64 次失败<strong>全部</strong>是 overload stop——不是"没插进去"，是"力气太大被叫停"。而且其中 <strong>55 次发生在 scripted controller 能够成功的初始状态上</strong>。任务没有变难，是策略的力气预算超支了。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>source 分数预测不了迁移：成功率是投影，行为才是原像</h2>
+
+  <p>五个在 MuJoCo 里训练的 seed，放到 PhysX 里评估，成功次数是 <strong>49、47、32、47、11</strong>。而在 MuJoCo 里，它们都是 49 或 50。</p>
+
+  <p><strong>在训练引擎的分数上，这五个策略几乎无法区分。</strong>作者的原话是："如果只看 source engine 的分数，我们无法区分这些 policy。"这就是全篇的方法论要害。</p>
+
+  <div class="fml">
+    <div class="name">式 2　成功率是一个二值投影，丢掉的正是迁移要用的那部分</div>
+    \[
+    S(\pi;\,e) \;=\; \mathbb{P}\Big[\,\underbrace{g\big(x_T,\,h_T\big)\le 0}_{\text{深度}\ge 19\text{mm，横向}<2\text{mm，倾角}<5^\circ,\ \text{保持 }0.26\text{s}}\ \wedge\ \underbrace{\max_t F_t \le 40\,\text{N}}_{\text{load stop}}\Big]
+    \]
+    <div class="exp">\(g\) 只看<strong>终点是否满足位姿与保持条件</strong>，再加一条<strong>峰值载荷不越线</strong>。中间的力矩轨迹、接触序列、峰值力的时间分布，全部被这一步投影丢掉了。<br>两个 \(S\) 相同的策略，可以有一条完全不同的 \(F(t)\) 曲线。而跨引擎迁移恰好只由 \(F(t)\) 决定。<strong>你在 source engine 里测的那个量，天生缺少预测迁移所需的信息。</strong></div>
+  </div>
+
+  <p>于是失败模式的解释就非常干净了。seed 4 在 MuJoCo 的软接触下学会了"用力顶"——软接触下顶不坏，峰值力只有 10 N，离 40 N 的线还远。同一套参数搬到硬接触，同样的位移指令产生数倍的法向力，直接越线。<strong>它不是能力不足，是它在旧换算系数下形成的动作幅度，在新系数下变成了过量。</strong></p>
+
+  <p>更值得记住的是：这个关系<strong>不是引擎的单变量函数</strong>。它是一个内积。</p>
+
+  <div class="fml">
+    <div class="name">式 3　迁移损失是"引擎差异"与"策略敏感度"的内积</div>
+    \[
+    \Delta S \;=\; S(\pi;\,e_{\text{train}}) - S(\pi;\,e_{\text{eval}})
+    \;\approx\; \big\langle\, \Delta_e,\ S_\pi \,\big\rangle \;+\; \varepsilon
+    \]
+    \[
+    \Delta_e = \big(\Delta k_c,\ \Delta\text{cone},\ \Delta\text{solver},\ \Delta\text{friction解析},\ \dots\big)
+    \qquad
+    S_\pi = \frac{\partial \pi}{\partial(\cdot)}
+    \]
+    <div class="exp">\(\Delta_e\) 是引擎对的属性，对所有策略相同；\(S_\pi\) 是策略的敏感度，<strong>逐 seed 不同</strong>。只有它们的<strong>乘积</strong>才是你观测到的迁移损失。这一个式子解释四个现象：<br>① 同一引擎对（MuJoCo→PhysX）对不同 seed 造成 0pp 到 78pp 的差别（seed 0 全程 50/50，seed 4 掉到 11/50）——因为 \(S_\pi\) 不同；<br>② 方向不对称（Newton→PhysX −20pp，PhysX→Newton −29pp）——\(\Delta_e\) 是有方向的；<br>③ 改一个标量就能复现整个失败——说明 \(\Delta_e\) 的主要分量集中在一维；<br>④ 排名会随评测条件翻转——因为条件改变了 \(S_\pi\) 的取值。</div>
+  </div>
+
+  <p>最能说明"差异不在物理量、而在求解方式"的，是 PhysX 内部的 solver 筛选。固定同一个冻结策略，同一批 25 个 held-out 初始状态：</p>
+
+  <table>
+    <tr><th>PhysX solver 设置</th><th>seed 4 成功数（/25）</th><th>说明</th></tr>
+    <tr><td>TGS，100 position / 1 velocity</td><td>5</td><td>标称配置，20%</td></tr>
+    <tr><td>TGS，4 / 0</td><td>19</td><td>Isaac Lab locomotion 的配置</td></tr>
+    <tr><td><b>PGS</b></td><td><b>21</b></td><td><b>84%，仅换 solver</b></td></tr>
+    <tr><td>TGS，25 iterations</td><td>5（峰值力减半）</td><td>结果不变</td></tr>
+  </table>
+
+  <p>最后一行最刺人：<strong>把迭代数加到 25，峰值力降了一半，成功率一点没动。</strong>说明这不是"收敛更充分 → 更准 → 更好"的平滑关系，而是<strong>离散的分支</strong>——要么落在能过的那一支，要么不能。这意味着你没法靠调参爬到好的那一支，只能枚举。</p>
+
+  <p>反过来，14 组 PhysX 设置里，contact offset（0.1/1 mm）、rest offset、friction、maximum depenetration velocity <strong>全部无效</strong>。后者一直被认为可能是 100 N 峰值的元凶，结果在默认值 3 m/s 下从未真正生效，降到 1 或 0.1 m/s 只改变轨迹、不改变结果。<strong>"调那些看起来该调的参数"这条经验，在这里基本失效。</strong></p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>三条有效路径，和一条必须遵守的排查顺序</h2>
+
+  <h3>路径一：把接触载荷写进目标函数</h3>
+  <p>在 dense reward 里加 force cost（每步合力的时间平均平方除以某尺度再乘 10：持续 10 N 计 0.625 代价，40 N 计 10）。PhysX 平均成功率 +9.6pp，但<strong>大部分增益来自 seed 4（11/50 → 37/50），seed 2 微升（32 → 34），另外三个 seed 略有下降</strong>。作者的判断很诚实：它显著改善了最弱的 baseline，但没有让所有策略都更容易迁移。同时这条数据也说明为什么 reward 比较必须多 seed——单配对可以显示出大涨、微涨或小跌。</p>
+
+  <h3>路径二：匹配那个被静默解析错的参数</h3>
+  <p>把两个引擎的有效足部-地面摩擦都设成 0.8 重训后，PhysX 训练的策略在 Newton 中的摔倒从 <strong>11 次降到 3 次</strong>，tracking 差距从 0.25 m/s 收到 0.23 m/s。但<strong>步态差异消不掉</strong>：力矩仍高 42%，落地冲击仍不同。原因不难理解——摩擦是可观测的显式参数，而"用多大力气走"这个习惯已经写进了策略。</p>
+
+  <h3>路径三：改接触模型的形状，而不是精度</h3>
+  <p>把 Newton 的 friction cone 从 elliptic 换成 pyramidal（不动 friction、不动 physics step、不动策略），1600 次运行摔倒从 <strong>15 降到 2</strong>；再用 256 个全新起始状态重测，6400 次里从 <strong>39 降到 12</strong>。而<strong>只把 impratio 从 100 降到 1、保留 elliptic cone，摔倒仍是 12/1600——几乎无改善</strong>。</p>
+
+  <p>这一步推理很干净：Kamino 用硬约束 + <strong>圆形</strong> Coulomb cone，1600 次里摔 5 次、6400 次里 16 次，和 pyramidal 接近。三个数据点一起把"圆形 cone 是元凶"这个假设排除掉了——<strong>真正起作用的是 MuJoCo 那个 soft elliptic cone 本身</strong>。作者的措辞也因此收紧成"soft contact 是 gait difference 的一个关键因素"，而不是"接触模型决定一切"。</p>
+
+  <div class="box good">
+    <b>这三条路径有一个共同的形状：</b>它们都在<strong>减小 \(\Delta_e\) 中那个与策略敏感方向重合的分量</strong>，而不是在提高引擎的保真度。摩擦匹配是把一个可观测的差异抹平；cone 切换是把一个不可观测的差异抹平；force penalty 则是<strong>反过来降低 \(S_\pi\)</strong>——让策略对载荷不那么敏感。三条路径分别作用在内积的三个位置上，逻辑是自洽的。
+  </div>
+
+  <h3>但有一条反例说明为什么不靠"调"</h3>
+  <p>既然 PhysX 里策略会因过载而停，那<strong>直接在 PhysX 里训练</strong>能不能学会避开？答案是不能。同等预算（131,072 transition，单 seed）下：PhysX baseline 完成 <strong>12/24</strong>，加 force penalty 的变体完成 <strong>0/24</strong>；而两个匹配的 MuJoCo 策略在各自引擎里都是 <strong>24/24</strong>。<strong>单纯降低载荷并没有让策略更稳健。</strong></p>
+
+  <p>更麻烦的是 execution path 本身也是变量：同一个 MuJoCo baseline 在 PhysX <strong>CPU 上 4/8、GPU 上 8/8</strong>。所以主实验里"MuJoCo CPU 训练 vs PhysX GPU 评估"这组对比，掺进了设备差异。这一点作者没有回避，但也没有量化。</p>
+
+  <h3>排查顺序：这三步的顺序就是优先级</h3>
+  <ol>
+    <li><strong>先确认接口与 physics 与预期一致。</strong>不信配置文件，从编译后的 model 或运行中的 stage <strong>readback</strong> 实际数值；读回值不匹配就停机。这一层能抓出 joint 顺序、friction 解析、contact 参数被覆盖这三类问题。</li>
+    <li><strong>再确认 source policy 真的具备能力。</strong>不要只看平坦的 reward 曲线——20 ms step 下两个引擎的 reward 曲线都"平"，但一个是脚陷进地里、一个是每 20 ms 只解 4 次迭代让脚进出地面 3.3 cm。看几段录制 rollout 才能区分。</li>
+    <li><strong>最后才在明确条件下测 transfer。</strong>并同时测多个条件，因为条件会改变结论的方向。</li>
+  </ol>
+
+  <p>这个顺序的价值在于：<strong>第 1、2 步失败时，第 3 步的数字仍然会正常输出，而且看起来就像迁移结果。</strong>这就是这篇文章最实用的一条经验，也是它最容易被跳过的一条。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">价值</span>三个把这套叙事打穿的反例</h2>
+
+  <h3>反例一：排名会翻转，而且是在"官方验证过"的 recipe 上</h3>
+  <p>Isaac Lab 3.0 的 transfer guide 把 Franka grasp-and-lift 列为<strong>经过验证的跨 backend 示例</strong>。按 guide 训练后：standard 条件下，Newton 训练的策略在 PhysX 里从 88% 掉到 68%，PhysX 训练的在 Newton 里从 82% 掉到 53%——<strong>即使使用经过验证的迁移方案，仍损失 20–29 个百分点</strong>。</p>
+  <p>但真正致命的是第三个条件。关掉随机化（nominal）之后：</p>
+  <table>
+    <tr><th>条件</th><th>Newton 训练的策略</th><th>PhysX 训练的策略</th><th>谁看起来更好</th></tr>
+    <tr><td>standard</td><td>Newton 88% / PhysX 68%</td><td>PhysX 82% / Newton 53%</td><td>各自在主场</td></tr>
+    <tr><td><b>nominal</b></td><td><b>Newton 55% / PhysX 76%</b></td><td>—</td><td><b>同一策略在客场更高</b></td></tr>
+  </table>
+  <p>同一个冻结策略、同一批 512 个 episode：在 Newton 里 55%，搬到 PhysX 反而 76%。<strong>最优引擎随评测条件翻转。</strong>于是"哪个引擎更好"这个问题就没有答案了——只有一个三元组 (策略, 方向, 条件) 才有答案。作者在引用 Kadian 等人的工作时提到过同一现象：固定 9 个模型、只改评测设置，仿真成功率与真实成功率的相关性从 0.18 跳到 0.844。<strong>评测设置对结论的影响，可以大于被测对象之间的差异。</strong></p>
+
+  <h3>反例二：保真度不是那个维度</h3>
+  <p>如果"更真实的引擎训练出更好的策略"成立，那保真度就应该预测迁移。作者列的三个反例都指向反面：</p>
+  <ul>
+    <li><strong>Tac2Real</strong>：两个触觉接触模型在仿真里成功率 0.776 与 0.789（几乎相同），真机上 91.7% 与 15%。</li>
+    <li><strong>导航</strong>：用简单运动学训练的导航策略在真实 Spot 上 100%，用 Bullet 接触动力学训练的只有 40%–67%。</li>
+    <li><strong>足球</strong>：结果反过来——基于 ODE 的仿真器训练出 9/10，抽象仿真器训练出 4/10，尽管后者在仿真里表现更好。</li>
+  </ul>
+  <p>三个方向不一致的反例合起来说明：<strong>保真度是一个错误的评价轴。</strong>正确的问题是式 3 里的那个内积——引擎差异是否落在策略的敏感方向上。<strong>差的引擎也可能落在盲区，好的引擎也可能正对靶心。</strong></p>
+
+  <h3>反例三：学习失败会伪装成迁移失败</h3>
+  <p>四足 locomotion 的 step size 实验是全文最漂亮的一组对照，因为它把"学习"与"迁移"两层剥开了。两个引擎同时改 step：</p>
+  <table>
+    <tr><th>physics step</th><th>Newton 侧</th><th>PhysX 侧</th></tr>
+    <tr><td>5 ms（默认）</td><td>正常行走 9.7 m</td><td>正常</td></tr>
+    <tr><td>10 ms</td><td>蹲伏姿态站立，10 秒只移动 0.1 m</td><td>部分学会</td></tr>
+    <tr><td>20 ms</td><td>必须先软化到 20 ms 接触 → 脚在 0.2 秒内陷进地面 1 cm，<b>1600 次全摔，一半在 0.6 秒内</b></td><td>保持刚性接触，但每 20 ms 只解 4 次迭代 → 脚在相邻采样间进出地面最多 3.3 cm；策略学会压低身体不动，只前进 0.2 m</td></tr>
+  </table>
+  <p>关键的一步是：作者做了一个配对控制——<strong>在默认 step 下用同样的 10 ms 接触，训练仍然正常</strong>。所以 10 ms 下的失败来自 step 本身，不是"step 强制带来的更软接触"。这一刀很干净，把一个混淆变量拆成了两个。</p>
+  <p>结论是：<strong>在这些行里，那个看起来很糟糕的"迁移数字"，描述的是从未具备正常能力的策略。</strong>如果你只看最终的 transfer 成功率，你会把它写成"引擎差异导致 100% 失败"，而真相是"这个策略从来没学会走路"。</p>
+
+  <div class="box bad">
+    <b>附录里还有一条更狠的。</b>在 deformable 插入任务里，MuJoCo 的三次训练共 1218 个 episode，其中 <strong>835 个（约 68%）以数值失效结束</strong>——球体 mesh 的一个元素发生反转。每次失效都产生 penalty，于是<strong>"避免仿真器崩掉"变成了优化目标的一部分</strong>。策略可能学会绕开某个数值边界，而物理世界里根本不存在这个边界。作者明确说尚未证明策略确实学会了这种规避（learned correction 并没有稳定优于 script），但这是正确的问题——<strong>在把某种行为归因于 physical dynamics 之前，应该先审计 simulator 的 failure mode 有没有混进 training signal 里。</strong>
+  </div>
+
+  <p>同一类问题在 π0.5 那组实验里也出现过两次，性质更基础：</p>
+  <ul>
+    <li><strong>渲染器根本没启动，但没人报错。</strong>RTX renderer 因为容器缺少 NVIDIA 图形库起不来，策略拿到的是"未运行渲染器"的帧，RoboLab 照常记录普通失败。作者是靠"失败模式不合常理"才发现的。</li>
+    <li><strong>保存的静止姿态在另一个引擎里不是静止的。</strong>spatula 竖直插在 holder 里，在 PhysX 中是稳定的；在 Newton 里，<strong>不需要机器人参与</strong>，仅加载 holder 和两件餐具，spatula 就在 0.5 秒内移动 6 cm、旋转 37°。原因是两个餐具与 holder 的凸包碰撞体重叠了约 3 mm、holder 悬浮在桌面上方 2 mm。细化凸分解 5 倍、换 Newton 自己的碰撞管线、把 contact margin 设为零，都改变不了这个结果。</li>
+  </ul>
+  <p>最后这条直接削弱了 fine-tuning 那组对比的可解释性：所有训练 episode 都是在 PhysX 里录的（spatula 靠在前壁上），而 Newton 里的策略面对的是一个<strong>它从未训练过的场景排布</strong>。物理差异与数据分布差异被叠在了一起。</p>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">局限</span>它证到的是"迁移率没有引擎级答案"，而不是"某个引擎更好"</h2>
+
+  <p>这篇文章的实验纪律明显高于同类（预注册筛选与确认两阶段、exact McNemar + Holm 校正、readback 校验、原生 trace 存档）。但仍有几处必须替读者补上警示。</p>
+
+  <ol class="crit">
+    <li><strong>grasp-and-lift 每个引擎只有一个 seed。</strong>两个方向的 20pp / 29pp 落差在统计上显著（Fisher exact，512 episode/condition），但"两个 policy 失败方式不同"这部分<strong>无法与 seed 特征分离</strong>——Newton 的策略发出 bang-bang 式的大幅关节步进（每个 33 ms 控制周期变化 0.05 rad，最大约 1 rad），PhysX 的策略则触发 joint-speed stop。作者自己写明了这一点。所以这组数据支持"存在显著 transfer gap"，不支持"gap 的成因是 execution dynamics"。</li>
+    <li><strong>两个 backend 的起始状态库不同。</strong>即使 random seed 相同，两个引擎采样出的 starting state 也不同，所以这些比较<strong>不是逐 episode 配对</strong>的。作者在正文和附录里两次声明"无法将全部差距归因于 execution dynamics"。这是一条诚实的自我限制，但也意味着那个 20–29pp 里有多少是物理、多少是数据分布，目前不可分。</li>
+    <li><strong>主实验里 engine 与 device 混在一起。</strong>插杆实验是"MuJoCo CPU 训练 → PhysX GPU 评估"，而同一个 MuJoCo baseline 在 PhysX CPU 上 4/8、GPU 上 8/8。<strong>所以"MuJoCo→PhysX 的落差"里掺着 CPU→GPU 的落差。</strong>要干净地测引擎效应，应该做 2×2（训练设备 × 评估引擎）。这是全文最实在的方法论缺口。</li>
+    <li><strong>"Newton" 这个标签的独立性比看起来弱。</strong>这里的 Newton 用 MuJoCo-Warp solver，作者明说"因此它并不属于独立于 MuJoCo 的 contact-model family"。所以"Newton vs MuJoCo"有一部分是同源的；真正的对照是 Kamino（硬约束）和 pyramidal cone 那两个 ablation，而那两组恰好给出了最干净的结论。</li>
+    <li><strong>20–29pp 是在"randomization 已经开了"的 recipe 上测的。</strong>而那个 randomization 列表里是 friction、object mass、joint gain、joint friction、gripper speed——<strong>全是显式参数，没有一个是 solver 级的（刚柔、cone 形状、迭代数、friction 解析方式）</strong>。按本文自己的结论，缺的正是这一层。所以"randomization 没能消除 gap"这个结果，更像是<strong>randomization 的对象选错了</strong>，而不是 randomization 无效。作者也没能给出反证：他们没有训练一组不带 randomization 的匹配 cohort。</li>
+    <li><strong>大量案例是"检查结果后选取"的。</strong>正文有多处明确标注"该案例是在检查结果后选取的"（四种 physics setting 的回放、cone ablation 的回放、站立不稳定的 seed 1、fine-tuning 的成功配对）。作为定性说明完全有效，但<strong>不能当频率估计</strong>读。作者标注得比多数论文规范，这一点值得肯定。</li>
+    <li><strong>结论不可操作的那一面，文章没有正面处理。</strong>如果迁移率只有 (策略, 方向, 条件) 级答案，那工程上就没有"选一个引擎然后放心用"这条路，只能对每个候选策略逐对测。这对一个需要每天训练新策略的团队意味着成本随策略数线性增长。文章给的检查清单偏向"验证一次迁移"，而不是"建立一个可持续的评测流程"——后者需要的是 solver 级参数的随机化，而这恰好是它没有测的。</li>
+  </ol>
+
+  <div class="box bad">
+    <b>一句话总结它的位置：</b>它真正证到的不是"MuJoCo 比 PhysX 好"或反之（这两种说法在它的数据里都找不到支撑，因为排名会随条件翻转），而是一个更基础的事实：<b>迁移率没有引擎级答案，只有 (策略, 方向, 条件) 级答案。</b>于是工程上唯一可操作的结论，是把"引擎"从<b>背景设定</b>降级为<b>需要被 readback、被随机化、被版本锁定的超参数</b>——与 learning rate 同级，而不是与物理定律同级。<br>
+    这也顺带说明为什么它不给出"该用哪个引擎"的建议：因为在这个框架下，那个问题本身不成立。
+  </div>
+
+  <p class="src">出处：公众号「human five」转述的仿真框架对比系列第二篇（第一篇为 scripted controller 的引擎基线审计）。对比引擎为 MuJoCo-Warp、Genesis、PhysX 与 Newton（Isaac Lab 3.0 early access）。任务：高精度插杆（径向间隙 0.10 / 0.25 mm）、ANYmal-D 平地 locomotion（PPO，4096 并行，5 seed）、Franka grasp-and-lift（Isaac Lab 官方 transfer guide）、RoboLab 上的通用策略 π0.5（含 LoRA fine-tune）。数据处理：筛选与确认两阶段预注册、exact McNemar 检验、Holm 校正、readback 校验、原生 trace 与 checksum 存档。</p>
+</section>
+
+<footer>公众号「human five」· 2026-11-03 · 3W1H 与第一性原理拆解</footer>
+</div></body>
+</html>
