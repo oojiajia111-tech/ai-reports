@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从GPT-3到2026:六年LLM架构演进的实验复盘</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>从GPT-3到2026:六年LLM架构演进的实验复盘<span class="sub">同一个改动，在 d=512 上值 24% 的参数当量，在 1.2B 的目标规模上值 0.2% · RoPE 从 −6.9% 一路掉到 −2.3%，外推过去只剩 +0.5%，同一行代码、同一份数据，只是模型宽了 2.5 倍 · 1129 次训练、5232 次推理测量、1.1T token 全开源，而作者自己承认：顶尖架构之间的差距都在 0.5 个百分点以内，换个拟合方式排名就变</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-03</div>
+    <div><b>正文规模</b> 2.7 万字（去标签）· 24 图</div>
+    <div><b>原始工作</b> bux 框架 · 1129 次训练 · 数据集 pavlichenko/bux-timeline（CC BY 4.0）</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>"这个架构改动有效吗"是个<strong>不成立的问法</strong>。收益不是发明本身的属性，而是<strong>规模、账期、基线三者共同决定的函数</strong>。作者最锋利的证据不是"MoE 最好"，是 RoPE 这条线：同一行位置编码，在最小模型上把 loss 砍掉 <strong>6.9%</strong>，到最大训练宽度只剩 <strong>2.3%</strong>，再外推到真正要部署的规模变成 <strong>+0.5%</strong>——等于没有。中间没有任何变量被动过，只是模型宽了 2.5 倍。<br>
+  根因可以一句话说完：<strong>架构改动能削的，只有 loss 里"参数不够"那一项；而这一项随规模单调变小。</strong>作者算过：2026 Hybrid 在 1T token 下，预测 loss 里只有约 <strong>2%</strong> 来自参数不足，而 2021 Reference 上是 <strong>11%</strong>。六年架构研究并没有变笨，是<strong>可削的那块蛋糕本身在缩水</strong>。所以小模型上测出来的收益，务必先除以 <strong>1.5~3</strong> 再拿去判断。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">他到底测了什么</a>
+  <a href="#s2">公理链：为什么必然衰减</a>
+  <a href="#s3">双账本与部分因子设计</a>
+  <a href="#s4">谁真有效，谁是小模型幻觉</a>
+  <a href="#s5">它证到了什么、没证到什么</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>他到底测了什么：把六年的架构论文塞进同一台秤</h2>
+
+  <p>架构研究有个长期问题：每篇论文都在自己的设置里赢。你没法判断两个改动谁更好，因为它们从没在同一张桌子上比过。作者的解法很朴素也很贵——<strong>把过去六年开源社区提过的架构改动，全部塞进一套完全固定的训练设置里，重跑一遍</strong>。</p>
+
+  <p>规模是这样的：<strong>1129 次训练实验，累计约 1.1T token，5232 次 vLLM 推理测量</strong>。全部用他自己写的框架 bux 完成——定义架构、训练、导出 vLLM、同时测质量和速度，一条流水线。数据集连同每条实验的 <code>.bux</code> 配置、训练曲线、复跑命令一起丢上 Hugging Face（<code>pavlichenko/bux-timeline</code>，CC BY 4.0）。</p>
+
+  <div class="box good">
+    <b>这件事的价值不在结论，在资产。</b>绝大多数架构论文只公开"最好的那个点"，你无法验证它是不是在 12 个格子里挑了运气最好的一个。他把 1129 个格子全摊开了，包括失败的那些。做负结果公开，比做正结果公开难得多，也有用得多。
+  </div>
+
+  <h3>固定的那部分是哪些</h3>
+  <table>
+    <tr><th>维度</th><th>固定成什么</th><th>为什么要钉死</th></tr>
+    <tr><td>形状</td><td>严格按 GPT-3 比例：宽度 +64 就加一层，head 维度恒为 64；宽 512 / 768 / 1024 / 1280</td><td>否则"加一层"和"加宽一点"混在一起，无法归因</td></tr>
+    <tr><td>参数预算</td><td>非 embedding 参数 25M → 394M</td><td>这是<b>实测</b>能跑得起的范围，也是全文最大的软肋（后面细说）</td></tr>
+    <tr><td>数据预算</td><td>每参数 20 token：0.5B / 1.7B / 4.0B / 7.9B</td><td>所有人吃一样的饭，才比得出消化能力</td></tr>
+    <tr><td>数据配比</td><td>前 90% 步：60% 代码 + 40% 网页；最后 10% 切 16k 长序列：50% 完整仓库 + 30% 代码文件 + 20% 网页</td><td>长上下文能力必须真的被考到</td></tr>
+    <tr><td>优化器</td><td>AdamW，wd=0.1，WSD 调度（warmup 5%，decay 20%），tokenizer 用 GPT-NeoX</td><td>把"训练技巧"这个混淆变量按死</td></tr>
+    <tr><td>质量指标</td><td>BPB（每字节比特），权重 50% 代码文件 / 30% 仓库 / 20% 网页</td><td>比 perplexity 更抗 tokenizer 差异</td></tr>
+    <tr><td>推理预算</td><td>每 GPU 每小时 1924 个 session（32 路 agent 并发）</td><td>这是全文最关键、也最有争议的一刀</td></tr>
+  </table>
+
+  <p>最后一个要展开说，因为整篇文章的排序都由它决定。<strong>他没有用"参数量"当横轴，而是用"同样的钱能买到多大的模型"当横轴。</strong>做法是：把架构导出 vLLM，不加载权重，在 3~4 种规模上实测推理速度，插值出"刚好能跑到 1924 sessions"的那个规模，叫它目标规模。</p>
+
+  <table>
+    <tr><th>架构</th><th>同预算下能部署的 Active 参数</th><th>说明</th></tr>
+    <tr><td>2021 参考（GPT-3 + RoPE）</td><td>3.7B</td><td>基准</td></tr>
+    <tr><td>GQA（4:1）</td><td>13.8B</td><td>KV Cache 砍掉 4 倍，省出的钱全用来堆参数</td></tr>
+    <tr><td>2026 KDA Hybrid</td><td>11.4B（总参 201B）</td><td>四层里三层换成线性注意力</td></tr>
+  </table>
+
+  <p>换句话说：<strong>GQA 之所以"有用"，不是因为它在同等参数下更聪明，而是因为它让你在同样的账单下多买 3.7 倍的参数。</strong>这两件事在论文里经常被混为一谈，而在这套框架里被彻底分开了。</p>
+
+  <div class="box bad">
+    <b>这里藏着一个必须先说清的口径问题。</b>"每 GPU 每小时 1924 个 session、32 路并发"是一个<strong>非常具体的生产负载</strong>，不是通用常数。换一种并发、换一种上下文长度、换一张卡，MoE 读 expert 权重的成本、HC 多存三条 residual stream 的成本，全都会变。作者自己就撞到了这个：HC 的推理惩罚在 2021 基座上是 10%，换到 2026 Hybrid 上变成 20%。<strong>同一项改动，只换了个基座，账单就翻倍。</strong>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>公理链：为什么架构收益必然随规模衰减</h2>
+
+  <p>这一节是全文的地基。如果这一步不成立，后面所有"XX 到目标规模就消失了"都是经验观察；如果成立，它们是必然。</p>
+
+  <div class="step">
+    <div class="t">公理 1　训练 loss 只有三个来源</div>
+    <div class="d">数据本身的熵（这段文本天生有多难猜）、数据不够的惩罚、参数不够的惩罚。三者相加就是最终 loss，没有第四项。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 1　把 loss 拆成"改不动的"和"能改的"</div>
+    \[
+    L(N,D) \;=\; \underbrace{E}_{\text{数据熵：改不动}} \;+\; \underbrace{\frac{A}{N^{\alpha}}}_{\text{参数不足}} \;+\; \underbrace{\frac{B}{D^{\beta}}}_{\text{数据不足}}
+    \]
+    <div class="exp">
+    \(N\) = 非 embedding 的 active 参数，\(D\) = 训练 token 数，\(E\) = 数据本身的熵（同样的数据、同样的 Scaler，所有架构共享）。<br>
+    \(A\) 是唯一<strong>由架构单独决定</strong>的系数——它衡量"这套结构对参数的利用效率"。\(B\) 和 \(\beta\) 全架构共享，因为大家吃的是同一份数据。<br>
+    <b>说人话：</b>模型差，要么因为题太难（E），要么因为脑子不够大（A/N^α），要么因为书读得太少（B/D^β）。<strong>架构这玩意儿只能动第二项里的 A，动不了 E，也动不了 D。</strong>所以架构收益的天花板，就是第二项在总 loss 里占多大。
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 2　第二项随规模单调变小，且下降速度可算</div>
+    <div class="d">N 涨 10 倍，A/N^α 就掉 10^α 倍。所以"同样一项架构改进能削掉的绝对量"必然跟着缩水。</div>
+  </div>
+
+  <p>作者把这个推论算成了具体数字，这也是全文我<strong>认为最该被记住的一段</strong>：</p>
+
+  <table>
+    <tr><th>模型</th><th>1T token 时，loss 里来自"数据不足"</th><th>来自"参数不足"</th><th>架构最多能削掉</th></tr>
+    <tr><td>2021 Reference（GPT-3 + RoPE）</td><td>—</td><td>约 <b>11%</b></td><td>11 个点</td></tr>
+    <tr><td>2026 Hybrid</td><td>约 <b>8%</b></td><td>约 <b>2%</b></td><td><b>2 个点</b></td></tr>
+  </table>
+
+  <p>读法是这样的：到了 2026 这一代结构，在 1T token 的训练量下，模型"不够大"只贡献了 2% 的 loss，而"书读得不够多"贡献了 8%。<strong>你把架构优化到极致、把参数不足那 2% 全部消灭，最多也就比现在好 2%。</strong>而在 2021 年那个基座上，这块肉有 11%。</p>
+
+  <div class="box good">
+    <b>这解释了那个让人困惑的行业现象。</b>为什么一篇论文说"我的改动让小模型达到 3 倍参数的表现"，到了大模型上只剩 0.5%？不是作者造假，也不是复现失败。<strong>"3 倍参数当量"这句话在小模型区间是真的，在大模型区间是假的，因为 A/N^α 这项本身已经被压到很小了——分母小了，你分子再省也没多少可省。</strong>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 3　质量不是终点，账单才是</div>
+    <div class="d">很多改动是"用算力换质量"。不算账就比，等于拿 20 块钱的东西跟 10 块钱的东西比谁好。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　两本账：同一个改动，两个相反的结论</div>
+    \[
+    \text{账本 A（同参数）：}\;\Delta_A = L_{\text{new}}(N_0) - L_{\text{old}}(N_0)
+    \]
+    \[
+    \text{账本 B（同账单）：}\;\Delta_B = L_{\text{new}}\!\big(N^{*}_{\text{new}}\big) - L_{\text{old}}\!\big(N^{*}_{\text{old}}\big),\quad N^{*}=\text{同预算可部署规模}
+    \]
+    <div class="exp">
+    \(N_0\) 是两边一样的参数量，\(N^*\) 是"花同样的钱各自能部署多大"。<br>
+    <b>说人话：</b>账本 A 问"同样的脑子，谁更聪明"；账本 B 问"同样的工资，谁干的活多"。<strong>这两本账经常给出完全相反的答案，而作者两个都算。</strong><br>
+    最典型的例子是 Hyper-Connections：账本 A 上它把 loss 砍了 2.4%（2021 基座），看起来很棒；但它要额外维护四条 residual stream，推理吞吐掉 10%，所以账本 B 上是 <b>−0.2%，也就是反而更差</b>。
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 4　所以"单测排序"不能用于决策，只有"放进目标基座 + 跨足够多宽度"才算数</div>
+    <div class="d">因为收益既依赖基线（公理 3），又依赖规模（公理 2）。这两个依赖都不是小修正，会直接把排序翻过来。</div>
+  </div>
+
+  <p>这条公理是全文的"元结论"，也是作者用两次实测钉死的。后面第 4 节会看到具体案例，这里先给结论：<strong>同一个 LatentMoE，在 2021 基座上单项排名第一（−5.7%），放进已经含 MoE 的 Candidate 基座后只剩 0.13%/0.11%，落在噪声里。</strong></p>
+
+  <p>最后补一个换算系数，这是最实用的一条：</p>
+
+  <div class="fml">
+    <div class="name">式 3　小模型是放大器，放大倍数 1.5~3 倍</div>
+    \[
+    \Delta L_{\text{实测}(d\le1280)} \;\approx\; (1.5 \sim 3)\times \Delta L_{\text{目标规模预测}}
+    \]
+    <div class="exp">
+    作者拿 Hybrid 对照 GPT-3 校准的：最小宽度上实测 −15.6%，最大宽度 −12.2%，而同等推理成本下外推到目标规模是 −8.5%。<b>15.6 / 8.5 ≈ 1.8，12.2 / 8.5 ≈ 1.4</b>，落在 1.5~3 这个区间里。<br>
+    <b>使用方式：</b>下次看到某篇架构论文说"在小模型上提升 8%"，先在脑子里除以 2——真实可部署规模上的收益大概 4%，再打个折扣可能就 2%。<strong>这不是唱衰，这是把报价换算成到手价。</strong>
+    </div>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>双账本读数 + 部分因子设计：1129 次实验是怎么省下来的</h2>
+
+  <p>如果每项改动 × 每种宽度 × 每个种子都要跑，成本会爆炸。作者用了两个技巧把 1129 次压下来，这两个技巧本身值得单独说，因为它们可以直接搬到别的实验设计里。</p>
+
+  <h3>技巧一：用解析成本模型"选点"，用实测"定值"</h3>
+  <p>他一开始想用解析成本模型直接估算推理开销，结果发现：中位数情况下挺准，但一碰到 Sparse Attention、MLA 这种<strong>依赖特定 Kernel 实现</strong>的架构，误差就大到不能用。于是改成——解析模型只负责"决定该测哪几个规模"，最终数字一律以 vLLM 实测为准。</p>
+
+  <div class="box good">
+    <b>这是一个很成熟的分工。</b>成本模型的作用是<strong>缩小搜索范围</strong>，不是<strong>替代测量</strong>。作者还留了一个诚实的注脚：MLA 用 256 维 latent + 32 rotary 时，在 vLLM 里的速度比 DeepSeek 的 512+64 配置慢约 2 倍，<strong>纯粹因为后者的 kernel 优化更好</strong>。所以"MLA 快不快"这个问题的答案，有一半不在论文里，在工程实现里。
+  </div>
+
+  <h3>技巧二：部分因子设计，96 种组合只训 16 个</h3>
+  <p>第二轮组合实验要测 6 项改动（Residual 三选一 + 另外五项开关），全跑是 96 种配置 × 3 个种子 = 288 次训练。他用 <strong>Fractional Factorial Design</strong> 只跑了 16 种，通过平衡配置估计每项的<strong>平均主效应</strong>。</p>
+
+  <div class="fml">
+    <div class="name">式 4　为什么 16 个格子能估出 6 项的主效应</div>
+    \[
+    \hat{\tau}_i \;=\; \overline{y}\big(x_i=1\big) \;-\; \overline{y}\big(x_i=0\big)
+    \]
+    <div class="exp">
+    \(\hat\tau_i\) 是第 \(i\) 项改动的平均效应，两个均值分别取"这项开着"和"这项关着"的所有实验平均。<br>
+    <b>说人话：</b>不要求每个改动都在"其他全部固定"的条件下测，只要求它在整个表格里<strong>开着和关着的次数一样多、且与其他项不相关</strong>。这样一平均，其他项的影响互相抵消，剩下的就是它的净效应。<strong>代价是：交互作用被默认当成零。</strong>
+    </div>
+  </div>
+
+  <p>结果是：HC <strong>−1.8%</strong>、AttnRes <strong>−1.1%</strong>、KV Conv <strong>−0.7%</strong>、Value Residual <strong>−0.4%</strong> 四项有效，且看起来可以近似相加（没发现超噪声的交互）。F（Squared-ReLU Experts）、P（Global Layer 加 Partial RoPE）、S（加 DSA Indexer）无效——其中 F 还有个反复：统计拟合一度建议保留，三次确认实验只拿到 <strong>−0.03%</strong>，被剔掉。</p>
+
+  <div class="box bad">
+    <b>这里必须先记一个伏笔：噪声水平是 0.3%。</b>作者说"没发现超过噪声的交互作用"，可 Value Residual 的全部收益只有 0.4%——<strong>它只比噪声高一点点。</strong>而 HC、Value Residual、KV Conv 三项恰好都作用在同一条 residual + attention 读写路径上，<strong>这是整个实验里最可能有交互的一组</strong>。当交互的估计精度和主效应同一个量级时，"没发现"和"不存在"是两件事。
+  </div>
+
+  <h3>技巧三：正负号要提前想清楚</h3>
+  <p>文章里有个细节很容易被跳过，但它决定了整篇的可信度：<strong>预测区间跨过零的点，全部标成灰色、画空心圆、并且明确写"需要格外谨慎看待"。</strong>空心圆的意思是——这个变体只训了 2 个宽度，不足以观察衰减斜率，拟合时只能<strong>直接继承父架构的 exponent</strong>，等于假设"它在小模型上的优势会完整保留到大模型"。</p>
+
+  <p>而作者随后用 RoPE 的例子亲手证明了<strong>这个假设是错的</strong>：那些空心圆显示的 −2.5% 是幻觉，因为普通 RoPE 训了四个宽度，可以清楚看到优势正在缩小。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">怎么做</span>谁真有效，谁只是"小模型幻觉"</h2>
+
+  <p>这一节按"能不能活到目标规模"分三档。所有数字都是账本 B（同推理成本、1T token、相对 GPT-3 + RoPE 的预测 loss 变化），负数代表变好。</p>
+
+  <h3>第一档：真金，且规模越大越有效</h3>
+  <table>
+    <tr><th>改动</th><th>账本 B 预测</th><th>关键证据</th></tr>
+    <tr><td><b>Fine-grained MoE</b>（DeepSeek-V3 式，128 experts，sigmoid routing）</td><td><b>−5.5%</b></td><td>三个宽度分别 −4.9 / −5.6 / −6.2%，<b>随宽度增大而扩大</b>——全文唯一具备这个性质的改动</td></tr>
+    <tr><td><b>LatentMoE</b>（先投影到半宽 latent，256 experts 取 12）</td><td><b>−5.7%</b></td><td>单项排名第一，但<b>放进含 MoE 的基座后消失</b>（详见下方批判）</td></tr>
+    <tr><td><b>KDA 线性注意力</b>（四层三层，8:1 版）</td><td><b>−4.8%</b></td><td>推理成本降 2–7 倍，同预算可部署参数 ×3.6</td></tr>
+    <tr><td>Gated DeltaNet / Mamba-2 / RWKV-7</td><td>−4.2 / −3.6 / −2.6%</td><td>Gated DeltaNet-2 单项最强（−4.7%），但 vLLM 只跑到 KDA 的 0.42 倍速，账本 B 掉到 −2.9%</td></tr>
+  </table>
+
+  <div class="box good">
+    <b>"随规模增大而扩大"这件事，比 −5.5% 这个数字重要得多。</b>绝大多数改动是"小模型有效、大模型消失"，MoE 是反向的。原因不难理解：MoE 增加的是<strong>总参数</strong>而不是<strong>单次计算量</strong>，而公理 1 里的 A/N^α 惩罚针对的正是"模型容量不够"——MoE 在不动推理账单的前提下扩了容量，所以它削的恰好是那块随规模变大反而更值钱的东西。
+  </div>
+
+  <h3>第二档：真金，但赚的是推理费不是智商</h3>
+  <p>GQA、MQA、MLA、Sliding Window 这四个，在账本 A 上全是<strong>亏的</strong>：GQA 让 loss 涨 1.1%，MQA 涨 1.6~2.5%，MLA 基本在噪声里。但它们在账本 B 上全赚：MLA −4.1%、SWA(512) −3.9%、GQA −3.2%、MQA −2.5%。</p>
+
+  <p><strong>因为它们省的是 KV Cache（至少 4 倍），省下来的钱能多买 4~9 倍的参数。</strong>这就把"架构研究"和"系统优化"两件事彻底缝在了一起——你没法在不知道部署账单的情况下评价一个 attention 变体。</p>
+
+  <p>还有个漂亮的反转：<strong>上下文越长，结论越反过来。</strong>16k~24k 时 MQA 能部署 33B 参数，最划算；到了 256k，MQA 掉到 8B、GQA 掉到 6B，而 Sliding Window / KDA / Mamba-2 还稳在 14~16B。<strong>所以"哪种 attention 更好"这个问题，答案里必须带上下文长度这个参数。</strong></p>
+
+  <h3>第三档：小模型幻觉区（到目标规模就没了）</h3>
+  <table>
+    <tr><th>改动</th><th>小模型（账本 A）</th><th>目标规模（账本 B）</th><th>判决</th></tr>
+    <tr><td>RoPE（对 Learned PE）</td><td>−6.9% → −4.0% → −2.3%</td><td><b>+0.5%</b>（区间 −1.0 ~ +2.1）</td><td>优势外推后归零，这是全文的"标尺"</td></tr>
+    <tr><td>Value Residual</td><td>−2.1%（d=512）</td><td>−0.8 / −1.0 → <b>预测 0</b></td><td>单测有效，进 Candidate 后靠组合才活下来</td></tr>
+    <tr><td>Hyper-Connections（2021 基座）</td><td>−2.4 / −2.2 / −1.3%</td><td><b>+0.2%（变差）</b></td><td>质量赚的钱被 10% 吞吐损失吃掉</td></tr>
+    <tr><td>Hyper-Connections（2026 Hybrid 基座）</td><td>组合实验里 <b>−1.8%</b></td><td>保住了</td><td><b>同一改动，换基座结论反转</b></td></tr>
+    <tr><td>SwiGLU</td><td>−0.07%（d=512）→ −0.92%</td><td>−1.4%</td><td>只测最小规模会误判成噪声</td></tr>
+    <tr><td>Squared ReLU（Dense）</td><td>Dense 里最好</td><td>放进 MoE 当 expert：<b>+0.7%</b></td><td>好 MLP ≠ 好 expert</td></tr>
+    <tr><td>Embedding Scaling</td><td>−0.73%（d=512）</td><td><b>+0.79%（反转）</b></td><td>四项组合里最典型的符号翻转</td></tr>
+    <tr><td>Copy Pointer</td><td>−4.1 / −2.5 / −1.4%</td><td>−0.4%（Stack5 −0.5%）</td><td>每加一档宽度只保留约 60%，衰减极规律</td></tr>
+    <tr><td>MTP / Engram / Untying Head / 更深更窄</td><td>—</td><td>0 / 0 / +2.3% / +1.5%</td><td>全部无效或有害</td></tr>
+    <tr><td>Sandwich Norm / Logit Soft Cap / RMSNorm / 去 Bias</td><td>—</td><td>无可测收益</td><td>所谓"稳定性改动"，在没崩的训练里本来就没分可赚</td></tr>
+  </table>
+
+  <p>唯一在 Norm 类里活下来的是 <strong>QK-norm（−0.8%）</strong>，而它的机制被作者挖得很干净，这一段我建议单独看：</p>
+
+  <div class="fml">
+    <div class="name">式 5　QK-norm 真正在做的，是"让模型自己学 attention 该多尖锐"</div>
+    \[
+    \text{logit}_{ij}=\frac{q_i^{\top}k_j}{\|q_i\|\,\|k_j\|}\cdot g,\qquad g=\text{per-channel learnable scale}
+    \]
+    <div class="exp">
+    归一化把 \(q,k\) 的长度信息抹掉，只留方向；但乘上一个<strong>可学习的逐通道缩放</strong> \(g\)，又把这部分自由度还给了模型。<br>
+    <b>实测证据（这是全文最漂亮的一个消融）：</b>把 \(g\) 拿掉、只保留归一化，收益<strong>完全消失</strong>（loss 反而 +0.3% / +0.6%，比不用 QK-norm 还差）。而单纯把 logit 软截断在同样范围（soft-cap）<strong>也替代不了</strong>。<br>
+    <b>说人话：</b>有用的不是"把数压小"，是"让模型自己决定压多小"。而且这个改动在训练早期真的有用——step 500 时最大 attention logit 已经冲到 <b>71</b>（大学习率下 <b>351</b>），加 QK-norm 后降到 <b>12~25</b>。<strong>注意这里没有 loss spike，所以它不是在"救火"，是在"提前把火苗压住"。</strong>
+    </div>
+  </div>
+
+  <h3>最终架构：一次很"无聊"的胜利</h3>
+  <p>最终结构是：2026 KDA Hybrid + Hyper-Connections + Value Residual + Global Layer 的 4-tap KV Conv + <strong>把第一层 Dense FFN 移到最后一层</strong>。同 FP8 推理成本、1T token 下，比 Hybrid 好 <strong>1.0%</strong>，比 GPT-3 好 <strong>9.4%</strong>。</p>
+
+  <p>而最后那个"移 Dense 层"的决定，来由一个 bug 式的发现：</p>
+
+  <div class="box bad">
+    <b>Candidate 有 9%~11% 的训练步触发梯度裁剪（阈值 1.0），而 Hybrid 只有 0.08%。</b>作者的第一反应是"肯定是 Hyper-Connections 干的"——毕竟它把一条 residual 拆成四条，看着就像梯度放大器。结果顺着最大梯度的来源一查，<strong>根因是第一层那个 Dense FFN</strong>，跟 HC 一点关系没有。把它换成 Routed Experts、或者干脆挪到最后一层，梯度尖峰就没了，还顺带白赚 0.33~0.42%（8 个种子全部改善，推理成本不变）。<br>
+    <b>这个故事的真正含义不是"我找到了 bug"，而是：如果他没有去查来源，HC 就会被错误地判死刑，而整篇论文的结论会静悄悄地错掉一项。</b>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">值不值</span>它证到了什么、没证到什么</h2>
+
+  <h3>先给价值：三条能直接拿去用</h3>
+  <ol>
+    <li><strong>1.5~3 倍的换算系数。</strong>看到任何"小模型上提升 X%"的架构论文，先把 X 除以 2。这不是经验主义，是式 3 推出来的，而且作者用 Hybrid 校准过。</li>
+    <li><strong>"MoE 最有效"这个结论的正确读法。</strong>不是"MoE 比其他都强"，而是"MoE 是唯一一个收益随规模<em>变大</em>的改动"。所以规模越大越该上 MoE，这条推论比 5.5% 这个数字有用。</li>
+    <li><strong>组合收益近似可加，但每项都在衰减。</strong>所以"我叠加了 5 个 +2%" 不等于 +10%；实际上第二轮四项同时使用，d=512 时 −1.2%，到 d=1280 只剩 −0.1%。<strong>叠加不改变衰减，只改变起点。</strong></li>
+  </ol>
+
+  <p>而全文最后那段话，是六年复盘真正的落点，也是我认为最该被引用的一句：</p>
+
+  <div class="box good">
+    <b>"一个普通架构搭配 SOTA 训练设置，完全可能击败一个优秀架构搭配普通训练设置。"</b><br>
+    他的证据是 Muon 优化器：单换优化器，d=512 上 −2.2%、d=1280 上 −1.8%，<strong>衰减很慢，而且总量跟整整一轮架构组合实验（−1.2% → −0.1%）相当甚至更多</strong>。也就是说，架构研究这一整套 1129 次实验的产出，约等于换一个优化器。<br>
+    所以他给这个领域的定位相当冷静：<strong>架构研究是"已经把数据、优化器、后训练都做到极致的实验室"才有条件享受的特权。</strong>别人做同一件事，ROI 会低得多。
+  </div>
+
+  <h3>再说局限：七条，按严重程度排</h3>
+  <p>下面这些不是"找茬"，是<strong>决定这套结论能不能搬到你自己场景里的前提条件</strong>。</p>
+
+  <ol class="crit">
+    <li><strong>30 倍的规模缺口，唯一的桥是自己承认不可靠的外推。</strong>实测最大 394M 非 embedding 参数，而"目标规模"是 9.1B~13.8B active。<strong>中间跨了约 30 倍</strong>，全靠 Scaling Law 拟合。<br>而作者自己给出了外推不可靠的铁证：Stack5 用 2 个宽度拟合得 <strong>−1.23%</strong>，用 4 个宽度拟合得 <strong>−0.95%</strong>——同样的模型，换个拟合方式差 0.28 个百分点。<br>他还写了："最终模型、Stack5、Candidate、HC+V、mHC、Copy Pointer 之间的预测差距都在约 <strong>0.5 个百分点</strong>以内……改变拟合方式，排名就可能变。"<br><b>那么问题来了：既然 0.5 个百分点内不可分，为什么"比 GPT-3 好 9.4%"可以被当成结论？</b>这个数也是同一套拟合出来的。前后标准不一致。</li>
+
+    <li><strong>BPB 这个指标把"长上下文能力"混进了"架构质量"。</strong>质量指标里 30% 的权重是完整代码仓库，而且按 16k 窗口读取——<strong>所以任何一个影响长上下文的结构改动，都会在这里被额外计分（或扣分）。</strong>作者自己也承认："我猜 BPB 并不是区分位置编码方案的理想指标，更希望用 RULER 之类的评测工具。"但他没换指标重跑。<br>反证就在文里：MTP "没有带来可测量的 BPB 改善"，可紧接着一句"我们在 Mellum2 的预训练消融里观察到相同现象：<strong>MTP 的收益只在实际 Benchmark 上体现</strong>"。<strong>这句话等于承认 BPB 可能漏掉了某些改动的真实价值</strong>——那些被判"无效"的项，有多少是 BPB 看不见的？</li>
+
+    <li><strong>每参数 20 token = 严重欠训练，而这个 regime 会系统性放大 MoE 的优势。</strong>20 token/参数是 Chinchilla 口径，而现代前沿模型普遍训到 100+ token/参数。<strong>在"书读得少"的情况下，"脑子大"格外值钱</strong>——MoE 恰好在不增加推理成本的前提下扩容量，所以它在这个 regime 下天然占便宜。<br>换句话说，"MoE 收益随规模增大而扩大"这个结论，<strong>很可能与数据预算绑定</strong>：如果每参数训 200 token，参数不足那一项进一步压缩，MoE 的相对优势会怎样？作者没测，但按他自己的公理 1，答案不会是"更大"。</li>
+
+    <li><strong>"MoE 最有效"的实际决策依据，恰好证伪了"单项排序可决策"。</strong>LatentMoE 单项 −5.7%，是全部改动里第一名。但把它塞进已经含 fine-grained experts 的 Candidate 后：d=512 上 <strong>−0.13%</strong>、d=1024 上 <strong>−0.11%</strong>，两个都在 0.3% 噪声以内，推理还慢了 6~12%。于是被否。<br><b>这是全文最有价值的元结论</b>——但它同时是个自我指涉的麻烦：如果"单项第一"放进真基座就归零，那第三档那张表里所有"单项有效"的结论，凭什么认为放进目标基座后还在？作者只是对 LatentMoE 做了这个检验，其他项没做同样的事。</li>
+
+    <li><strong>部分因子设计假设交互为零，而它恰好漏在最可能有交互的地方。</strong>16/96 组合、3 个种子，估的是平均主效应。作者说"没发现明显超过噪声的交互"，但噪声是 0.3%，而 Value Residual 的收益只有 0.4%。<br>更关键的是：HC（拆四条 residual）、Value Residual（跨层混 value）、KV Conv（在 K/V 上加卷积）——<strong>三项都动同一条读写路径</strong>。这种位置上的改动，交互作用通常不是零，而是"谁先动手谁拿大头"。在这个精度下说"可加"，是乐观假设，不是测量结果。</li>
+
+    <li><strong>推理账单被钉死在一种负载上，而它明显不是常数。</strong>"每 GPU 每小时 1924 sessions、32 路并发 agent"决定了所有排序。而作者自己测出 HC 的惩罚在 2021 基座是 10%、在 Hybrid 上是 20%——<strong>同一改动，只换基座就翻倍</strong>。那么换成单路低延迟、或者 128k 长上下文、或者别家 GPU，MoE 的 expert 读取、HC 的四路 residual、MLA 的 kernel 效率，全都会重排。<br>文中已经有一处自曝：MLA 用 256 维 latent 比 512 维慢约 2 倍，<strong>纯因为 kernel 实现</strong>。"哪种结构更省"这个问题，有一半答案在工程实现里，不在架构里。</li>
+
+    <li><strong>1129 次实验是内部效度，不是外部效度。</strong>单一作者、单一框架（bux）、单一硬件（B300）、单一 tokenizer（GPT-NeoX）、单一数据配比（60% 代码 / 40% 网页）。全部对比都在这个封闭世界里成立。<br>尤其"60% 代码"这个配比会显著影响结论：Copy Pointer 之所以有效（小模型 −4.1%），作者明说"依赖重复文本，代码仓库里有大量重复内容"。<strong>换成对话数据或纯多语语料，这一项大概率归零。</strong></li>
+
+    <li><strong>"架构是特权"这个论断，用了一个跨类比的跳步。</strong>论证是：Muon 换优化器得 −2.2%/−1.8%，与一整轮架构组合（−1.2%/−0.1%）相当。然后补一句"我预计数据方面的调整也能带来类似幅度的提升"。<br>前半段是实测，后半段是<strong>外推，没做实验</strong>。而且优化器 ≠ 数据：优化器改的是"同样的数据怎么走梯度"，数据改的是"看到什么"。这两者的收益曲线形状很可能不同（数据收益往往不随模型变大而衰减，甚至变大）。<strong>用优化器的实测去支撑"数据更重要"，逻辑上不成立，虽然结论大概是对的。</strong></li>
+  </ol>
+
+  <div class="box bad">
+    <b>最后一条自我指涉的批判，我认为最值得记住。</b>作者靠"追查梯度来源"这个动作，救了 HC 一命，也顺手修正了一个错误的归因。但这件事反过来提醒：<strong>本文里所有"某项改动无效"的判决，都可能正在犯同一个错——只是没人去追查那个来源。</strong>Embedding Scaling 在 d=512 有效、d=1280 反转，这到底是"收益随规模衰减"，还是"两个宽度的学习率扫得不够、把最优点错过了"？作者自己承认每项只做了一次简短的 LR sweep、拟合抛物线取最低点。<strong>在 0.3% 噪声、0.5 个百分点的判别力下，学习率没扫干净这件事，足以制造若干个"假阴性"。</strong>
+  </div>
+
+  <h3>一句话总账</h3>
+  <p>这篇文章真正的贡献，不是给出"2026 年该用什么架构"的答案（它给的答案很保守：KDA hybrid + MoE + 几个 residual 小改），而是<strong>把"架构收益"这个东西从叙事拉回到了函数</strong>——收益 = f(规模, 账单, 基线)，三个自变量少给一个，结论就不可迁移。</p>
+
+  <p>它最有用的读者不是想找"下一个爆款结构"的人，而是<strong>需要判断别人论文里那个漂亮数字到底值多少钱的人</strong>。对这类读者，本文提供了一个近乎白送的公式：除以 2，先看账单，再问基座。</p>
+
+  <p class="src">原文链接：<a href="https://mp.weixin.qq.com/s?__biz=Mzg5Mzg3ODEwNA==&amp;mid=2247510945&amp;idx=2" target="_blank">公众号 human five · 从GPT-3到2026:六年LLM架构演进的实验复盘</a>　｜　实验数据：Hugging Face <code>pavlichenko/bux-timeline</code>（CC BY 4.0，1129 次训练 + 5232 次推理测量）</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解　|　来源：公众号 human five（2026-11-03）</footer>
+</div></body></html>

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>解释不是因果：VLA 的 rationale 与动作在隐空间里几乎正交 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:25px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>解释不是因果：VLA 的 rationale 与动作在隐空间里几乎正交<span class="sub">把动作最敏感的方向投到文本梯度张成的平面上，只剩 1.87%（Alpamayo）和 5.28%（InstructVLA）——而二维平面上随机向量的期望投影就有 0.978% · 同范数下沿这条"文本零空间"方向推动作，比沿文本梯度推大 44~47.8 倍，而推文本只大 1/269 · 154 个有障碍标注的场景里，52.6% 能在 rationale 一字不变的情况下新增一次碰撞</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-03 · arXiv 2611.04166</div>
+    <div><b>机构</b> NeurIPS 2026 · Z. Morley Mao、Ramesh Govindan 等</div>
+    <div><b>实验规模</b> Alpamayo-1.5-10B（驾驶）+ InstructVLA（操作）· 各 200 例</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>所有"读文本、判安全"的方案都在赌同一个数学命题：<strong>让动作出问题的那批方向，恰好也落在让文本 loss 变大的那批方向上</strong>。这个命题没人证过，但人人都默认——否则写一段解释给你看，凭什么算安全措施。<br>
+  这篇论文把它变成了一个可以量出来的数：把动作雅可比的<strong>行空间</strong>投影到文本 loss 梯度张成的平面上，投影范数占比只有 <strong>1.87%</strong>（驾驶 VLA）和 <strong>5.28%</strong>（操作 VLA）。剩下的 95%~98% 动作敏感度，全都落在<strong>文本动不了的地方</strong>——那里推得动动作，推不动文本。<br>
+  所以"rationale 一字不变"<strong>不是安全的证据，而是这个方向上的预期结果</strong>。真正要害的是：漏检率由两个子空间的正交程度决定，<strong>不由监控器的灵敏度决定</strong>。你把文本监控做得再准也没用——它读的那个量，本来就不携带这部分信息。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">它到底发现了什么</a>
+  <a href="#s2">公理链：文本监控赌的是什么</a>
+  <a href="#s3">三个测量：方向、重叠、解耦</a>
+  <a href="#s4">结果与攻击效果</a>
+  <a href="#s5">它证到了什么、没证到什么</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>它到底发现了什么：不是"解释错了"，是"解释跟动作不在一根线上"</h2>
+
+  <p>推理型 VLA（reasoning VLA）在输出动作之前，先吐一句话。Alpamayo 会说"前方有施工锥桶，我将向左微调以保持车道"，InstructVLA 会说"我要把杯子放到水槽里"。这件事被当成安全特性推销：<strong>人读得懂，所以人管得住</strong>。</p>
+
+  <p>此前对这类系统的攻击，思路都是"把这句话改坏"——只要你篡改文本，就能在日志里看见。本文换了个问法：<strong>能不能让动作错，而这句话一个字都不变？</strong></p>
+
+  <p>答案是能，而且不需要多费力。他们造了一个方向，叫 <strong>TNAS（text-neutral action subspace，文本中性动作子空间）</strong>，特点是：沿着它推，<strong>动作大幅改变，而文本的一阶变化为零</strong>。在 154 个带障碍物标注的驾驶场景里，沿着这个方向做全图扰动，<strong>52.6% 的场景会在 rationale 完全一致的情况下新增一次碰撞</strong>；只改前视相机的一小块 patch（覆盖 13.1% 的视觉 token），也能做到 <strong>35.1%</strong>。</p>
+
+  <p>对照组很关键：<strong>不用这个方向、直接攻击动作，只有 4.55% 的场景能造成碰撞</strong>。也就是说，这个"文本看不见的方向"不是理论上的漏洞，它是<strong>实际攻击成功率的 11 倍杠杆</strong>。</p>
+
+  <div class="box good">
+    <b>先把这件事的性质说准。</b>它不是"模型胡说八道"——rationale 说的"向左微调"和它实际做的"向左微调"在正常输入下是一致的。它说的是：<strong>这句话与动作之间的耦合，只在某些方向上成立</strong>；一旦扰动落在那 95% 的旁路上，这句话就退化成一段与决策无关的旁白。<br>
+    打个比方：<strong>副驾驶一边看路一边念"我在看后视镜"，你听着很安心。但他的手在方向盘上做了什么，跟他的嘴没有共享同一套神经。</strong>
+  </div>
+
+  <h3>两个被测对象</h3>
+  <table>
+    <tr><th></th><th>Alpamayo-1.5-10B</th><th>InstructVLA</th></tr>
+    <tr><td>领域</td><td>自动驾驶</td><td>机器人桌面操作</td></tr>
+    <tr><td>动作头</td><td>10 步 Euler flow matching，输出加速度–曲率控制 → 2D 平面 waypoints</td><td>flow-matching action expert，输出 16×7 归一化末端位姿（3 位置 + 3 旋转 + 夹爪）</td></tr>
+    <tr><td>文本输出</td><td>自然语言驾驶理由</td><td>一句任务意图（平均 9.6 词）</td></tr>
+    <tr><td>挂钩层</td><td>reasoning token 层 32–35</td><td>response token 层 14–17</td></tr>
+    <tr><td>视觉输入</td><td>4 相机 × 4 时帧 = 16 帧（120° 三路 + 30° 长焦），320×576</td><td>SigLIP 视觉流</td></tr>
+    <tr><td>评估集</td><td>200 clips（碰撞用其中 154 个有障碍标注的）</td><td>200 个 Bridge 分布样例</td></tr>
+  </table>
+
+  <p>两者共享同一个结构特征，这也是全文结论的前提：<strong>自回归 VLM 生成文本 + 连续 flow-matching 动作头，两者从同一个隐状态读出</strong>。作者专门挑"既暴露非零文本基、又有强动作接口"的层块挂钩（A.4.1）——因为只有这种层，两个通道才<strong>共享同一个被扰动的变量</strong>，比较才公平。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>公理链：文本监控到底在赌什么</h2>
+
+  <div class="step">
+    <div class="t">公理 1　"读文本判安全"隐含一个可证伪的数学命题</div>
+    <div class="d">若读文本能发现动作异常，则"让动作异常的方向"必须与"让文本变差的方向"有交集。交集越大，监控越有效；交集为空，监控完全无效——无论它多灵敏。</div>
+  </div>
+
+  <p>这句话可以写得很干净。设隐状态为 \(h\)，动作读出为 \(A(h)\)，文本损失为 \(\mathcal{L}_{\text{text}}(h)\)。人做监控时看的其实是 \(\mathcal{L}_{\text{text}}\) 的变化，而真正要防的是 \(A\) 的变化。这两件事能不能对上，取决于两个<strong>线性子空间</strong>是否重合：</p>
+
+  <ul>
+    <li>\(J_A\) 的<strong>行空间</strong>——哪些方向的 \(h\) 扰动会改变动作；</li>
+    <li>\(\nabla \mathcal{L}_{\text{text}}\) 张成的<strong>span</strong>——哪些方向的 \(h\) 扰动会改变文本。</li>
+  </ul>
+
+  <p>如果前者基本落在后者里面，读文本就等于读动作。如果两者近乎正交，那前者有一大块住在后者的<strong>零空间</strong>里——那块地方，就是"说一套做一套"的合法居所。</p>
+
+  <div class="step">
+    <div class="t">公理 2　这个命题可以直接量，不需要辩论"推理是不是真的"</div>
+    <div class="d">这是本文最聪明的一步：绕开"模型有没有真正推理"这种没法证伪的哲学问题，直接量两个子空间的夹角。</div>
+  </div>
+
+  <p>不需要知道模型"心里在想什么"，只需要在 \(\delta=0\) 处求两个导数，看它们的方向差多少。<strong>这把一个哲学争论降级成了一个线性代数作业。</strong></p>
+
+  <div class="step">
+    <div class="t">公理 3　测出来的重叠度，就是这类监控的漏检率上界</div>
+    <div class="d">重叠 \(\rho\) 越小，说明"能推动作但推不动文本"的那部分越大。而监控器只看得见 \(\rho\) 那一小块。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 1　把"文本能看见多少动作"写成一个数</div>
+    \[
+    \rho \;=\; \frac{\lVert P_{\mathcal{T}}\,d_{\text{act}}\rVert}{\lVert d_{\text{act}}\rVert}
+    \;\approx\;\begin{cases} 1.87\% & \text{Alpamayo}\\ 5.28\% & \text{InstructVLA}\end{cases}
+    \qquad
+    \mathbb{E}\bigl[\rho_{\text{random}}\bigr]\approx 0.978\%
+    \]
+    <div class="exp">
+    \(d_{\text{act}}\) = 让动作变化最快的那个隐状态方向；\(P_{\mathcal{T}}\) = 投影到文本敏感平面 \(\mathcal{T}\) 上的算子。<br>
+    <b>说人话：</b>把"最能推动作的那根杆"往"能推动文本的那面墙"上照，看影子有多长。<strong>影子只占杆长的 1.87%，其余 98% 落在墙外面。</strong><br>
+    但必须同时看第三个数：<strong>随便指一个方向，影子也有 0.978%</strong>。因为 \(\mathcal{T}\) 只有 2 维（下面解释），随便一指都有一点投影。所以 Alpamayo 的 1.87% 只是随机水平的 <b>1.9 倍</b>，InstructVLA 的 5.28% 是 <b>5.4 倍</b>。
+    </div>
+  </div>
+
+  <div class="box bad">
+    <b>这个随机基线是全文最该被拿出来讨论、却被摘要省略的数。</b>"nearly orthogonal（近乎正交）"这个说法在 2 维 span 下<strong>几乎是自动成立的</strong>——只要隐空间有上万维，任何单个方向的投影都必然很小。所以 ρ=1.87% 能证明的是"这 2 个文本方向管不住动作"，<strong>不能</strong>直接证明"文本与动作在因果上分离"。后者是更强的论断，而 ρ 这个指标本身撑不住它。
+  </div>
+
+  <div class="step">
+    <div class="t">公理 4　推论：把文本监控做得更准，一点用都没有</div>
+    <div class="d">因为缺陷不在监控器的分辨率上，在它读的那个量本身。这是本文真正的安全含义，也是它比"又一个对抗攻击"重要得多的原因。</div>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>三个测量：找到方向、量出重叠、验解耦</h2>
+
+  <h3>第一步：找到"最能推动作"的方向，但不能对位移求梯度</h3>
+
+  <p>直觉做法是"对动作位移求梯度"，但这条路走不通：<strong>扰动为零时位移本身是零，梯度没有定义</strong>。于是改成对<strong>动作输出本身</strong>求雅可比，再取它的行空间方向：</p>
+
+  <div class="fml">
+    <div class="name">式 2　动作雅可比：不问"位移怎么变"，问"动作怎么变"</div>
+    \[
+    J_A=\left.\frac{\partial A_{\text{hook}}(\delta)}{\partial \delta}\right|_{\delta=0},
+    \qquad d_{\text{act}}=\operatorname{normalize}\bigl(\text{row-space}(J_A)\bigr)
+    \]
+    <div class="exp">
+    \(A_{\text{hook}}\) 是挂在那一层的动作读出：Alpamayo 是 64 个 XY waypoint 拉平成的向量（10 Hz，约 6.4 秒），InstructVLA 是 16×7 的动作块。<br>
+    <b>说人话：</b>不直接问"往哪推能让车多偏一米"（这个在零点问不出来），而是问"往哪推能让动作输出变化最快"。<strong>后者在零点有定义，而且方向基本一致。</strong>
+    </div>
+  </div>
+
+  <h3>第二步：搭出"文本敏感平面"，然后把它从动作方向里减掉</h3>
+
+  <p>这里有个技术细节很能说明作者的老练：<strong>本来最该用的两个文本损失——teacher-forced KL 和 hinge——在 δ=0 处梯度是零</strong>。因为它们衡量的是"和干净输出的差"，没有扰动就没有差。所以只能用两个在零点有非零梯度的量来搭这个平面：</p>
+
+  <div class="fml">
+    <div class="name">式 3　文本敏感平面只有 2 维，这是个硬约束</div>
+    \[
+    \mathcal{L}_{\text{NLL}}=\frac{1}{|R|}\sum_{t\in R}-\log p^{\text{adv}}_{t,y_t},
+    \qquad
+    \mathcal{L}_{\text{margin}}=\frac{1}{|R|}\sum_{t\in R}\bigl(m^{\text{cln}}_t-m^{\text{adv}}_t\bigr)
+    \]
+    \[
+    \mathcal{T}=\operatorname{span}\{g_{\text{NLL}},\,g_{\text{margin}}\},\quad \mathrm{rank}=2
+    \qquad\Longrightarrow\qquad
+    d_{\text{TNAS}}=\operatorname{normalize}\bigl((I-P_{\mathcal{T}})\,d_{\text{act}}\bigr)
+    \]
+    <div class="exp">
+    \(m_t=z_{t,y_t}-\max_{v\neq y_t}z_{t,v}\) 是该位置的 margin（正确答案比最强错误答案高多少）。<br>
+    <b>说人话：</b>先找两根"能影响文本"的杆（NLL 让正确答案更像，margin 让正确答案更领先），它们撑起一个 2 维平面。然后<strong>把动作方向里落在这个平面上的分量全部减掉，剩下的就是文本管不着的那部分</strong>。按构造，它在这两根杆上的一阶投影都是零——<strong>所以沿它走一小步，文本损失一阶不变。</strong><br>
+    <b>注意"一阶"这个词。</b>这不是"文本绝对不变"，是"变化率在零点为零"。走远了当然会变，那靠后面的数值实验验。
+    </div>
+  </div>
+
+  <h3>第三步：拿它去攻击，验证"真的能只动动作"</h3>
+
+  <p>有了方向，就可以在视觉输入层做 PGD，但加一个<strong>余弦对齐项</strong>，逼着扰动的隐状态位移朝 \(d_{\text{TNAS}}\) 走：</p>
+
+  <div class="fml">
+    <div class="name">式 4　攻击目标：既要动作错，又要"错在文本看不见的地方"</div>
+    \[
+    \mathcal{L}_{\text{TNAS}}(\delta_{\text{img}})
+    =\underbrace{\mathcal{L}_{\text{act}}}_{\text{让动作错}}
+    -\lambda_{\text{txt}}\bigl[\Delta\mathcal{L}_{\text{NLL}}+\Delta m\bigr]
+    +\underbrace{\lambda_{\cos}\cos\bigl(\Delta h(\delta_{\text{img}}),\,d_{\text{TNAS}}\bigr)}_{\text{让错的方向对齐零空间}}
+    \]
+    <div class="exp">
+    三项各管一件事：第一项推动作偏离，第二项（负号）压住文本变化，第三项把扰动的<strong>方向</strong>扳到 \(d_{\text{TNAS}}\) 上。<br>
+    <b>说人话：</b>不是随便把图搞乱让它出错，而是<strong>精确地把错推到"文本雷达的盲区"里</strong>。λ<sub>cos</sub> 就是"往盲区里推"的力度旋钮。
+    </div>
+  </div>
+
+  <p>衡量"解耦成功"用的是两个比，都在<strong>等扰动范数</strong>下算：</p>
+
+  <div class="fml">
+    <div class="name">式 5　同等的力气，一边推得动动作，一边推不动文本</div>
+    \[
+    \text{动作偏移比}=\frac{\Delta_{\text{action}}\bigl(d_{\text{TNAS}}\bigr)}{\Delta_{\text{action}}\bigl(d_{\text{text-grad}}\bigr)},
+    \qquad
+    \text{文本漂移比}=\frac{\mathrm{KL}_{\text{tf}}\bigl(d_{\text{text-grad}}\bigr)}{\mathrm{KL}_{\text{tf}}\bigl(d_{\text{TNAS}}\bigr)}
+    \]
+    \[
+    \Delta_{\text{ADE}}=\frac{1}{T}\sum_{t=1}^{T}\lVert\tau_t(\delta)-\tau_t(0)\rVert_2,
+    \qquad
+    \mathrm{KL}_{\text{tf}}=\frac{1}{|R|}\sum_{t\in R}\mathrm{KL}\bigl(p^{\text{cln}}_t\,\Vert\,p^{\text{adv}}_t\bigr)
+    \]
+    <div class="exp">
+    \(T=64\) 个 waypoint，\(H=16\) 个 chunk 步。两个比是<strong>互为倒数的镜像</strong>：一个越大，另一个也越大，说明两个方向彻底分家。<br>
+    <b>实测：</b>Alpamayo 上，沿 \(d_{\text{TNAS}}\) 推，动作偏移是沿文本梯度的 <b>44~47.8 倍</b>；反过来，沿文本梯度推，文本漂移是沿 \(d_{\text{TNAS}}\) 的 <b>269~277 倍</b>。InstructVLA 上分别是 <b>4.64~5.51 倍</b> 和 <b>21.2~26.3 倍</b>。
+    </div>
+  </div>
+
+  <p>还有一个更贴近真实威胁的测法：<strong>不控制方向，只控制文本漂移预算</strong>。Alpamayo 在 KL 预算 \(10^{-4}\) 时平均位移 0.227 m，预算 \(5\times10^{-4}\) 时 0.504 m——<strong>而对照组最多只能推出 5.10 mm，差 63.3~212 倍</strong>。同样一句话不变，一边是半米，一边是半厘米。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">怎么做</span>结果：到底有多少场景会"说着同一句话撞上去"</h2>
+
+  <h3>Alpamayo（驾驶，154 个有障碍标注的场景）</h3>
+  <table>
+    <tr><th>攻击方式</th><th>ADE (m)</th><th>文本 KL ↓</th><th>rationale 逐字不变</th><th><b>静默新增碰撞</b></th></tr>
+    <tr><td>只攻动作（Action-only PGD）</td><td>70.1</td><td>2.78e-1</td><td>9.5%</td><td>4.55%</td></tr>
+    <tr><td>保文本攻击（Text-preserving PGD）</td><td>69.2</td><td>3.26e-1</td><td>83.0%</td><td>48.7%</td></tr>
+    <tr><td><b>TNAS 全图（λ=30）</b></td><td>53.0</td><td><b>1.03e-1</b></td><td><b>89.5%</b></td><td><b>52.6%</b></td></tr>
+    <tr><td><b>TNAS 局部 patch（λ=10）</b></td><td>39.8</td><td>1.24e-1</td><td>70.5%</td><td><b>35.1%</b></td></tr>
+  </table>
+
+  <p>这张表里最值得看的是<strong>第一列和最后一列的分离</strong>：TNAS 的 ADE（53.0）<strong>比不过</strong>只攻动作（70.1），但静默碰撞率反而更高（52.6% vs 4.55%）。</p>
+
+  <div class="box good">
+    <b>这说明"动作偏得远"和"动作偏得危险"不是一回事。</b>只攻动作，模型偏得很夸张，但那种偏法往往同时把文本也搞乱了（逐字保持只有 9.5%），于是<strong>日志里看得见</strong>；TNAS 偏得没那么远，但每一米都偏在"文本雷达的盲区"里。<br>
+    <b>安全是有方向的，不是有数量的。</b>这句话比 52.6% 这个数字更重要——它意味着用"动作偏移量"做异常检测，方向本身就是错的。
+  </div>
+
+  <p>相对于保文本攻击这个更强的基线，TNAS 的改进是：<strong>文本漂移降 68.4%，逐字保持率从 83.0% 升到 89.5%，而碰撞率还从 48.7% 涨到 52.6%</strong>——<strong>三头都赢</strong>。局部 patch 工况下 KL 降 59.0%，逐字保持从 70.5% 提到 80.5%，代价是 patch 需要更大的扰动预算（ε=0.5 vs 全图 0.05），且要跨视角、跨时间一致。</p>
+
+  <h3>InstructVLA（操作，200 例）</h3>
+  <table>
+    <tr><th>攻击方式</th><th>动作偏移</th><th>文本 KL ↓</th><th>逐字不变</th></tr>
+    <tr><td>只攻动作</td><td>2.04</td><td>4.66e-2</td><td>72.5%</td></tr>
+    <tr><td>保文本攻击</td><td>1.97</td><td>3.46e-2</td><td>77.5%</td></tr>
+    <tr><td><b>TNAS 全图（λ=0.20）</b></td><td>1.73</td><td><b>2.06e-2</b></td><td><b>85.0%</b></td></tr>
+    <tr><td>TNAS 局部 patch</td><td>1.32</td><td>2.80e-2</td><td>77.5%</td></tr>
+  </table>
+
+  <p>InstructVLA 上文本漂移降 <strong>40.5%</strong>（比只攻动作低 55.8%），动作位移保住了保文本攻击的 <strong>87.5%</strong>，逐字保持 77.5% → 85.0%。</p>
+
+  <div class="box bad">
+    <b>这个模型的"提升空间"本来就小。</b>它的语言输出只有一句平均 9.6 词的任务意图（"我要把杯子放到水槽里"），<strong>这种粗粒度、多对一的句子，本来就有 72.5% 概率在攻击下逐字不变</strong>。所以 85.0% 是在一个已经很宽松的天花板下拿到的，跟 Alpamayo 那种要维持整段驾驶理由的 89.5% 不是一个难度。这也解释了为什么它的解耦比（4.64~5.51×）比 Alpamayo（44~47.8×）小一个数量级——<strong>不是攻击弱了，是这个模型的文本通道本来就更"迟钝"</strong>。
+  </div>
+
+  <h3>最有说服力的一个旁证：文本本身有多"不含信息"</h3>
+  <p>作者还做了一个不涉及攻击的观察（Probe 1），我认为它的杀伤力比攻击实验还大：</p>
+
+  <table>
+    <tr><th>观察项</th><th>数值</th><th>含义</th></tr>
+    <tr><td>1,181 个 clip 里真正静止的比例</td><td>24.5%</td><td>多数时候车在动</td></tr>
+    <tr><td>不同 rationale 的种类数</td><td><b>258 种</b></td><td>1181 个场景共用 258 句话</td></tr>
+    <tr><td>同一句 rationale 出现在<b>相反</b>静止标签下的比例</td><td><b>36.9%</b></td><td>同一句话，一会儿在动一会儿停</td></tr>
+    <tr><td>最高频那一句覆盖的 clip 数</td><td>245 个</td><td>而它们的实际前向位移是 <b>10.1 m ~ 208 m</b></td></tr>
+    <tr><td>只读 rationale 的读者判断"是否静止"的准确率</td><td>84.3%</td><td>见下方解读</td></tr>
+  </table>
+
+  <div class="box bad">
+    <b>84.3% 这个数必须打折看。</b>因为 75.5% 的样本本来就在动，<strong>一个永远回答"在动"的傻瓜分类器就有 75.5% 准确率</strong>。真正有意义的是另外两个数：判"静止"时<strong>只有 63.6% 真的静止</strong>（基率 24.5%，提升 2.6 倍）；判"继续"时 <strong>只有 5.76% 静止</strong>。<br>
+    所以结论应该这样表述：<strong>文本确实带一点信息（2.6 倍 lift），但这点信息量撑不起"安全监控"这个用途——尤其当同一句话要覆盖 10 米到 208 米的位移区间时。</strong>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">值不值</span>它证到了什么、没证到什么</h2>
+
+  <h3>先给价值：三条能直接拿走</h3>
+  <ol>
+    <li><strong>它给"解释性安全"提供了一个可测的失败判据。</strong>不用再争论"模型是不是真在推理"，直接算 \(\rho\)。\(\rho\) 接近随机基线（0.978%）的系统，其文本监控基本等于装饰品。<strong>这个探针可以拿去给任何共享隐状态的 VLA 打分。</strong></li>
+    <li><strong>"动作偏得远"≠"动作偏得危险"。</strong>ADE 70.1 的攻击只造成 4.55% 碰撞，ADE 53.0 的攻击造成 52.6%。<strong>因为后者偏在文本的盲区里。</strong>所以异常检测不该用动作幅度当特征，该用"动作变化方向与文本变化方向的相关性"当特征。</li>
+    <li><strong>安全监控必须直接读动作通道。</strong>这是全文唯一一句实操建议，也是最难反驳的一句：如果两个子空间近乎正交，那么任何只读文本的监控，其上限由 \(\rho\) 决定，而与监控器多聪明无关。</li>
+  </ol>
+
+  <h3>再说局限：七条，按严重程度排</h3>
+  <ol class="crit">
+    <li><strong>"近乎正交"这个说法被 2 维 span 稀释了。</strong>\(\mathcal{T}\) 只能由 NLL + margin 两个损失张成（因为 KL 和 hinge 在零点梯度为零），<strong>rank 硬性等于 2</strong>。而随机向量在这个平面上的期望投影就是 0.978%。所以 1.87% 只是随机水平的 1.9 倍。<br>真正能撑住结论的是式 5 的解耦比（44× / 269×），那个是硬的；而摘要主打的 "1.87% norm overlap" 其实是个<strong>很容易被误读成"因果完全分离"的弱指标</strong>。作者在附录给了随机基线，但摘要没给——这个省略会让读者高估结论强度。</li>
+
+    <li><strong>缺一个最关键的对照：不做攻击时，rationale 本来就有多大概率重复？</strong>Probe 1 已经说了：1181 个场景只有 258 种句子，36.9% 的句子出现在相反标签下。既然文本本来就高度模板化，那么"52.6% 场景逐字不变"里，有多少是攻击的功劳，有多少是<strong>这个模型的文本本来就不爱变</strong>？<br>作者给了 Text-preserving baseline（83.0%）做对照，这很好；但<strong>没有报"干净输入下的逐字重复率"</strong>。少了这个数，"52.6%" 就无法拆分成"攻击效果"和"文本惰性"两部分。</li>
+
+    <li><strong>威胁模型是白盒数字扰动，不是物理世界。</strong>需要端到端梯度回传，作者自己写明全图攻击"实践中需要访问模型的软件管线"。而"新增碰撞 52.6%"是<strong>开环日志场景里轨迹与障碍物相交</strong>的代理指标，不是真车、不是闭环。152 个 clip、无真机验证。<br>所以这个数字的正确读法是"<strong>如果你能改输入张量，则上界如此</strong>"，而不是"路上跑的车有 52.6% 会被贴纸骗"。<strong>二者差了整整一个物理层。</strong></li>
+
+    <li><strong>正交性只是一阶的，而攻击不受范数约束。</strong>\(d_{\text{TNAS}}\) 的正交性严格来说只在 \(\delta=0\) 处成立（原文写 "unchanged <b>to first order</b>"）。走远了，文本必然开始变。所有"解耦"的实测都是在<strong>受控等范数</strong>条件下做的；真实攻击会自己找最优点，那个点未必还在这条线上。<br>换句话说：<strong>论文证明的是"存在一条文本零空间里的路"，不是"沿着这条路能一直走到黑而文本永远不变"。</strong></li>
+
+    <li><strong>两个模型共享同一个结构前提：文本与动作从同一隐状态读出。</strong>这正是结论成立的条件，也正是它的边界。若动作头有独立中间表征（级联式、动作单独 token 化、或文本由另一个模块生成），\(\rho\) 会完全不一样——<strong>那种架构可能反而更安全，也可能更糟，本文没测，无法推断。</strong></li>
+
+    <li><strong>InstructVLA 侧的结论明显更弱，但摘要把它们并列了。</strong>ρ=5.28%（随机水平的 5.4 倍，比 Alpamayo 高 2.8 倍）、解耦比只有 4.64~5.51×（Alpamayo 是 44~47.8×）、且它的保文本基线本身就有 72.5% 逐字不变。<strong>把两个数量级不同的结果写成"4.64x to 47.8x"这样一个区间，读起来像是同一个现象的两个采样，实际上更像两种不同强度的现象。</strong></li>
+
+    <li><strong>评估集小、单域、且标签口径单一。</strong>每模型 200 例，碰撞标签仅 154 个 clip，全部来自同一套驾驶日志分布（Alpamayo）和 Bridge 分布（InstructVLA）。<strong>没有跨数据集、没有跨城市/天气/光照的分层。</strong>而"视觉扰动敏感度"恰恰是对光照和天气最敏感的量。</li>
+  </ol>
+
+  <div class="box bad">
+    <b>一条方法论层面的提醒。</b>这篇论文最有力的地方，是把"解释是否可信"变成了一个线性代数问题；但它最容易被误用的地方也在这里：<strong>ρ 小只说明"这两个特定的文本损失方向管不住动作"，不说明"文本与动作在因果上无关"。</strong>要证明后者，需要展示<strong>所有</strong>能改变动作的方向都落在文本零空间里，而不是只展示<strong>最敏感的那一个</strong>方向。<br>本文展示的是单个方向（\(d_{\text{act}}\) 这个最敏感方向），这是"存在性证明"——<strong>存在一条盲路，就足以推翻"读文本即可保安全"这个全称命题</strong>。逻辑上完全成立。但如果有人拿它去论证"文本解释毫无价值"，那就越界了：Probe 1 里 2.6 倍的 lift 说明它<strong>有</strong>信息，只是不够当安全护栏。
+  </div>
+
+  <h3>一句话总账</h3>
+  <p>这不是一篇"攻击论文"，是一篇<strong>给出失效判据的论文</strong>。它真正的贡献是把一句含糊的安全承诺——"模型会告诉你它在干什么"——换成了一个可以算、可以比较、可以让第三方复核的数字。</p>
+
+  <p>而它给出的答案很朴素：<strong>那句话确实在说它在干什么，但它说的那条路，和它走的那条路，只有 2% 重合。</strong>所以别再用文本当安全带；安全带要系在动作上。</p>
+
+  <p class="src">论文：<a href="https://arxiv.org/abs/2611.04166" target="_blank">Say the Same, Act Differently: Diagnosing and Steering Text-Action Divergence in Reasoning VLAs</a>（arXiv 2611.04166，2026-11-03，NeurIPS 2026，23 页 / 3 图 / 8 表）</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解　|　论文发布：2026-11-03 · arXiv 2611.04166</footer>
+</div></body></html>
