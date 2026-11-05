@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>超越 Validation Loss:机器人策略预训练中的覆盖度与可靠性动态</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.87;margin-top:10px;line-height:1.7;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .box.note{background:#f4f6f9;border:1px solid var(--border);}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>超越 Validation Loss:机器人策略预训练中的覆盖度与可靠性动态<span class="sub">平均成功率只看分布的一阶矩，大 k 的 pass@k 看的是尾部——训练后期会把成功率从「难的条件」搬到「容易的条件」，均值涨了，凹性惩罚涨得更多 · 这不是玄学，是 Jensen 不等式：\(f_k(q)=1-(1-q)^k\) 是凹函数，成功率极化必然压低大 k 的 pass@k · 一个只用 held-out 动作误差分位数、不做闭环评估的选点标准，在真机上从 200 个 epoch 里选出第 46 个，pass@1 +10%、pass@5 +20%</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-03</div>
+    <div><b>正文规模</b> 约 1.5 万字（去标签 · 原论文全文译文）</div>
+    <div><b>实验规模</b> MimicGen 5 任务 × 200 示范 · RoboCasa365 65 任务 × 100 示范 · 真机 740 示范</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p><strong>「平均成功率」和「这个模型好不好用」不是一回事，而且这种不一致不是偶然，是数学上必然。</strong></p>
+  <p>平均成功率是一个<strong>一阶矩</strong>：它只关心"所有初始条件成功率加起来除以个数"，完全不关心这些成功率是<strong>均匀分布</strong>还是<strong>两极分化</strong>。而 pass@k 通过 \(f_k(q)=1-(1-q)^k\) 这个<strong>凹函数</strong>去读同一个分布。凹函数下，把成功率从难条件挪到易条件（均值不变、方差变大），<strong>均值看不出来，\(E[f_k]\) 必然下降</strong>——这就是 Jensen 不等式。</p>
+  <p>所以训练后期发生的事，可以一句话说完：<strong>模型学会了放弃难样本、把力气花在已经会的样本上。</strong>平均成功率继续涨，因为放弃的那部分本来也拿不到分；而尾部塌了，因为那些"偶尔能成"的难条件被彻底放弃了。作者最硬的一条证据不是任何数字，是一个反直觉现象：<strong>后期 checkpoint 在所有噪声等级上训练 loss 都更低，却在低噪声区的 held-out 去噪损失上更高。</strong>训练集上每一项都更好，测试集上最难的那一档更差——这是过拟合的标准签名。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">pass@k 到底在测什么</a>
+  <a href="#s2">公理链：Jensen 那一刀</a>
+  <a href="#s3">怎么离线选点、怎么补覆盖度</a>
+  <a href="#s4">值不值：它证到了什么</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>把一个工程直觉，变成一个可测的量</h2>
+
+  <p>机器人策略的标准流程是两段：先用示范做监督预训练（BC），再用 RL / SFT 做后训练。问题出在交接处——<strong>交给后训练的那个 checkpoint，是按什么选的？</strong></p>
+
+  <p>最常见三种选法：validation loss 最低、平均成功率最高、或者干脆用最后一个。作者说这三种都只评估了"预训练本身"，没有一个回答真正的问题：<strong>这个 checkpoint 既适合直接部署、又适合作为后训练的起点吗？</strong></p>
+
+  <h3>他们的度量：闭环 pass@k</h3>
+
+  <p>借自 LLM 代码生成里的 pass@k，但改成闭环版本：<strong>固定同一个初始条件，让策略重置并跑 k 次，至少有一次成功的概率</strong>，再对所有初始条件求平均。</p>
+
+  <div class="fml">
+    <div class="name">式 1　闭环 pass@k：把"平均成功率"换成"分布的读数"</div>
+    \[
+    P_k(\tau)=\mathbb{E}_{c\sim p_{\text{eval}}}\Big[\,1-\big(1-q_\tau(c)\big)^{k}\,\Big]
+    \;=\;\mathbb{E}_{c}\big[f_k\big(q_\tau(c)\big)\big],
+    \qquad f_k(q):=1-(1-q)^k
+    \]
+    <div class="exp">
+    \(c\) 是一个初始条件（场景 / 初始位姿），\(q_\tau(c)\) 是 checkpoint \(\tau\) 从这个条件出发<strong>单次</strong> rollout 的成功概率，\(k\) 是重复次数。<br>
+    <b>\(k=1\) 时它就是标准平均成功率</b>（\(f_1(q)=q\)），所以 pass@1 ≡ 平均任务成功率。<br>
+    <b>说人话：</b>pass@1 问"平均能成几次"，pass@k 问"给它 k 次机会，有多少场景至少能成一次"。前者是<strong>均值</strong>，后者是<strong>尾部</strong>。<br>
+    <b>作者反复强调一句免责声明：</b>这不代表真实部署要重置 k 次——它只是个<strong>诊断指标</strong>，用来读"策略在多大范围的条件上还留着成功的可能"。
+    </div>
+  </div>
+
+  <h3>两个设置，覆盖"小数据单任务"和"大数据多任务"</h3>
+  <table>
+    <tr><th>设置</th><th>数据</th><th>模型</th><th>用来回答</th></tr>
+    <tr><td>单任务 BC</td><td>MimicGen 5 个任务，每任务 200 条示范</td><td>图像条件 Diffusion Policy，从头训</td><td>最小系统里，这个现象存不存在</td></tr>
+    <tr><td>多任务 VLA 预训练</td><td>RoboCasa365 的 65 个原子任务，每任务 100 条示范</td><td>OpenPI 实现的 π0</td><td>放到真实预训练规模上还成不成立</td></tr>
+  </table>
+
+  <h3>现象一：k 越大，最优点越早</h3>
+  <p>这是全文的起点，也是图 1 想说的唯一一件事：<strong>随着 k 增大，pass@k 的峰值出现在越来越早的 checkpoint 上</strong>；而平均成功率（pass@1）更偏爱后期 checkpoint。两个指标的最优点<strong>系统性错开</strong>，而且 k 越大错得越远。</p>
+
+  <div class="box good">
+    <b>这个错开本身就是结论。</b>如果两个指标的最优点一致，那"用平均成功率选 checkpoint"就没错。它们不一致，且不一致的方向<strong>随 k 单调恶化</strong>——说明后期训练在系统性地做一件"提高均值、消耗尾部"的事。
+  </div>
+
+  <h3>现象二：后期 checkpoint 在低噪声区更差，而训练 loss 全面更好</h3>
+  <p>这一条是我认为全文最值得记住的实证细节。作者拆开噪声等级看去噪损失：</p>
+  <ul>
+    <li>训练 loss：后期 checkpoint 在<strong>所有</strong>噪声等级上都更低；</li>
+    <li>held-out 去噪损失：后期 checkpoint 在<strong>低噪声区</strong>反而更高；</li>
+    <li>而且这个"相对增幅"在<strong>观测支持稀疏</strong>的地方更大，出现得更早（从更高的噪声水平就开始）。</li>
+  </ul>
+
+  <p>为什么是低噪声区？作者的解释很干净：<strong>噪声越低，能和这个带噪动作兼容的干净动作集合就越小。</strong>当某个观测附近示范很少时，同时兼容"这个观测 + 这个带噪动作"的训练样本就更少——于是模型只能死记，一旦到了 held-out 就露馅。</p>
+
+  <h3>现象三：两个模型开始"各记各的"</h3>
+  <p>Threading D2 任务上，作者把 1000 条示范拆成两个<strong>互不重叠</strong>的 200 条训练集 D1、D2，再留一个 600 条的共享 held-out 集 D3。然后在同一批 held-out 观测和同一批初始噪声下，比较两个模型的预测分歧：</p>
+
+  <div class="fml">
+    <div class="name">式 2　预测分歧：两个只见过一半数据的模型，还像不像</div>
+    \[
+    D_{\text{split}}(\tau)=\mathbb{E}_{o\sim D_3,\,z}\Big[\big\|\bar a^{(1)}_\tau(o,z)-\bar a^{(2)}_\tau(o,z)\big\|_2^2\Big]
+    \]
+    <div class="exp">
+    \(\bar a^{(1)}\)、\(\bar a^{(2)}\) 是在 D1、D2 上分别训出来的两个策略，\(o\) 来自共享 held-out，\(z\) 是同一个初始噪声。<br>
+    <b>说人话：</b>如果两个模型都学到了"真正的规律"，它们对同一输入应该给出相似答案，分歧小；如果各自在背自己的训练集，分歧就大。<br>
+    <b>实测形状是关键：这个分歧先降、后升。</b>先降 = 早期都在学共性；后升 = 后期各自去拟合自己那 200 条。<br>
+    配套还有一条：策略样本到自己训练集的最近邻距离 ÷ held-out 专家动作到同一训练集的距离。<strong>这个比值小于 1，说明策略生成的动作比真专家还要"贴近训练集"——它在往训练集里缩，不是在往真实分布里扩。</strong>而随着训练继续，两个模型的这个比值都在下降。
+    </div>
+  </div>
+
+  <p>三条现象拼起来，指向同一个机制：<strong>预训练早期在学分布，后期在拟合样本。</strong>这不是机器人独有的，diffusion 模型训久了从泛化转向记忆，早就是已知现象——作者把这条已知现象，第一次接到了<strong>闭环性能</strong>和<strong>后训练可塑性</strong>上。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>公理链：为什么"均值涨"和"尾部塌"必然同时发生</h2>
+
+  <p>这一节是全文的地基。如果它成立，后面所有"该选早期 checkpoint"的结论都是必然；如果不成立，它们只是一堆经验观察。</p>
+
+  <div class="step">
+    <div class="t">公理 1　一个 checkpoint 有两个用途，而任何单一标量只能测一个用途</div>
+    <div class="d">直接部署，看的是"现在能不能干"；当后训练起点，看的是"还有多少没被榨干的潜力"。这两件事对同一个数（平均成功率）的偏好方向，恰好相反。</div>
+  </div>
+
+  <p>为什么恰好相反？因为"现在能不能干"奖励的是<strong>把已经会的做稳</strong>，"还有多少潜力"奖励的是<strong>保留那些不会但接近会的</strong>。一个模型的计算预算有限，这两件事在抢同一份容量。</p>
+
+  <div class="step">
+    <div class="t">公理 2　平均成功率对分布形状完全免疫</div>
+    <div class="d">它只对 \(q(c)\) 的均值敏感。你把 10 个场景的成功率从 (1.0, 0.0) 改成 (0.5, 0.5)，均值一点没变，但这两件事在工程上完全不同。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 3　pass@k 用一个凹函数去读分布，于是它"惩罚扩散"</div>
+    <div class="d">\(f_k(q)=1-(1-q)^k\) 在 \(k>1\) 时是严格凹的。凹函数满足 Jensen：\(E[f(q)] \le f(E[q])\)。也就是说，<strong>在均值相同的前提下，分布越散，\(E[f]\) 越小</strong>。</div>
+  </div>
+
+  <p>这一步是整篇文章真正的"第一性"所在，值得单独说清楚。把 \(f_k\) 在某个点做二阶展开，或者直接看它的二阶导：</p>
+
+  <div class="fml">
+    <div class="name">式 3　凹性的来源：为什么 k 越大，越讨厌两极分化</div>
+    \[
+    f_k''(q)=-\,k(k-1)(1-q)^{k-2}\;<\;0\quad(k>1,\ q<1),
+    \qquad
+    \Delta P_k=\delta\big[f_k(q_{\text{lo}})-f_k(q_{\text{hi}})\big]<0
+    \]
+    <div class="exp">
+    第一式：\(f_k\) 的二阶导恒为负（\(k>1\) 时），严格凹。<br>
+    第二式更直观：假设你做了一次"成功率搬家"——从本来就不错的条件 \(q_{\text{hi}}\) 拿走 \(\delta\)，送给本来就很难的条件 \(q_{\text{lo}}\)（也就是<strong>反过来</strong>，把难条件的成功率搬给易条件，这才符合"极化"）。因为 \(f_k\) 凹，<strong>同样一份 \(\delta\)，在低 \(q\) 处的斜率大、在高 \(q\) 处的斜率小</strong>，所以 \(\Delta P_k<0\)。<br>
+    <b>而 \(\Delta P_1=\delta(q_{\text{lo}}-q_{\text{hi}})\) 在这个设定下……恰恰是正的</b>（把成功率搬给本来就高的，均值上升）。<br>
+    <b>说人话：</b>同一个动作——"放弃难样本、稳住易样本"——让 pass@1 上升、让 pass@k 下降。<strong>两个指标不是"有点不一致"，是数学上被设计成反向的。</strong>而 \(k\) 越大，\(f_k\) 越凹，惩罚越狠，所以最优 checkpoint 越早。
+    </div>
+  </div>
+
+  <div class="box good">
+    <b>这就是"为什么 k 越大峰值越早"的完整解释。</b>不是"大 k 对噪声更敏感"这种模糊说法，而是：<strong>训练后期的优化过程本身就在做"极化"，而极化对凹函数是净损失，且凹度随 k 增长。</strong><br>
+    所以这条结论有一个可检验的推论：<strong>如果训练集足够大、覆盖足够密，极化就不会发生，两个指标的最优点应该重新合并。</strong>作者没有做这个实验（他们的数据集都是每任务 100~200 条示范，属于"稀疏"regime），这是后面批判里我要拿回来的第一条。
+  </div>
+
+  <div class="step">
+    <div class="t">公理 4　所以"选 checkpoint"等于"选分布形状"，而不是"选分数最高的那个"</div>
+    <div class="d">你需要一个能同时读出"低分位（覆盖）"和"高分位（可靠）"的读数，而不是一个已经把它们平均掉的标量。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 5　覆盖度不是"可选项"，它决定了后训练能走多远</div>
+    <div class="d">后训练的所有方法（过滤 BC、critic steering、residual RL、SFT）都在做同一件事：<strong>从当前策略里挑出好的，再放大</strong>。如果策略已经不会做某件事，后训练就永远捡不回来——它只能放大已经存在的概率。</div>
+  </div>
+
+  <p>这一步解释了为什么"覆盖度"对后训练比对部署更重要。用作者的话：过滤式 BC 在固定 rollout 预算下，<strong>覆盖度低意味着成功只来自更少的初始条件，数据多样性更差</strong>；critic steering 里，覆盖度高意味着 critic 见过更广的"观测—动作—结果"组合，在没见过的观测上排序更准。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>两个可落地的东西：一个离线选点标准，一个数据增强</h2>
+
+  <h3>先排除一个"看起来很自然"的方案：best-of-k 动作误差</h3>
+  <p>既然 pass@k 是"k 次里至少一次成功"，那离线对应物自然是"每个观测采样 k 个动作块，取误差最小的那个"：</p>
+
+  <div class="fml">
+    <div class="name">式 4　best-of-k 误差：它为什么会选得太早</div>
+    \[
+    B_k(\tau)=\mathbb{E}_{(o,a^\star)\sim D_{\text{val}}}\Big[\min_{j\le k}\ \ell\big(A_{\tau,j}(o),\,a^\star\big)\Big]
+    \]
+    <div class="exp">
+    \(A_{\tau,j}(o)\) 是 checkpoint \(\tau\) 在观测 \(o\) 下采的第 \(j\) 个动作块，\(a^\star\) 是专家动作，\(\ell\) 是动作误差。<br>
+    <b>说人话：</b>每个观测采 k 个答案，只记最好的那个的错。<br>
+    <b>实测：k 越大，它的最优点越早，而且比闭环 pass@k 的峰值<strong>还要早</strong>。</b>原因是它只看"最幸运的那一个样本"，而闭环控制要求<strong>整条轨迹上每一步都不能崩</strong>。一个早期 checkpoint 完全可能"best-of-k 很低，但另外 k−1 次里有一次是灾难"——只要那一次被采到，机器人就摔了。
+    </div>
+  </div>
+
+  <div class="box bad">
+    <b>这个失败的形状值得记住。</b>它不是因为"用误差代替成功率"而失败，是因为<strong>用 min 代替了整个分布</strong>。min 只保留尾部的一个点，把"稳定性"这个维度整个丢掉了。这是所有"用 oracle 选择指标做代理"的通病：oracle 有多好，代理就有多乐观。
+  </div>
+
+  <h3>他们真正的方案：误差分位数曲线</h3>
+
+  <p>把 min 换成<strong>整个分位数曲线</strong>：对每个 held-out 观测采 M 个动作，算误差的经验分位数，再对所有观测求平均。</p>
+
+  <div class="fml">
+    <div class="name">式 5　分位数判据：低分位读覆盖，高分位读可靠</div>
+    \[
+    \bar Q_\tau(u)=\frac{1}{N}\sum_{i=1}^{N}Q_{i,\tau}(u),
+    \qquad
+    u\ \text{小}\Rightarrow\text{覆盖度},\quad
+    u\ \text{大}\Rightarrow\text{可靠性}
+    \]
+    <div class="exp">
+    \(Q_{i,\tau}(u)\) 是第 \(i\) 个 held-out 观测上、M 个采样动作误差的 \(u\) 分位数；\(\bar Q_\tau(u)\) 是对观测求平均后的曲线。<br>
+    <b>实测规律非常干净：低分位（比如 u=0.05）偏向更早的 checkpoint，高分位（比如 u=0.95）随训练持续改善。</b>于是整条曲线就是一张"覆盖—可靠"的地图：越早的 checkpoint 整条曲线往左下压（尾部好、典型差），越晚的往右上抬（尾部差、典型好）。<br>
+    <b>三个工程上的好处：</b>① 不需要闭环评估；② 不需要事先指定部署时用多大的 k；③ 不需要手工调"覆盖 vs 可靠"的权重——你只需要看这条曲线在哪个 checkpoint 上"整体最低"。
+    </div>
+  </div>
+
+  <p>真机验证用的是 Push-T 的一个变体：<strong>只有腕部相机、全 6-DoF、末端只能靠非抓取式接触推 T 形物体</strong>，740 条人工示范（680 训练 / 60 held-out），Diffusion Policy 训 200 个 epoch，动作块长度 16。分位数判据选出的是<strong>第 46 个 epoch</strong>。</p>
+
+  <p>结果：拿 20 个固定初始状态、每个跑 5 次，<strong>第 46 个 epoch 的 checkpoint 比第 200 个 pass@1 高 10%、pass@5 高 20%</strong>。</p>
+
+  <div class="box note">
+    <b>注意 46/200 这个比例本身就是一条信息。</b>判据说最优在训练进度 23% 的位置。这不是"微调一下"级别的差异，是"后 3/4 的训练都在损害可用性"。这也意味着：<strong>所有"训到头"的机器人策略，很可能都在一个更差的位置上交付。</strong>
+  </div>
+
+  <h3>第二个东西：JointAug，把监督信号扩到示范集之外</h3>
+
+  <p>选点是治标，因为 Pareto 前沿本身还在那里。作者问了一个更根本的问题：<strong>这个权衡是不可避免的吗？</strong></p>
+
+  <p>他们的观察给了线索：过拟合的根源是<strong>只在有限示范上监督</strong>。那就造新的"观测—动作对"补进去。关键在于<strong>联合</strong>生成——如果只扰动动作（PostBC 的做法），扰动后的动作和干净观测就不再兼容，等于教模型做一件物理上不成立的事。</p>
+
+  <div class="fml">
+    <div class="name">式 6　JointAug：一半真、一半生成，且生成的是"整对"</div>
+    \[
+    \mathcal{L}_{\text{aug}}
+    =\frac12\,\mathbb{E}_{(o,a)\sim D}\big[\mathcal{L}_{\text{DP}}(o,a)\big]
+    +\frac12\,\mathbb{E}_{(\tilde o,\tilde a)\sim G_{\text{mix}}}\big[\mathcal{L}_{\text{DP}}(\tilde o,\tilde a)\big]
+    \]
+    <div class="exp">
+    \(G_{\text{mix}}\) 是<strong>五个生成器 checkpoint 的均匀混合</strong>——第一个是"生成动作到训练集的最近邻距离 / 到 held-out 的距离"这个比值首次小于 1 的那个，再取它之后每隔 100 epoch 的四个。<br>
+    <b>为什么要这个窗口：</b>太早的生成器还没学会分布结构，生成的是噪声；太晚的生成器已经开始背训练集，生成的是复制品。这个窗口刚好卡在"学会了结构、还没开始背"的过渡带。<br>
+    <b>实测：</b>pass@10 高于标准 DP 和 PostBC，pass@1 与基线相当、部分任务还升；而 PostBC 能提 pass@10 但在部分任务上<strong>压低 pass@1</strong>——正是因为它扰动后的动作与干净观测不兼容。<br>
+    <b>大模型上的轻量版：</b>不生成观测，只按策略自身的动作协方差加扰动 \(\tilde a=a+\epsilon,\ \epsilon\sim\mathcal{N}(0,\Sigma_{c^\star}(o))\)。因为 \(E[\epsilon]=0\)，所以 \(E[\tilde a\mid a,o]=a\)——<strong>期望不变，只增加局部方差</strong>。这一招不需要额外生成器，能直接接到大规模 VLA 预训练上。
+    </div>
+  </div>
+
+  <p>另外还有一个我认为很聪明但作者只写了两段的实验：用两个 checkpoint 的 rollout 分别训一个<strong>动作条件世界模型</strong>（冻结 Stable Diffusion VAE 编码每帧，训一个时空 DiT，输入 2 帧历史 + 16 步动作块，预测未来 4 帧，自回归续推）。结果是<strong>覆盖度高的 checkpoint 的 rollout 训出来的世界模型，PSNR / LPIPS 都更好</strong>。</p>
+
+  <p>这条如果成立，含义比策略本身更大：<strong>策略的覆盖度会沿着数据流传染给下游模型。</strong>你今天为了"平均分好看"砍掉的那部分行为，会成为明天世界模型的盲区。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">值不值</span>它证到了什么、没证到什么</h2>
+
+  <h3>先给价值：三条能直接拿去用</h3>
+  <ol>
+    <li><strong>别再只看平均成功率选 checkpoint。</strong>它是分布的一阶矩，对"成功率在两极之间怎么分配"完全免疫。而要判断"这个模型还能不能被救回来"，看的是尾部。</li>
+    <li><strong>训练 loss 全面更低、held-out 低噪声区反而更差，是过拟合的确定性信号。</strong>这个组合比"loss 曲线开始抬头"灵敏得多，而且不需要闭环评估。</li>
+    <li><strong>数据增强要联合生成观测和动作，不要只扰动动作。</strong>只扰动动作会破坏观测—动作兼容性，代价是 pass@1（PostBC 的实测就是这个下场）。</li>
+  </ol>
+
+  <h3>再说局限：八条，按严重程度排</h3>
+  <p>下面这些决定了"这套结论能不能搬到你的场景"。我按"会不会推翻结论"排序，不是按"作者有没有承认"。</p>
+
+  <ol class="crit">
+    <li><strong>pass@k 在机器人里测的是"噪声抽奖"，不是"能力覆盖"。</strong>固定同一个初始条件、重置 k 次——<strong>策略是确定性的，唯一的随机源是扩散噪声</strong>。所以 pass@k 度量的是"这个策略有多大程度靠运气"，而不是"它会不会"。<br>这在 LLM 里是两件事的合一（多个答案都可能是对的），在控制里是两件事的分离（只有一条轨迹是对的，多出来的都是抖动）。<strong>于是"保留覆盖度"这个训练目标，可能被实现成"训练它偶尔蒙对"。</strong>作者在引言里自己写了"动作分布多样性远低于自然语言"，然后仍然借用了同一个词、同一个公式——这是全文最大的概念移植风险。</li>
+
+    <li><strong>"覆盖度高 → 后训练更好"很可能是 early-stopping 的同义反复，因为缺了唯一该有的基线。</strong>所有比较都是「选中的早期 checkpoint vs 最终 checkpoint」。而最终 checkpoint 按构造就是过拟合最严重的那个——<strong>它是稻草人</strong>。<br>真正该比的基线是：<strong>用 validation loss 或 held-out action MSE 选出来的 checkpoint</strong>。作者说后期 checkpoint「在平均成功率和 held-out action MSE 上更占优势」，如果 held-out MSE 是单调变好的，那分位数判据确实做了新东西；如果它本身就有极小值，那基线根本不成立。<strong>但论文没有把这条曲线的形状给出来。</strong>这一条不解决，全文的核心主张就悬空。</li>
+
+    <li><strong>46/200 这个"平衡点"，更像"数据太少"的症状，而不是"预训练的本质"。</strong>740 条示范、每任务 100~200 条示范，训到 1/4 就开始过拟合——这在小数据 regime 下完全正常。作者把"覆盖度—可靠性权衡"讲成策略训练的普遍属性，但在他们的所有设置里，数据都少到只能用"过拟合"解释。<br><strong>可检验的推论：</strong>如果每任务有 10,000 条示范，这个权衡是否还在？作者没做。而这个问题决定了结论能不能推广到"有 10,000 小时数据"的真实预训练——而那正是大多数团队的实际处境。</li>
+
+    <li><strong>真机证据只有一个任务、20 个初始状态、每状态 5 次，且没有置信区间。</strong>+10% / +20% 这两个数是从 100 次 rollout 里算出来的。<strong>20 个初始条件估计 pass@5，标准误是十几个百分点量级</strong>——也就是说 +20% 很可能落在噪声里，而 +10% 也不稳。全文其他地方都给了 bootstrap 区间（虽然只是 clip 层面，不含训练种子），唯独真机这一段没有。</li>
+
+    <li><strong>被否掉 best-of-k 的理由，同样适用于他们自己的低分位数。</strong>他们说 \(B_k\) 只看最幸运的样本、与闭环不符；但低分位数 \(\bar Q(u)\) 同样是一个<strong>尾部统计量</strong>，只是换了 \(u\)。真正被证明的是"某个 \(u\) 的分位数比 min-of-k 更贴近闭环"，不是"分位数分布是正确的不变量"。<br><strong>任何单调变换都会给出同样形状的曲线</strong>——你选 u=0.05 还是 u=0.1、选均值还是中位数，都能得到一条"先降后升"的线。方法有效，但它的"唯一正确性"没有被论证，只是在若干任务上"能选出好点"。</li>
+
+    <li><strong>JointAug 的生成器选窗规则，是拿 benchmark 反调出来的。</strong>"第一个最近邻比 < 1 的 checkpoint，再取之后每 100 epoch 共五个"——作者说这是"跨任务通用的默认启发式，不针对每个任务单独调"。但这五个点横跨 <strong>500 个 epoch</strong>，这个宽度本身就是个超参。<br>更根本的是：<strong>判据用"生成动作到训练集的最近邻距离"来测记忆，而这个量也是生成器自己训出来的</strong>——它只能测"生成器有没有背训练集"，测不了"生成器有没有背 benchmark"。</li>
+
+    <li><strong>世界模型那个实验，混淆变量没切干净。</strong>覆盖度高的策略 rollout <strong>到达的状态更多样</strong>，那世界模型变好可以纯粹是"训练数据更多样"，而这恰好是他们想论证的结论本身——<strong>循环论证</strong>。要切断它，得控制"状态多样性"这个变量（比如按覆盖度分层、等量采样），论文没做。另外 200 条轨迹训一个时空 DiT，样本量偏小。</li>
+
+    <li><strong>它证明了"从早期 checkpoint 后训练更好"，但没证明"后训练之后的模型在部署上也更好"。</strong>中间缺了一环：如果后训练的产物在 pass@1 上不如"直接从最终 checkpoint 部署"，那这套流程的实际收益就要打折。<strong>作者把"可塑性"和"最终性能"当成同一件事在讲</strong>，而工程上它们是两个交付指标。</li>
+  </ol>
+
+  <div class="box bad">
+    <b>最后一条是概念层面的，我认为最该被追问。</b>整篇文章的叙事是"覆盖度会塌，要保住它"。但在机器人控制里，"覆盖度"这个词到底指什么？<br>
+    在代码生成里，一个题目有<strong>很多个都算对的答案</strong>，所以"采样到任何一个对的"是有意义的覆盖率。在控制里，给定初始条件的<strong>最优轨迹族几乎是唯一的</strong>——多出来的那些采样，绝大多数是"偏一点、但不致命"的抖动，以及"偏很多、直接失败"的噪声。<br>
+    <strong>所以真正在发生的事可能是：早期的策略抖动大，偶尔抖对了；后期的策略抖动小，稳定地做到它会的那个程度。</strong>这不是"覆盖度"的损失，是"方差"的损失。而"要不要用方差换均值"是一个<strong>部署决策</strong>（这个任务是容错还是不容错），不是一个"训练缺陷"。<br>
+    作者提供了很好的<strong>测量工具</strong>（分位数曲线、低噪声区 held-out 损失、预测分歧），但把它命名成"覆盖度"，会让读者以为存在一个"被丢掉的技能库"。这个命名差异，决定了你是"该去救尾部"还是"该去改验收标准"。
+  </div>
+
+  <h3>一句话总账</h3>
+  <p>这篇论文真正的贡献，不是提出一个新指标，而是<strong>把一个大家靠手感做的决定（用哪个 checkpoint）拆成了两个可测的量（覆盖度、可靠性），并给出了一个不用闭环就能读的替代读数</strong>。它最实用的部分甚至不是公式，是那句"训练 loss 全面更好、低噪声 held-out 更差"——那是一个在任何机器人项目里都能当天用上的过拟合探针。</p>
+  <p>它最大的漏洞也很清楚：所有比较都拿"最终 checkpoint"当对手，而那个对手是构造出来的最差解。<strong>在补上"用 val loss 选点"这个基线之前，"分位数判据更好"这个结论只是"没用最坏的那个"。</strong></p>
+
+  <p class="src">原文链接：<a href="https://mp.weixin.qq.com/s?__biz=Mzg5Mzg3ODEwNA==&amp;mid=2247510945&amp;idx=1" target="_blank">公众号 human five · 超越 Validation Loss:机器人策略预训练中的覆盖度与可靠性动态</a>　｜　关键实证：MimicGen 5×200 · RoboCasa365 65×100 · Threading D2 拆分实验 · 真机 Push-T 740 条（选 epoch 46 / 200）</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解　|　来源：公众号 human five（2026-11-03）</footer>
+</div></body></html>

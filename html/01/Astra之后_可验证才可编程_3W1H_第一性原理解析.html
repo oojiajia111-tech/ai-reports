@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Astra之后,机器人还需要多少示范</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.87;margin-top:10px;line-height:1.7;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .box.note{background:#f4f6f9;border:1px solid var(--border);}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  .big{font-size:15px;font-weight:700;}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>Astra之后,机器人还需要多少示范<span class="sub">决定一个任务该写代码还是该学策略的，不是它难不难，而是<strong>它成功能不能被一个传感器判定</strong> · 同一个 GPT-6，只把外壳从「直接控制夹爪」换成「写代码」，平均成功率从 22.48% 跳到 51.6% · 同一个机械臂，只加一个腕部力传感器并允许它失败后改代码，开抽屉从 10 次成 4 次变成 10 次全成 · Moravec 悖论在叠衣服上依然成立，在所有「传感器能验收」的任务上，今年秋天已经破了</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-04</div>
+    <div><b>正文规模</b> 约 6.4 千字（去标签）· 12 图</div>
+    <div><b>涉及工作</b> UIUC 抽屉 harness · RoboDojo · PyRUA-Lean · RAX（Yilun Du 组）</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>机器人能力真正的分界线，不是「大脑 vs 双手」，也不是「简单任务 vs 复杂任务」，而是——<strong>这个任务的成功，能不能被一个传感器读到</strong>。</p>
+  <p>能读到的任务，本质上是<strong>一句可以被编译的承诺</strong>：agent 写代码，传感器当 test suite，失败了就改，收敛是必然的。所以大脑可以租（GPT-6 Astra），手也可以换（π0.5 换 InternW0-Δ，成功率 53.0% → 56.0%）。读不到的任务（叠衣服），<strong>没有任何信号能告诉程序"你错了"</strong>，只能拿人类示范当判据——这类任务才真的需要 learned policy。</p>
+  <p>作者把这件事压缩成一句话，也是全文最该被记住的一句：<strong>大脑和双手之间如果通过文字或代码通信，换大脑不用重训手；如果通过 embedding 通信，每次换大脑都要重训手。</strong>前者是契约，后者是共生。这句话比"GPT-6 能开抽屉"重要得多，因为它把"机器人该怎么搭"从品味问题变成了接口经济学。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">到底发生了什么</a>
+  <a href="#s2">公理链：可验证才可编程</a>
+  <a href="#s3">接口经济学</a>
+  <a href="#s4">值不值：它证到了什么</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>先看四组数字，它们拼出同一件事</h2>
+
+  <p>这篇文章不是一篇论文，是一篇观点长文（作者自己也在括号里注了「当然，这些数据是自报的」）。但它串起来的四组实验结果，确实指向同一个结论。我按"证据强度"从弱到强排：</p>
+
+  <h3>① 一个通用的 chatbot 模型，没做过任何机器人微调，排到了第一</h3>
+  <p>OpenAI 9 月 3 日发布 GPT-6 Astra，定位是 computer use 和 coding 的前沿模型。RoboDojo 把它塞进 42 个仿真任务里，<strong>不做任何 robot-specific 或 task-specific fine-tuning，只给它一个动作——移动夹爪</strong>，平均成功率 <strong>22.48%</strong>，超过了全部 40 个训练过的 robot policy。作为对照，同样只用这一个动作的 GPT-5.5 只有 <strong>0.88%</strong>。</p>
+  <p>这里有个容易被忽略的细节：仿真器在它思考时<strong>暂停</strong>。所以「76 秒的运动」对应「平均 55 分钟的计算」——<strong>43 倍于实时</strong>。这个数字后面我要拿回来用。</p>
+
+  <h3>② 同一个模型，只换「外壳」，分数翻倍</h3>
+  <p>几天之内，训练过的模型重新超过了它。然后 PyRUA-Lean 做了一件很朴素的事：<strong>不让 Astra 直接输出夹爪动作，而是让它生成代码</strong>。这个外壳既没有 recipes（任务描述提示），也没有 learned policy，平均成功率 <strong>51.6%</strong>，比当时排行榜第一名高 19 个百分点。同一个模型，只改外壳 + 提高 reasoning effort，性能提升一倍以上。</p>
+
+  <div class="box good">
+    <b>这是全文最硬的一个对照。</b>模型权重完全没变，数据完全没变，变的只是「输出什么」。直接输出 8 维连续动作 → 22.48%；输出一段能操作夹爪的程序 → 51.6%。<strong>差的那 29 个百分点，不在模型的脑力里，在接口里。</strong>
+  </div>
+
+  <h3>③ 加一个 200 块钱的力传感器，10 次成 4 次变成 10 次全成</h3>
+  <p>伊利诺伊大学 10 月的实验：摄像头对着一个透明抽屉，让一个 coding agent 写代码控制机械臂去开它，<strong>10 次成功 4 次</strong>。然后他们把<strong>腕部力传感器</strong>的数据也喂给它，让它在每次失败后迭代并修改 Python 程序——<strong>10 次全部成功</strong>。接着把 coding agent 拿掉，它写出来的程序<strong>自己还能开抽屉</strong>。</p>
+  <p>同样的结构出现在削黄瓜上：agent 用代码读腕部力传感器，100 Hz，把力度控制在 <strong>4.5~7.5 N</strong>，刀片一失去接触就停。相比只用摄像头的 agent，失去接触的比例从 <strong>40.6% 降到 2.2%</strong>——差 18 倍。</p>
+
+  <h3>④ 一个上午，写出 1500 行，把一个工位级的活干掉</h3>
+  <p>RAX 在 Franka 机械臂 + 空气炸锅上：<strong>72 分钟 inference</strong> 学会开、装、关，然后写出约 <strong>1500 行 Python</strong>。这段程序跑一次三分钟的活只要 <strong>18 秒计算</strong>。它跑了 9 次、改了 9 次，按它自己的度量，<strong>9 次里 4 次干净</strong>。全过程在某个上午 09:18 到 12:05 之间完成。</p>
+
+  <table>
+    <tr><th>任务</th><th>用什么当"错了"的信号</th><th>学会了什么</th><th>代价</th></tr>
+    <tr><td>开透明抽屉</td><td>腕部力传感器（接触是否建立）</td><td>一段能自跑的 Python</td><td>10 次试错，一个上午</td></tr>
+    <tr><td>削黄瓜</td><td>腕部力，100 Hz，4.5–7.5 N 区间</td><td>接触保持策略</td><td>失去接触 2.2%（视觉版 40.6%）</td></tr>
+    <tr><td>开-装-关空气炸锅</td><td>程序内的 software check + 人工看结果</td><td>1500 行代码</td><td>72 分钟 inference，9 次迭代</td></tr>
+    <tr><td>叠衣服</td><td><b>没有</b>——布料的"叠好了"无法用单个传感器判定</td><td>只能学 policy</td><td>数千小时遥操作</td></tr>
+  </table>
+
+  <p>而作为对照，2022 年的 SayCan 已经把这件事的另一半做完了：planner 能为<strong>全部 21 个</strong>涉及抽屉的用户请求规划出动作序列，但它的 visuomotor policy 只能执行其中<strong>约三分之一</strong>——尽管那个策略用了 <strong>68,000 条</strong>人类示范训练。规划早就会了，手不会。四年之后，手的问题被"写代码 + 传感器"绕过去了。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>公理链：为什么"可验证"就等于"可编程"</h2>
+
+  <p>这篇文章没有公式，但它背后有一条很干净的逻辑链。我把它抽出来，因为这条链决定了你下次遇到一个新任务时，该选"教它"还是"让它写"。</p>
+
+  <div class="step">
+    <div class="t">公理 1　程序不是"聪明的行为"，是"一句可被检查的承诺"</div>
+    <div class="d">写代码之所以能收敛，不是因为模型会写代码，而是因为写完之后<strong>有东西能判它对不对</strong>。没有判据，代码写得再漂亮也只是猜测。</div>
+  </div>
+
+  <p>所以"这个任务能不能交给 agent"这个问题，等价于"<strong>存不存在一个信号，能在每次试错后立刻告诉它错了</strong>"。这就是整篇文章所有实验的共用结构——UIUC 的力传感器、RAX 的 software check、PyRUA-Lean 的仿真器返回码，全都是同一件东西：<strong>一个 test suite</strong>。</p>
+
+  <div class="fml">
+    <div class="name">式 1　可编程性的判据（本文的形式化，原文未写成公式）</div>
+    \[
+    T\ \text{可交给 agent}\ \iff\ \exists\, v:\ \mathrm{corr}\big(v(\tau),\,\mathrm{succ}(\tau)\big)\ \text{足够高},\ \ \text{且}\ v\ \text{每次试错都可观测}
+    \]
+    <div class="exp">
+    \(v(\tau)\) 是一次 rollout 上能读到的某个信号（力、位置、返回码），\(\mathrm{succ}(\tau)\) 是"人认为这次成功了吗"。<br>
+    <b>说人话：</b>你需要一个"替人打分的东西"。它不用完美，只要<strong>和真实成功强相关、而且每次都能读到</strong>。<br>
+    <b>两个条件缺一不可：</b>相关性不够 → agent 会朝着错误目标优化（reward hacking）；不可观测 → 它连自己错了都不知道，迭代无从谈起。<strong>叠衣服两个都不满足</strong>——"叠得整齐"没有传感器能读，人自己都得看一眼才知道。
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 2　有判据 → 迭代必然收敛；没判据 → 只能用示范冒充判据</div>
+    <div class="d">监督学习做的事，本质上是把"人类示范"当成一个<strong>间接的</strong>判据：跟人像 = 对。这是一种在没有 ground truth 时的替代品，代价是它永远不知道"像"和"成"之间的差别。</div>
+  </div>
+
+  <p>这一步解释了为什么 68,000 条示范只换来三分之一的执行率。<strong>示范教的是"人怎么做"，不是"什么算做成了"。</strong>而一个力传感器教的是"什么算做成了"，至于怎么做，让 agent 自己搜。前者是模仿，后者是搜索——<strong>搜索需要的样本量比模仿低一个数量级，前提是你能判分。</strong></p>
+
+  <div class="box good">
+    <b>这就是那 29 个百分点的来源。</b>22.48% 的 Astra 是在"没有判据、只能靠感觉输出动作"；51.6% 的 PyRUA-Lean 是在"有仿真器的返回码当判据、可以反复改"。<strong>同一个大脑，前者在猜，后者在解方程。</strong>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 3　可验证是"窄切片"，不是"任务属性"</div>
+    <div class="d">一个任务往往有几十种失败方式，而你的传感器只测其中一两种。被判据覆盖的那一维，agent 能收敛；覆盖不到的，它照错不误。</div>
+  </div>
+
+  <p>这条公理是文章里唯一的"事故报告"，也是我认为最该被反复引用的一段：空气炸锅程序第一次跑的时候，<strong>一个不自然的机械臂姿态把摄像头撞了</strong>。RAX 里面有若干 software check，<strong>但没有任何一项检查能保护摄像头</strong>。</p>
+
+  <p>同一件事在削黄瓜上换了个形式：4.5~7.5 N 这个阈值是<strong>人写的</strong>。所以 agent 的闭环是"按人给的规格试错"，不是"自己发现什么叫切得好"。<strong>"无需示范"是真的，"无需人类知识"是假的</strong>——知识从"轨迹"搬到了"规格"（设定值、阈值、停止条件）。</p>
+
+  <div class="step">
+    <div class="t">公理 4　接口决定可替换性：契约 vs 共生</div>
+    <div class="d">两个模块之间的接口如果是<strong>离散、有独立语义</strong>的（文字、代码、坐标），任何一方都能换；如果是<strong>连续、无语义</strong>的（embedding），只有训练它的那个网络能解，换一方就得重训另一方。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 5　所以产业价值会按"可验证性"劈成两半</div>
+    <div class="d">可验证的任务，卖的是"程序生成能力 + 便宜的传感器"；不可验证的任务，卖的是"数据 + 示范"。这两条生意的最优规模、护城河、毛利结构完全不同。</div>
+  </div>
+
+  <p>作者对 VC 的那句建议就是这条公理的直接推论：<strong>「弄清楚客户付费的工作里，有多少比例可以由传感器验证，又有多少确实需要 learned model 来判断。」</strong>这句话比"机器人会不会取代人"有用一万倍——它是一个可以拿去做尽调的问卷题。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>接口经济学：为什么"用代码通信"值钱</h2>
+
+  <p>公理 4 看起来像一句工程品味，实际上可以算账。我把两条路线的成本摊到部署台数上：</p>
+
+  <div class="fml">
+    <div class="name">式 2　两条路线，摊到每台机器人头上的固定成本</div>
+    \[
+    \underbrace{\frac{k\cdot c_{\text{trial}}+c_{\text{eng}}}{N_{\text{deploy}}}}_{\text{写代码路线}}
+    \qquad\text{vs}\qquad
+    \underbrace{\frac{m\cdot c_{\text{demo}}+c_{\text{train}}}{N_{\text{deploy}}}}_{\text{采示范路线}}
+    \]
+    <div class="exp">
+    \(k\) = 试错轮数（RAX 是 9 轮），\(c_{\text{trial}}\) = 一轮试错的成本（时间 + 撞坏的东西），\(c_{\text{eng}}\) = 写程序/改程序的成本；\(m\) = 示范条数（SayCan 是 68,000），\(c_{\text{demo}}\) = 采一条示范的成本，\(c_{\text{train}}\) = 训练成本。<br>
+    <b>说人话：</b>左边是"试到能跑"的一次性编程费，右边是"采数据 + 训模型"的一次性数据费，两边都除以部署台数 \(N_{\text{deploy}}\)。<br>
+    <b>关键在 \(N_{\text{deploy}}\)：</b>台数越大、任务越固定，左边的试错成本被摊得越薄，代码路线越赢——这也正是工业机器人过去四十年的做法（编程一次，跑 12~15 年）。反过来，如果任务是<strong>每台机器人、每个家庭都不一样</strong>的（叠衣服、收拾房间），那就没有"摊薄"这回事，右边的数据路线才成立。
+    </div>
+  </div>
+
+  <p>把这个不等式代进文章里的数字，结论非常扎眼：<strong>RAX 一个上午（72 分钟 inference + 9 次试错）换掉的是"三名工程师迭代 547 个版本"</strong>。而另一边，Encord 卖给机器人公司的训练数据，客户需求从一年前的 1,000 小时涨到现在的 10,000 甚至 100,000 小时，需求是去年的 10 倍；Tesla 和 1X 招数据采集员起薪 25 美元/小时。</p>
+
+  <p>作者的结论因此很直接：<strong>「不要再收集一千条示范，先在腕部装一个力传感器。」</strong>因为一旦有判据，你的竞争对手就变成了"一个上午写出空气炸锅代码、主要成本只是 token"的 agent。</p>
+
+  <h3>但"主要成本只是 token"这句话，被它自己的数据打脸了</h3>
+
+  <p>前面那个数字现在拿回来：<strong>76 秒的运动，对应平均 55 分钟的计算</strong>。这意味着如果真按实时闭环跑，算力成本是 43 倍于机器人本身的时间。所以"token 便宜"这个说法只在一种情况下成立——<strong>你算的是一次性编程费，不是运行费</strong>。</p>
+
+  <div class="box bad">
+    <b>这是一个必须分清的口径。</b>RAX 的模式是"72 分钟学一次，之后 18 秒跑一次"，摊到 12~15 年的部署寿命上，那 72 分钟约等于免费。<b>但它同时意味着：这个方案不适合"每个场景都要重新想一遍"的任务。</b>一旦任务每天都在变，那 43 倍的计算就成了常态成本，而不是一次性投入。<br>
+    <b>作者用"token 便宜"去对比"25 美元/小时的采集员"，其实是在拿一次性投入比经常性支出。</b>账没错，但对象错位了。
+  </div>
+
+  <h3>接口那一侧的实证：手确实也能换，但换了不等于更好</h3>
+
+  <p>文章给了一个我之前没见过的对照：在 EBench 上，让 Astra 把一部分步骤<strong>外包给 π0.5</strong>，成功率从 <strong>46.7% 提升到 53.0%</strong>，超过任何一个单独组件。然后把 π0.5 换成竞争对手的 <strong>InternW0-Δ</strong>，同一个大脑拿到 <strong>56.0%</strong>。</p>
+
+  <table>
+    <tr><th>配置</th><th>EBench 成功率</th><th>读法</th></tr>
+    <tr><td>Astra 单独</td><td>46.7%</td><td>大脑很强，但不会动</td></tr>
+    <tr><td>Astra + π0.5</td><td>53.0%</td><td>接了手，涨 6.3 个点</td></tr>
+    <tr><td>Astra + InternW0-Δ</td><td><b>56.0%</b></td><td>换个手，再涨 3 个点 → 手是可替换的</td></tr>
+    <tr><td>EBench 最佳 trained policy</td><td><b>61.4%</b></td><td><b>专用 VLA 仍然最高</b></td></tr>
+  </table>
+
+  <p>这张表最值得注意的不是 56.0%，是最后一行。<strong>"手可替换"被证明了，"组合更优"没有被证明。</strong>混合方案在被专门为 VLA 设计的榜上，还差 5.4 个百分点。所以正确的读法是：接口解耦<strong>降低了对某一方的锁定</strong>，但没有立刻<strong>提高上限</strong>。这两件事经常被混着说。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">值不值</span>它证到了什么、没证到什么</h2>
+
+  <h3>先给价值：三条能直接拿去用</h3>
+  <ol>
+    <li><strong>把"该教还是该写"变成一个可以问的问题。</strong>不要问"这个任务难不难"，问"成功能不能被一个 200 块的传感器读到"。答"能"，就上 agent + 代码；答"不能"，才轮到示范和策略。</li>
+    <li><strong>接口选择优先于模型选择。</strong>大脑和手之间用代码/文字通信，你以后可以每年换一次大脑；用 embedding 通信，你换一次大脑就得重训一次手。这个决定在架构图上只有一条线，但它决定了你未来三年的迭代速度。</li>
+    <li><strong>传感器的 ROI 高于示范的 ROI。</strong>2.2% vs 40.6% 这个对比（差 18 倍）不是算法改进换来的，是一个力传感器换来的。在预算有限时，先买传感器，再买数据。</li>
+  </ol>
+
+  <h3>再说局限：八条，按严重程度排</h3>
+  <p>下面这些不是挑刺，是<strong>决定这套结论能不能搬到你场景里的前提</strong>。</p>
+
+  <ol class="crit">
+    <li><strong>两个头条数字互相矛盾。</strong>文章说 22.48% 的 Astra「超过了全部 40 个经过训练的 robot policy」；又说 PyRUA-Lean 的 51.6%「比当时排行榜第一名高出 19 个百分点」。后者反推出当时第一名约 <strong>32.6%</strong>——<strong>比 22.48% 高 9 个点</strong>。<br>两句话不可能同时为真。要么"全部 40 个"指的是另一批模型/另一个时间点的快照，要么 22.48% 只是"超过多数"。<strong>这是全文的立论支点，却内部不自洽，而且是自报数据（作者自己在括号里承认了）。</strong></li>
+
+    <li><strong>「移除了 coding agent，程序仍然能开抽屉」这句被轻轻带过了，但它是全文最重要的一句。</strong>因为它说明产出的不是 policy，是<strong>工件（artifact）</strong>。工件是 per-task、per-scene、per-object 的——这和工业机器人编程<strong>同构</strong>，不是范式变化。<br>真正的创新是<strong>编程成本从"工程师几周"降到"一个上午"</strong>，这已经足够颠覆（对照他们第一台机器人：三名工程师迭代到第 547 版）。但作者把它写成了"机器人不需要示范了"，这是把成本革命说成了范式革命。</li>
+
+    <li><strong>验证器只覆盖它测量的那一维，而事故恰好发生在覆盖之外。</strong>空气炸锅程序撞坏了摄像头——RAX 有 software check，但没有一项保护摄像头。同理，力传感器能判"失去接触"，判不了"撞到旁边的杯子""线缆被勾住""物体被压坏"。<br><strong>所以"可验证"是一个窄切片，切片外的长尾正是 learned policy 唯一的存在理由。</strong>文章承认叠衣服不行，但没给出"哪些任务在边界上"的判据——而事前判断边界，恰恰是工程上最难的一步。</li>
+
+    <li><strong>4.5~7.5 N 这个阈值是人给的，"无需示范"为真，"无需人类知识"为假。</strong>agent 的闭环是「测试 → 失败 → 改代码」，而 test oracle 是人写的规格。人的知识没有消失，只是从"轨迹"迁移到了"设定值 + 阈值 + 停止条件"。<br>作者自己写了「这段代码我自己也能写出来」——这句话恰恰在证明：<strong>难点从来不是写代码，是知道该写什么规格。</strong>而规格的产能，仍然由人决定。</li>
+
+    <li><strong>9 次里 4 次干净（44%），远谈不上可靠。</strong>这是 RAX 自己的度量，比它批评的 22.48% 好，但离"能交付"很远。真正的可靠性来自部署期工程——他们第一台机器人迭代了 547 版才能每月服务数千份餐食。<br><strong>换句话说：agent 把"从 0 到能跑"从几个月压到一个上午，但"从能跑到稳定"这一段，它几乎没帮上忙。</strong>文章没有区分这两段，而产业价值大部分在第二段。</li>
+
+    <li><strong>任务全是"环境主动给你干净信号"的那一类。</strong>透明抽屉（视觉可以透视）、固定工位的空气炸锅（行程可复现）、削黄瓜（接触信号干净）。换成一个<strong>不透明</strong>的抽屉、手柄在视线外、需要靠触觉定位，这套流程会立刻退化。<br>所以这篇文章证明的是"<strong>在信号干净的任务上</strong>，代码路线赢了"，而不是"代码路线赢了"。这个限定词被摘要吃掉了。</li>
+
+    <li><strong>「手也可替换」是方向性证据，不是等价性证据。</strong>46.7 → 53.0 → 56.0，只换了一次手、一组数字、没有误差棒，而且两个混合体<strong>都低于</strong> trained policy 的 61.4%。<br>更关键的是：π0.5 之所以能被换掉，是因为它和大脑之间是<strong>分步/文本级</strong>的接口。如果手是一个和大脑联合训练的端到端模块，换手就没这么便宜了。<strong>这里"可替换"是接口带来的，不是市场带来的。</strong></li>
+
+    <li><strong>估值论证会自我拆台。</strong>作者用"手也可替换"去压 Physical Intelligence 的 200 亿美元估值，逻辑是"你既没有大脑，手也不是唯一"。但反过来问一句：<strong>为什么 π0.5 的手比别的型号好？因为它的数据好。</strong>那数据就是护城河，而数据正是 PI 的资产。<br>作者真正的论点其实是"<strong>可验证任务的市场比不可验证任务大得多</strong>"，这个论点成立；但把它推成"PI 被高估"，靠的是"手可替换"这一条，而这一条恰好能被"手好的原因是数据好"反杀。<strong>结论可能对，论证路径不成立。</strong></li>
+  </ol>
+
+  <div class="box bad">
+    <b>最后一条我认为最值得记住。</b>文章说 Moravec 悖论"对于传感器能够检查的任务，今年秋天已经被攻克"。这句话在<strong>逻辑上是对的</strong>，但它悄悄地换掉了 Moravec 悖论的前提——Moravec 说的是"感知和行动"难，而"感知和行动"里最难的那部分，恰恰是<strong>没有明确判据</strong>的部分（接住一个球、叠一件衣服、在人群里穿行）。<br>
+    <strong>被攻克的不是 Moravec 悖论，是被 Moravec 悖论遮蔽的那一半</strong>——所有"其实有判据、只是以前没人去装传感器"的任务。这一半有多大？作者没有回答。而这才是"机器人还需要多少示范"这个标题真正的答案：<strong>取决于有多少任务，其实一直藏着判据。</strong>
+  </div>
+
+  <h3>一句话总账</h3>
+  <p>这篇文章最大的贡献不是"GPT-6 能开抽屉"，而是把"什么时候该学、什么时候该写"从一个<strong>信仰问题</strong>降级成了一个<strong>测量问题</strong>：去找那个能判分的信号，如果有，写代码；如果没有，去采数据。</p>
+  <p>它最该被质疑的也不是数据，是<strong>它把成本革命讲成了范式革命</strong>。写代码路线真正的杀伤力在于：它把每个工位的编程成本从"几周工程师"压到"一个上午"，这在工业场景里已经是天文数字的改善——不需要"机器人不需要示范"这种更大的话，就足够改变行业结构了。</p>
+
+  <p class="src">原文链接：<a href="https://mp.weixin.qq.com/s?__biz=Mzg5Mzg3ODEwNA==&amp;mid=2247511025&amp;idx=2" target="_blank">公众号 human five · Astra之后,机器人还需要多少示范</a>　｜　涉及：RoboDojo（42 任务）· PyRUA-Lean（51.6%）· RAX（Yilun Du 组）· UIUC Claude Fable 5 harness</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解　|　来源：公众号 human five（2026-11-04）</footer>
+</div></body></html>

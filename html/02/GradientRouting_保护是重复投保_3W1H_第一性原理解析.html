@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Should the Action Expert Train the VLM? Action-Token Supervision and Gradient Routing in Mixture-of-Transformer VLAs</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:25px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.87;margin-top:10px;line-height:1.7;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .box.note{background:#f4f6f9;border:1px solid var(--border);}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top;}
+  th{background:#f2f6fc;}
+  td.num{text-align:center;font-variant-numeric:tabular-nums;}
+  .win{background:#eafaf1;font-weight:700;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>Should the Action Expert Train the VLM? Action-Token Supervision and Gradient Routing in Mixture-of-Transformer VLAs<span class="sub">「把动作专家的梯度挡住、保护 VLM 别被污染」是当下 VLA 的主流配方。这篇把配方拆成两个独立开关做 2×2，发现：<strong>挡住梯度和用动作 token 监督，本质是同一条信号的两条投递路径</strong> · 闭环路测里两条单开几乎一模一样（0.600 vs 0.601，差 0.001），两条都开才到 0.703 —— 第二条通道的边际收益只有第一条的 <strong>58%</strong> · 于是"绝缘"不是保护，是<strong>把一条宽管子换成了窄管子</strong>，而它收的保费是闭环性能的 17%</span></h1>
+  <div class="meta">
+    <div><b>来源</b> arXiv 2611.05249</div>
+    <div><b>论文发布</b> 2026-11-03 · arXiv 2611.05249</div>
+    <div><b>机构</b> NVIDIA · Princeton · Stanford（Marco Pavone 组）</div>
+    <div><b>实验</b> 驾驶 1,434+273 场景 · 闭环 827 场景 × 5 rollout · 操作 3 任务 × 50 rollout × 2 模型族</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>现在主流的 VLA 训练配方（Knowledge Insulation / π0.5 / MolmoAct2 / Alpamayo-R1 都用它）同时做三件事：<strong>屏蔽动作专家回传给 VLM 的梯度</strong>、<strong>让 VLM 额外预测离散动作 token</strong>、<strong>用视觉语言数据共训</strong>。过去大家把这三件事当成一个整体，于是"屏蔽有效"从来没有被单独检验过。</p>
+  <p>这篇论文把它拆成两个独立开关，测出来的四格是全文最锋利的一张表：<strong>什么都不给 0.425，只给动作 token 0.600，只给梯度 0.601，两个都给 0.703</strong>（闭环路测通过率）。两条通道单独开，效果几乎<strong>一模一样</strong>；两条都开，比单开只多 0.102——<strong>第二条通道的边际收益只有第一条的 58%</strong>。</p>
+  <p>所以真正的结论不是"该不该绝缘"，而是：<strong>一个参数要获得"对控制有用"的信息，只需要存在一条从控制损失到它的梯度通路；信号本身只有一份，你把它走哪条路送进去，比走不走得进去，次要得多。</strong>「屏蔽梯度」不是保护，是<strong>降码率</strong>——你并没有阻止信息进入 VLM，只是换了一条更窄的管子。窄管子够不够用，取决于任务的<strong>带宽</strong>：开车只需要横向纵向两个平滑标量，token 够用；接触丰富的操作不够，所以那里耦合的收益反而更大（π0.5 从 10.3% 涨到 32.9%）。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">问题为什么一直没被拆开</a>
+  <a href="#s2">公理链：信号只有一份</a>
+  <a href="#s3">2×2 设计与四格结果</a>
+  <a href="#s4">值不值：保费与理赔</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>一个被"打包出售"的设计决定</h2>
+
+  <p>先看架构。这类 VLA 用的是 Mixture-of-Transformers（MoT）结构：一个自回归的 VLM 负责看图和读指令，一个更小的 flow-matching 动作专家<strong>逐层读取 VLM 的 K/V 表示</strong>，据此生成连续动作块。VLM 不读专家的动作输入——信息是<strong>单向</strong>的：VLM 往专家送，专家不往 VLM 送。</p>
+
+  <p>于是训练时出现一个岔路口：<strong>动作损失要不要回传梯度，去更新那个产生 K/V 的 VLM？</strong></p>
+
+  <table>
+    <tr><th>选择</th><th>做法</th><th>动机</th><th>谁在用</th></tr>
+    <tr><td><b>耦合</b>（coupling）</td><td>让 flow loss 的梯度穿过 K/V 接口，同时更新专家和 VLM</td><td>让 VLM 学到"哪些特征对精确控制有用"，两边协同适应</td><td>Wall-OSS-0.5</td></tr>
+    <tr><td><b>绝缘</b>（insulation）</td><td>在 K/V 接口处 stop-gradient（或直接冻结骨干）</td><td>保护预训练的视觉语言能力，别被一个随机初始化的新专家污染</td><td>π0.5 · MolmoAct2 · Alpamayo-R1</td></tr>
+  </table>
+
+  <p>问题在于：<strong>这两派从来不可比。</strong>作者的诊断很准——绝缘派的系统里几乎都还开着"离散动作 token 监督"（FAST token），而 Wall-OSS-0.5 虽然耦合，但也保留着离散动作目标和多模态目标。所以两边的差异同时混了配方、初始化、数据、优化。你没法判断"绝缘"这一项本身值多少。</p>
+
+  <div class="box bad">
+    <b>这就是那类最容易被忽略的论文：它不提新模型，只是把两个一直被绑在一起卖的东西拆开，分别标价。</b>而这类论文往往比新模型更有用，因为它的结论可以直接改你下一版的训练脚本。<br>
+    作者的原话：Knowledge Insulation 报告了绝缘的好处，但<strong>没有测过"没有 FAST 监督时绝缘还成不成立"</strong>；Wall-OSS-0.5 则报告耦合更好。<strong>两个相反的结果，却都因为配方不同而无法归因。</strong>
+  </div>
+
+  <p>还有一层更微妙的东西：绝缘派手里其实握着<strong>两条</strong>信号。动作 token 的交叉熵，是把同一条未来轨迹<strong>量化成离散符号</strong>再监督 VLM；专家梯度，是把同一条未来轨迹<strong>原样连续地</strong>回传给 VLM。<strong>同一个目标，两种编码。</strong>如果两种编码能互相替代，那"屏蔽梯度"这件事的价值就被高估了——这正是本文要验证的。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>公理链：梯度是唯一的信息通道，而信号只有一份</h2>
+
+  <div class="step">
+    <div class="t">公理 1　没有梯度通路，参数对该损失就是常数</div>
+    <div class="d">数学上，绝缘就是令 \(\partial\mathcal{L}_{\text{flow}}/\partial\theta=0\)（\(\theta\) 是 VLM 参数）。这不是"削弱"，是"切断"。所以如果 VLM 还是学到了对控制有用的东西，那必然来自另一条路。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 1　两个开关写在一个式子里：绝缘就是一次 stop-gradient</div>
+    \[
+    \mathcal{L}=\mathcal{L}_{\text{CE}}+\mathcal{L}_{\text{flow}},
+    \qquad
+    \widetilde{H}_\theta=
+    \begin{cases}
+    H_\theta & \text{耦合（coupling）}\\[2pt]
+    \operatorname{sg}\!\left(H_\theta\right) & \text{绝缘（insulation）}
+    \end{cases}
+    \]
+    \[
+    \mathcal{L}_{\text{CE}}=-\mathbb{E}_{(x,y)\sim\mathcal{D}}\!\left[\frac{1}{N}\!\left(\sum_{i\in\mathcal{I}_{\text{base}}}\log p_\theta(y_i\mid x,y_{<i})+\mathbf{1}_{\text{action}}\!\!\sum_{i\in\mathcal{I}_{\text{action}}}\!\!\log p_\theta(y_i\mid x,y_{<i})\right)\right]
+    \]
+    <div class="exp">
+    \(H_\theta\) 是 VLM 各层产出的 K/V 表示，\(\operatorname{sg}(\cdot)\) 是 stop-gradient（前向不变、反向断开）。<br>
+    <b>关键：这两个开关是正交的。</b>\(\mathbf{1}_{\text{action}}\) 控制"要不要用离散 token 监督动作"，\(\operatorname{sg}\) 控制"要不要用连续梯度监督动作"。以前它们被绑在一起，现在被拆成 2×2。<br>
+    <b>说人话：</b>同一个未来轨迹，一份被<strong>翻译成离散符号</strong>喂给 VLM（CE），一份被<strong>原样连续回传</strong>（flow 梯度）。绝缘派关掉了第二条、留着第一条。那第一条够不够用？这就是全部问题。
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 2　两条通路送的是同一个随机变量，只是码率不同</div>
+    <div class="d">离散 token 是量化版本，损失了亚 token 精度的信息；连续梯度是无损版本，但把 VLM 直接暴露在一个随机初始化专家的梯度下。</div>
+  </div>
+
+  <p>这条公理是全文的解释框架，也是我认为它最值钱的地方：<strong>它把"保护 vs 协同"这个价值判断，翻译成了"码率 vs 风险"这个工程选择。</strong></p>
+
+  <div class="fml">
+    <div class="name">式 2　flow matching 目标 + 时间采样（决定梯度携带什么信息）</div>
+    \[
+    \mathcal{L}_{\text{flow}}=\mathbb{E}_{(x,a)\sim\mathcal{D}_{\text{action}},\,t,\,\epsilon}\left[\left\|v_\phi\!\left(a_t,t;\widetilde{H}_\theta\right)-(a-\epsilon)\right\|_2^2\right],
+    \qquad a_t=ta+(1-t)\epsilon
+    \]
+    <div class="exp">
+    \[
+    b\sim\operatorname{Beta}(1.5,\,1.0),\qquad t=0.999\,(1-b),\qquad \epsilon\sim\mathcal{N}(0,I)
+    \]
+    \(a\) 是真实连续轨迹，\(a_t\) 是加噪后的插值点，\(v_\phi\) 是专家的速度场，\(\phi\) 是专家参数。<br>
+    <b>时间采样这个细节值得单独看：</b>\(b\sim\text{Beta}(1.5,1)\) 且 \(t=0.999(1-b)\)，意味着训练<strong>偏向高噪声端</strong>（\(t\) 接近 1）。<br>
+    <b>说人话：</b>\(t\) 大 = 噪声多 = "大概往哪走"；\(t\) 小 = 噪声少 = "最后几厘米怎么微调"。偏采样高噪声端，等于<strong>把训练重点放在"大方向"上</strong>，而"精细动作"那一段的梯度比较稀。<br>
+    <b>这带来一个张力：</b>如果精调区的梯度本来就稀，那"用梯度教 VLM 精细控制"这件事的证据基础就比看起来弱——这也是后面批判里要拿回来的点。
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 3　同一信号的第二条通道，边际收益必然递减</div>
+    <div class="d">因为两条通道更新的是同一批参数、指向同一个目标。第一条通道把"容易拿到的信息"拿完了，第二条只剩下"第一条传不过去的那部分"——如果第一条是窄管子，这部分可能不小；如果第一条已经够宽，这部分就很小。</div>
+  </div>
+
+  <p>这条是可以用实测数字直接检验的，而且检验结果干净得不像实验数据：</p>
+
+  <div class="fml">
+    <div class="name">式 3　通道冗余度 ρ：第二条通道值第一条的几成（本文自建诊断量，原文未定义）</div>
+    \[
+    \rho=\frac{P(\text{双通道})-P(\text{单通道})}{P(\text{单通道})-P(\text{无通道})}
+    =\frac{0.703-0.601}{0.601-0.425}
+    =\frac{0.102}{0.176}\approx 0.58
+    \]
+    <div class="exp">
+    \(P\) 是闭环路测通过率（AlpaSim，827 场景 × 5 rollout，concurrent 训练）。单通道取"只开梯度"那一格（0.601），因为它是两条里更强的。<br>
+    <b>说人话：</b>第一条通道值 0.176，第二条只值 0.102，<strong>打了 58 折</strong>。<br>
+    <b>换个读法更狠：</b>0.601 vs 0.600 —— 两条通道<strong>单独使用时几乎完全等价</strong>（差 0.001，在评测噪声里）。也就是说，你随便留哪一条都行，但<strong>留哪一条都只拿到 41% 的增益；只有两条都留才能到 65%</strong>。<br>
+    <b>注意：ρ 是我为了量化"可替代性"自己构造的，论文没有这个数。</b>它的分子分母都直接来自论文表 3，但把它叫"冗余度"是我的解读，不是作者的断言。
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 4　窄管子够不够用，取决于任务的带宽</div>
+    <div class="d">驾驶的动作是"加速度 + 曲率"两个平滑标量，量化损失小；操作的接触、力、瞬时贴合，量化损失大。所以同一个"绝缘"，在驾驶上几乎免费，在操作上很贵。</div>
+  </div>
+
+  <p>这条公理把论文的结论从"绝缘不该做默认"升级成一句更可操作的话：<strong>"绝缘的代价，等于你的任务在 token 量化下损失掉的那部分信息。"</strong>这也是为什么论文在操作上的两个模型族里，耦合的收益<strong>都比驾驶更大</strong>——不是因为操作"更需要耦合"，而是因为操作的 token 码率更不够用。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>2×2 × 3 种训练顺序，把混淆变量按死</h2>
+
+  <h3>实验骨架</h3>
+  <ul>
+    <li><b>驾驶基座：</b>Qwen3-VL-2B-Instruct + 同宽度的非因果 flow-matching 专家（专家逐层读 VLM 的 K/V，VLM 不读专家的动作）。专家输出 K 组未来控制量（加速度 + 曲率），再用离散化独轮车模型积出位置和朝向。</li>
+    <li><b>四个条件：</b>动作 token 监督 开/关 × 梯度 耦合/绝缘。</li>
+    <li><b>三种训练顺序：</b>并发（一起训 300k 步）、VLM 先（先单独训 VLM 100k，再引入新初始化的专家 200k）、专家先（先对冻结 VLM 训专家 100k，再联合 200k）。</li>
+  </ul>
+
+  <h3>最值得学的一处：掩码怎么关，才不引入新变量</h3>
+  <p>关掉动作 token 监督这件事，很容易悄悄改掉别的东西。作者处理得很干净，我认为这一段该被当成"控制变量"的范本：</p>
+
+  <div class="fml">
+    <div class="name">式 4　固定 N 的掩码不变式：关掉监督，但不许改权重</div>
+    \[
+    N\equiv\left|\mathcal{I}_{\text{base}}\right|+\left|\mathcal{I}_{\text{action}}\right|\quad(\text{掩码前的监督位置数，两种条件下都取这个})
+    \]
+    <div class="exp">
+    三条配套措施：① 动作值 token <strong>仍然 teacher-forcing 输入</strong>（只是不算 CE），所以输入分布不变；② 轨迹分隔符<strong>仍然被监督</strong>，历史轨迹 token 仍在输入上下文里；③ <strong>把动作 token 的状态从专家的 K/V 上下文里排除</strong>，否则专家会"偷看"答案。<br>
+    <b>为什么必须固定 N：</b>CE 是按监督位置数取平均的。如果关掉动作监督就让 N 变小，那其他项（VQA、推理、结构 token）的<strong>相对权重会自动上升</strong>——你就分不清"效果来自少了动作监督"还是"来自 VQA 权重变大"。<br>
+    <b>说人话：</b>关一个开关的时候，<strong>要保证其他开关的刻度没被顺手拧动</strong>。这一步做不做，决定了整篇论文是"消融"还是"讲故事"。
+    </div>
+  </div>
+
+  <h3>结果一：开环，绝缘只有在"没有 token"时才吃亏</h3>
+  <p>开环用 Physical AI Autonomous Vehicles 数据集：Public Golden 1,434 场景、OOD 273 场景。指标是第一个采样轨迹的 ADE，外加 6 个候选里的 minADE 作为 oracle 参考。</p>
+  <ul>
+    <li><b>有动作 token 监督时：</b>绝缘和耦合差别很小（Public Golden 上绝缘甚至略好）。</li>
+    <li><b>没有动作 token 监督时：</b>耦合把 ADE 降了约 <b>26%</b>（Public Golden）和 <b>24%</b>（OOD）。</li>
+  </ul>
+  <p>换句话说：<strong>绝缘是否吃亏，取决于 VLM 手里还有没有别的动作信号。</strong>这正是"可替代"的直接证据。</p>
+
+  <h3>结果二：闭环，这张表是全文的心脏</h3>
+
+  <table>
+    <tr>
+      <th rowspan="2">训练顺序</th><th colspan="2">绝缘</th><th colspan="2">耦合</th>
+    </tr>
+    <tr><th>token 开</th><th>token 关</th><th>token 开</th><th>token 关</th></tr>
+    <tr><td>并发（concurrent）</td><td class="num">0.600</td><td class="num">0.425</td><td class="num win">0.703</td><td class="num">0.601</td></tr>
+    <tr><td>VLM 先</td><td class="num win">0.648</td><td class="num">0.555</td><td class="num">0.646</td><td class="num">0.587</td></tr>
+    <tr><td>专家先</td><td class="num">0.597</td><td class="num">0.538</td><td class="num win">0.625</td><td class="num">0.604</td></tr>
+  </table>
+  <p style="font-size:13px;color:#5b6472;">AlpaSim 闭环路测通过率（route progress），827 场景 × 5 次随机 rollout，场景内先平均。越高越好。</p>
+
+  <p>怎么读这张表，我给三个层次：</p>
+  <ol>
+    <li><b>横向看（同一行）：</b>并发那行是教科书级的 2×2。<strong>0.425 → 0.600/0.601 → 0.703</strong>：任一条通道单独开，都是 +41% 左右；两条都开 +65%；两条都关就是 0.425。而 0.600 和 0.601 的差只有 0.001——<strong>在 827 个场景的评测噪声里，这两格是同一个数。</strong></li>
+    <li><b>纵向看（同一列）：</b>"并发"在三个训练顺序里给出最高绝对值（0.703）。这和 π0.5 / MolmoAct2 采用的<strong>"VLM 先"配方正好相反</strong>——那些配方是先训离散动作预测、再引入连续专家。作者的结论是：<strong>一开始就一起训，是个很强的简单起点。</strong></li>
+    <li><b>看缺口：</b>并发 + token 关的耦合（0.601）<strong>几乎等于</strong>并发 + token 开的绝缘（0.600）。<strong>两种完全不同的机制，给出同一个分数</strong>——这是"可替代"最直观的样子。</li>
+  </ol>
+
+  <h3>结果三：操作，耦合的收益更大（也就等于说 token 更不够用）</h3>
+
+  <table>
+    <tr><th>条件</th><th>π0.5 复现</th><th>MolmoAct2</th></tr>
+    <tr><td>绝缘 / FAST 开</td><td class="num">19.5%</td><td class="num">22.0%</td></tr>
+    <tr><td>耦合 / FAST 开</td><td class="num">30.7%</td><td class="num">24.3%</td></tr>
+    <tr><td>绝缘 / FAST 关</td><td class="num">10.3%</td><td class="num">14.5%</td></tr>
+    <tr><td>耦合 / FAST 关</td><td class="num win">32.9%</td><td class="num win">36.5%</td></tr>
+    <tr><td style="color:#5b6472;">参考：论文发布的 checkpoint</td><td class="num" style="color:#5b6472;">40.0%</td><td class="num" style="color:#5b6472;">32.9%</td></tr>
+  </table>
+  <p style="font-size:13px;color:#5b6472;">PolaRiS 三个任务（BlockStackKitchen / FoodBussing / PanClean）的归一化任务进度均值，每条件每环境 50 次 rollout，匹配初始状态。</p>
+
+  <p>这组数里有两个必须注意的事：</p>
+  <ul>
+    <li><b>耦合的增益在"关掉 FAST"时更大</b>：π0.5 是 10.3 → 32.9，MolmoAct2 是 14.5 → 36.5。<strong>耦合 + 无 token（32.9）比绝缘 + 有 token（19.5）高 1.7 倍</strong>。在操作上，"两条通道等价"这个结论<strong>不成立</strong>——梯度那条明显更值钱。</li>
+    <li><b>但绝对水平很低</b>：最好的一格 36.5%，而论文自己引用的已发布 π0.5 是 40.0%。作者解释了差距（他们的机器人数据主要来自 DROID，350 小时；已发布版本用了超过 10,000 小时），这是诚实的，但也意味着<strong>四格之间的差距是在一个整体偏低的区间里比较出来的</strong>。</li>
+  </ul>
+
+  <h3>结果四：理由质量——"保护语言能力"这件事，没有出现</h3>
+  <p>用一个冻结的 Lingo-Judge 给生成的驾驶理由打分（与参考理由比对，分数 > 0.5 算通过）：</p>
+  <ul>
+    <li>并发 + <b>token 开</b>：绝缘 <b>64.7%</b> vs 耦合 <b>64.9%</b> —— <strong>几乎完全相同</strong>。这是最直接的反证：绝缘并没有"保住"理由质量，因为耦合也没破坏它。</li>
+    <li>并发 + token 关：绝缘 56.6% vs 耦合 <b>63.5%</b> —— 耦合反而<strong>高 6.9 个点</strong>。</li>
+    <li>但 OOD 上反过来：绝缘 36.3% vs 耦合 34.8%。而在两种分段训练里，token 关时<strong>绝缘的理由质量更高</strong>（VLM 先 63.0 vs 61.3；专家先 62.0 vs 61.2），尽管它的 ADE 更差。</li>
+  </ul>
+
+  <div class="box good">
+    <b>这组数字其实比作者说的更值得强调。</b>它证明了两件事：① "绝缘保护 VLM 能力"这个动机，在<strong>理由质量</strong>这个最贴近的指标上，<strong>没有可复现的优势</strong>；② ADE（动作精度）和理由质量（语言质量）<strong>会朝相反方向走</strong> —— 分段训练里绝缘 ADE 更差、理由却更好。<br>
+    <b>后者是个更麻烦的信号：</b>说明这两个指标测的不是同一个东西，而论文拿 ADE 当主要证据去支撑闭环结论。
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">值不值</span>保费收了，理赔记录是空的——但也可能是没测到理赔场景</h2>
+
+  <h3>先给价值：三条能直接改训练脚本</h3>
+  <ol>
+    <li><strong>别再默认开绝缘。</strong>如果你的配方里已经有动作 token 监督 + 视觉语言共训，那额外屏蔽专家梯度几乎不带来任何保护（64.7 vs 64.9），而在并发训练下要付 17% 的闭环代价（0.600 → 0.703）。<strong>这一条可以直接省掉一个超参。</strong></li>
+    <li><strong>并发训练 > VLM 先。</strong>三个训练顺序里，并发的绝对值最高（0.703），而 π0.5 / MolmoAct2 的"VLM 先"配方在同样的场景下只有 0.646~0.648。<strong>"先教它说，再教它动"这个顺序，可能一直是个次优的工程习惯。</strong></li>
+    <li><strong>做消融时，关开关别顺手改刻度。</strong>固定 N、teacher-forcing、把答案从专家上下文里剔除——这三条是"消融可信"的最低门槛。很多论文的消融不可信，就是因为关掉一个项之后，其他项的权重悄悄变了。</li>
+  </ol>
+
+  <h3>再说局限：八条，按严重程度排</h3>
+
+  <ol class="crit">
+    <li><strong>全文的支点是一个 0.001 的差，而它只有一个训练种子。</strong>"两条通道单独使用等价"这个结论，建立在 0.600 vs 0.601 上。作者自己在 Limitations 里写：算力限制导致<strong>每个条件只跑了一次训练</strong>，训练种子带来的方差没有被测量。<br>827 场景 × 5 rollout 的 bootstrap 区间只覆盖<strong>评测</strong>方差，不覆盖<strong>训练</strong>方差。而训练方差在这个量级上通常远大于 0.001。<strong>换句话说：全文最关键的那句话，是在误差棒之外说的。</strong></li>
+
+    <li><strong>提升闭环性能的代价是碰撞率上升，而这一点在摘要里一个字都没有。</strong>作者在 Discussion 里承认：<strong>带 token 监督的耦合式分段训练，at-fault 碰撞率更高</strong>，尽管路测通过率更高或持平。<br>"+17% / +40% route progress" 是这篇论文被引用的方式，但它是<strong>用安全换来的</strong>。在一个动辄讲"具身智能要上路"的领域，把安全指标藏在附录表格里、只在讨论段一句带过，这个取舍值得被点名。</li>
+
+    <li><strong>"保护 VLM 能力"这件事根本没被测。</strong>绝缘的<strong>唯一</strong>动机是别破坏预训练能力。而论文测的只有"驾驶理由质量"（Lingo-Judge 通过率）——这是能力的一个很窄的切面。<strong>通用 VQA、指令跟随、世界知识、长上下文推理，一个都没测。</strong><br>作者自己也承认："这不能建立更广泛的 VLM 能力保持"。但摘要的语气是"绝缘作为默认配方受到挑战"，读者会以为"保护"被证伪了。<strong>实际被证伪的是"在已有的共训配方上，绝缘提供额外保护"，而不是"绝缘不保护能力"。</strong>这两句话差得很远。</li>
+
+    <li><strong>开环 ADE 与语言质量会反向，而论文拿 ADE 当主要证据。</strong>分段训练里，token 关时绝缘的 ADE 更差、理由质量反而更好（63.0 vs 61.3）。这直接说明两个指标测的不是一件事。<br>更麻烦的是：<strong>开环和闭环的排序也不一致。</strong>并发 + token 开，开环几乎打平（绝缘甚至略优）、闭环差 17%（0.600 vs 0.703）。既然开环不能预测闭环，那用开环 ADE 做大多数消融，就只是在测"轨迹拟合得像不像"。<strong>论文的主要证据链，建立在一个它自己证明不可靠的代理上。</strong></li>
+
+    <li><strong>"两条通道可替代"只在低带宽任务上成立，而这恰好是限定而不是普适。</strong>驾驶：0.600 vs 0.601，完美等价。操作：耦合 + 无 token（32.9）比绝缘 + 有 token（19.5）高 <strong>1.7 倍</strong>，MolmoAct2 上是 36.5 vs 22.0（1.66 倍）。<br>所以正确的表述是：<strong>在动作可以量化为少数平滑标量的任务上，token 通道够用；在接触丰富的任务上，它不够用。</strong>作者把操作实验写成"同样成立"，其实它是对"可替代"的<strong>限定</strong>——而且这个限定正好指向具身智能最值钱的那类任务。</li>
+
+    <li><strong>有一格方向是反的，但被一句"训练顺序只改变幅度"盖过去了。</strong>VLM 先 + token 开：绝缘 0.648、耦合 0.646——<strong>耦合略低</strong>。而作者的核心主张是"耦合更好"。<br>他们确实写了"有监督时，VLM 先之后耦合几乎没有差别"，措辞是准确的；但结论段仍然写成了"耦合在两种设置下都提升"。<strong>一个 2×2×3 = 12 格的设计里，出现 1~2 格反向是正常的；不正常的是把它平均掉、不再追问"为什么这一格反向"。</strong>而这一格恰恰是最接近工业配方的那一格（π0.5 就是 VLM 先）。</li>
+
+    <li><strong>只有一个驾驶基座，而且是 2B。</strong>Qwen3-VL-2B 的语义能力本来就有限，"保护它"的收益天然低。换成 7B / 72B 的多模态模型，动作梯度对语义特征的破坏可能真的更大——<strong>"绝缘不该做默认"这个结论，很可能与模型规模绑定。</strong><br>这和我们前几天拆过的那篇架构复盘是同一类陷阱：<strong>在小模型上测出来的"某机制无用"，到目标规模可能翻转。</strong>作者没有做任何规模扫描，也没有讨论这个方向。</li>
+
+    <li><strong>它是纯实证，没给机制。</strong>作者自认："我们刻画了交互，但没有建立造成性能差异的机制。"而"两条通路送同一个信号"本身是一个<strong>机制断言</strong>——它需要的证据是表征层面的（比如 VLM 的表征在两种条件下的相似度、动作相关信息在哪些层被编码、探针能不能从 K/V 里读出未来轨迹）。<br>现在的证据是"行为上等价"，而"行为上等价"也可能来自完全不同的原因（比如两条路都只是让 VLM 学到了"注意路面"这种粗特征）。<strong>结论可能对，解释是猜的。</strong></li>
+  </ol>
+
+  <div class="box bad">
+    <b>一个必须说的交叉点。</b>我们昨天拆的那篇文章讲的是"大脑和双手之间的接口"：用文本/代码通信，换大脑不用重训手；用 embedding 通信，换大脑就得重训手。<br>
+    这篇论文补上了<strong>第三种状态</strong>：用 embedding 通信、但<strong>允许梯度回传</strong>。这时候大脑和双手不是"契约关系"，是<strong>共生关系</strong>——接口没有独立语义，两边的参数互相塑造。<br>
+    而"绝缘"，本质上是想把一个 embedding 接口<strong>强行降级成只读契约</strong>：VLM 写、专家读，专家不许回写。<strong>实测的代价是闭环 17%（0.600 → 0.703）。</strong><br>
+    所以那句"接口决定可替换性"可以再补一句：<strong>接口也决定效率。想要可替换性，就得接受接口变窄；想要效率，就得接受两边焊死。</strong>这才是这两篇文章合起来给出的、真正可操作的那句话。
+  </div>
+
+  <h3>一句话总账</h3>
+  <p>这篇论文的贡献不是"绝缘错了"，而是<strong>把一个捆绑销售的设计决定拆成了两个独立开关，并给出了一张能直接读的四格表</strong>。它证明的最硬的一件事是：在已经有动作 token 监督的配方里，额外屏蔽专家梯度<strong>几乎不带来保护，却要付闭环性能的代价</strong>——"重复投保"这个词，比"绝缘"准确得多。</p>
+  <p>它最该被追问的是另一头：<strong>保费收了，理赔记录是空的——但那可能只是因为从来没人报过案。</strong>论文只在一项语言指标上验证了"能力没被破坏"，而"保护预训练能力"是绝缘存在的唯一理由。<strong>在通用 VLM 能力被真正测过之前，"绝缘不该做默认"应该读成"绝缘的默认地位缺乏证据"，而不是"绝缘有害"。</strong>这两句话的区别，决定了下一版配方该怎么改。</p>
+
+  <p class="src">论文：<a href="https://arxiv.org/abs/2611.05249" target="_blank">arXiv 2611.05249 · Should the Action Expert Train the VLM? Action-Token Supervision and Gradient Routing in Mixture-of-Transformer VLAs</a>（2026-11-03，NVIDIA / Princeton / Stanford）　｜　项目页：mot-vla-gradient-routing.github.io</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解　|　论文：arXiv 2611.05249（2026-11-03）</footer>
+</div></body></html>
