@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>假如给你1.6 万小时 UMI 类数据和 128 张 H200</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>假如给你1.6 万小时 UMI 类数据和 128 张 H200<span class="sub">78% 对 27%：一台机器人数据都没采，靠人手夹爪赢下双臂操作 · 16,151 小时 / 1065 万子任务 / 一百多名操作者 · 为什么"锚定动作"能让手持数据直接喂机器人 · 数据翻倍，post-training loss 只降 2.4%</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-04</div>
+    <div><b>关键词</b> 手持示范 · UMI · YUBI · 锚定动作 · Visual Evidence Budget · 跨本体</div>
+    <div><b>一句话</b> 它把"采集一个动作"的边际成本，从一台机器人降到了一双手</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>机器人数据一直有个死结：<b>想采一个动作，必须同时凑齐一个操作员、一台机器人、一个工位</b>。三者绑定，边际成本极高，所以全行业的数据量卡在几万小时上不去了。AIRoA-0 干的事情非常朴素：<b>把机器人从采集环节里拿掉，只留一个人和两个夹爪。</b>于是数据量从"随机器人数量增长"变成"随愿意记录的人数增长"——一口气做到 <b>16,151 小时、1065 万个子任务、一百多名操作者、一百多个任务，而且零机器人数据</b>。代价是三个：没有关节角只能看夹爪、没有全局视野只有两个手腕相机、没有失败样本只有成功示范。这三个缺口分别用<b>锚定相对位姿</b>、<b>两级语言 + 阶段预测 + 本体感知记忆</b>、<b>Visual Evidence Budget</b> 补上。结果是十项双臂任务平均 <b>78%</b>，而 π0.5、XR-1、GR00T N1.7、MolmoAct2 在同样示范上 post-training 后最强只有 <b>27%</b>——<b>并且 A-0 十项任务共用一套 recipe，那四个模型是逐任务搜过最佳超参的。</b>它证明的不是"数据多就赢"，而是<b>数据形态对了，规模才转得动。</b></p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么拆</a>
+  <a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一套"从人手到机器人"的完整流水线</h2>
+  <p>AIRoA-0（简称 A-0）由四个互相咬合的部分组成，缺一个都不成立：</p>
+  <table>
+    <tr><th>环节</th><th>做什么</th><th>关键设计</th></tr>
+    <tr><td><b>数据</b></td><td>16,151 小时双臂手持示范，1065 万个子任务片段</td><td>YUBI 手持夹爪（手指驱动 + 手腕相机 + 6 DoF 跟踪）</td></tr>
+    <tr><td><b>预训练</b></td><td>整个语料上训 backbone，30 万步、batch 2,048</td><td>See Less, Specify More（S2）目标 + 子任务辅助损失</td></tr>
+    <tr><td><b>Post-training</b></td><td>目标任务示范微调，8×H200 <b>不到 4 小时</b></td><td>stage head（阶段预测）+ proprioceptive memory（近期运动记忆）</td></tr>
+    <tr><td><b>Inference Harness</b></td><td>在机器人上把预测变成连续运动</td><td>stage EMA 平滑 + non-uniform streaming decoding</td></tr>
+  </table>
+  <p>backbone 沿用 π0.5 那套骨架：<b>SigLIP So400m/14 图像编码器 + Gemma 2B 视觉语言主干 + 300M 参数、用 Flow Matching 训的 Action Expert</b>，从公开 checkpoint 初始化。改动集中在接口层和目标函数上。</p>
+  <p>接口的输入输出极其克制：<b>两张手腕图像、一条指令、本体感知状态</b>，在 20 Hz 网格上输出未来 32 个动作。<b>没有头部相机、没有场景相机、没有地图。</b></p>
+  <p>最硬的一组数字：</p>
+  <ul>
+    <li>十项双臂任务（Franka 平台，评测地点<b>零训练数据</b>）平均成功率 <b>78%</b>，四个对比 VLA 平均 <b>14%–27%</b>；A-0 在<b>每一项</b>任务上都最高。</li>
+    <li>十项任务里有 <b>六项只用 3–6 小时示范</b>就够，只有杯子金字塔和耳机任务超过 10 小时。</li>
+    <li>同一套权重跑通 <b>双臂 Franka、TX-G2 人形、OpenArm、一对 UR</b>，四种本体、零重训、零调参。</li>
+  </ul>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：五条公理，把"数据瓶颈"从硬件挪到了人</h2>
+
+  <h3>公理一：采集的边际成本，才是数据规模的真正天花板</h3>
+  <p>算一笔账。遥操作采一条数据，需要：操作员在场、机器人空闲、工位搭好、环境布置好、有人盯着别撞。这五件事同时满足才能采一小时。<b>所以机器人数据的增长速度，被"机器人的数量"锁死了。</b></p>
+  <p>手持夹爪把这个式子改了：操作员双手各持一个夹爪，去干一件真事，数据就出来了。<b>不需要机器人、不需要工位、不需要场地——在任意地点，像平时一样完成任务即可。</b></p>
+  <div class="step"><div class="t">推论 1</div><div class="d">这条约束一旦解开，数据量就不该按"机器人台数 × 运行时长"估，而该按<b>"人数 × 每人愿意记录的时长"</b>估。16,151 小时 / 一百多名操作者 ≈ 人均 150 小时，这个量级一个人一两个月就能录出来。<b>数据规模化从"资本支出问题"变成了"人力组织问题"。</b></div></div>
+
+  <h3>公理二：要让手持数据能直接喂机器人，状态和动作的定义必须"不依赖本体"</h3>
+  <p>这是全文最核心的一处技术设计，也是最容易被一句"用了 UMI 的相对轨迹"带过的。</p>
+  <p>先想清楚矛盾在哪：人手和机械臂<b>没有共同的坐标系</b>。没有共同的底座、没有共同的关节、没有共同的世界原点。如果你用"关节角"当动作，人手的示范根本没有关节角；如果你用"世界坐标系的绝对位姿"当动作，人手持和机器人携带时"世界原点"压根不是一回事。</p>
+  <p>解法是<b>锚定（anchored）相对位姿</b>：</p>
+  <div class="fml">
+    <div class="name">锚定动作表示</div>
+    \[ a_i^{(k)} \;=\; T_{\text{grip}}^{-1}(t)\ \cdot\ T_{\text{TCP}}^{(k)}(t+i),\qquad i=0,1,\dots,H-1 \]
+    <div class="exp">符号翻译：\(T_{\text{grip}}(t)\) 是<b>拿到当前这张观察时</b>夹爪的位姿；\(T_{\text{TCP}}^{(k)}(t+i)\) 是未来第 \(i\) 步夹爪工具中心点该到的位姿。整个动作块里的每一个动作，都是<b>相对于"此刻夹爪在哪"来表达的目标位姿</b>。<br>大白话：<b>不说"去世界坐标 (1.2, 0.3, 0.9)"，只说"从你现在的位置往右前上方挪 12 厘米、转 30 度"。</b>这么一说，人手和机械臂就站在同一条起跑线上了——谁都不需要知道自己在地球上的绝对位置。<br>每条臂 10 个数：平移 3 + 6D 旋转 6 + 夹爪开合指令 1，双臂共 <b>20 个数</b>。状态是"一只夹爪在另一只夹爪坐标系中的位姿 + 两个夹爪的开合度"，共 <b>11 个数</b>。</div>
+  </div>
+  <p>这个表示还顺带解决了两个工程问题：</p>
+  <ul>
+    <li><b>误差不累积</b>：每个动作都是独立的绝对目标，不是"在上一个动作基础上加一点"的增量。所以前面一步有小偏差，不会滚雪球。</li>
+    <li><b>控制器频率可以不同</b>：动作块描述的是一串目标位姿，机器人底层的控制器可以按自己的频率去跟踪它——<b>策略的 20 Hz 和执行层的 100 Hz 解耦了</b>。</li>
+  </ul>
+  <div class="step"><div class="t">推论 2</div><div class="d">"跨本体"不是靠适配层做出来的，是<b>靠表示层做出来的</b>。只要状态和动作都定义在夹爪上，换一条机械臂就只是换一个跟踪器——所以四种机器人能用<b>完全相同的权重</b>。反过来，任何含底座、关节角、世界坐标的表示，都会在换本体的那一刻失效。</div></div>
+
+  <h3>公理三：只有两个手腕相机，就必然丢失"我在任务第几步"这个信息</h3>
+  <p>这一点是手持路线的天然缺陷，必须正面补。两个手腕视野加起来大概能看到工作台的局部，<b>但看不到全局进度</b>：你面前有一个零件，你怎么知道"该去拿了"还是"已经拿过了要放下"？<b>同一个画面，可以对应好几个不同的子任务。</b></p>
+  <p>如果只给一条任务指令，这个歧义只能在动作分布内部硬解——等于让策略去猜。A-0 选择把它<b>显式拆开</b>，用三层机制：</p>
+  <ol>
+    <li><b>两级语言（预训练）：</b>每条示范都有"任务指令"（换扫地机器人部件）和"子任务指令"（取下第一块用过的拖布并放入盒子）。预训练时让语言主干<b>去预测当前子任务文本</b>。这个预测<b>只用于训练、不进 Action Expert</b>——它的作用是<b>强迫表示里编码"进度"</b>，因为你不说出当前步骤，就没法从两个局部视野里推出进度。</li>
+    <li><b>stage head（post-training）：</b>把任务划成若干阶段（每组连续子任务），执行前先预测当前阶段，以<b>语言形式</b>传给 Action Expert。用交叉熵训练，标签直接来自示范里的子任务标注，<b>不需要额外标注</b>。</li>
+    <li><b>本体感知记忆：</b>保存最近 10 个本体状态 + 每个状态距现在多久，用 4 个 query 压成 4 个 token 塞进 prompt。<b>解决"单帧看不出刚才干了什么"。</b></li>
+  </ol>
+  <p>记忆这块有个细节很讲究：不同机器人查询策略的频率不一样，如果按"步数"索引历史，同样 10 步在不同机器人上对应的时间跨度完全不同。所以训练时<b>按 5–15 Hz 随机采样历史、并显式编码每个状态的真实时间年龄</b>，让同一策略能适应这个范围内的任意频率。<b>而且训练中有四分之一的时间干脆不给历史</b>，逼它既能用记忆、也能不用记忆。</p>
+
+  <h3>公理四：手腕视野里大部分像素与任务无关，而"无关部分"恰好是地点之间变化最大的</h3>
+  <p>这条公理直接引出 Visual Evidence Budget。逻辑链条是：</p>
+  <ul>
+    <li>手腕相机看到的东西远多于任务需要——桌面纹理、背景墙、房间其他区域；</li>
+    <li>而<b>不同采集地点之间，变化最大的恰恰就是这些无关区域</b>；</li>
+    <li>所以如果策略平等对待每个像素，"换一个地方"就会带来巨大的分布偏移。</li>
+  </ul>
+  <p>结论：<b>"看哪里"必须是学出来的，不能用固定裁剪，也不能靠人工标注意注区域</b>（标不起，1065 万个片段）。A-0 的做法是给一个"预算"，让模型自己在预算内决定保留哪些 token——不给答案，只给约束。</p>
+
+  <h3>公理五：数据规模的价值，必须能在一个可测的曲线上体现出来</h3>
+  <p>如果 16,151 小时只是"很多"，那这篇论文就只是一个工程报告。<b>它必须证明"再多一点会更好"，否则没人会继续投人力去录。</b>所以作者做了两组 scaling 实验：把预训练数据切成 50% / 25% / 12.5% / 6.25% 分别训，然后看两个指标——预训练的 action loss，和<b>同样 16 组任务数据 post-training 之后</b>的 loss。</p>
+  <div class="step"><div class="t">推论 3</div><div class="d">关键在第二个指标：<b>预训练数据多带来的优势，能不能穿过 post-training 活下来？</b>如果不能，那预训练就是在做无用功——反正最后都要用目标任务数据微调。作者实测：能，而且前 1,000 步之后差距不再缩小。<b>这一条才是"值得继续采数据"的真正依据。</b></div></div>
+
+  <div class="box good"><b>公理链收口：</b>采集成本卡住规模（公理一）+ 表示必须不依赖本体（公理二）+ 局部视野丢失进度（公理三）+ 无关像素随地点漂移（公理四）+ 规模价值必须可测（公理五）= <b>「手持夹爪 + 锚定动作 + 两级语言 + 视觉预算」是一套彼此咬合的最小设计</b>。抽掉任何一块，整条链路就断：没有锚定动作就没有跨本体，没有两级语言就没有长程，没有视觉预算就换不了地点，没有 scaling 曲线就没人继续投人力。</div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：四个零件与三个数字</h2>
+
+  <h3>零件一：YUBI 夹爪——让"示范"等于"执行"</h3>
+  <p>YUBI 的设计目标只有一个：<b>让记录下来的内容和机器人将来看到、执行的内容完全一致</b>。为此它做了三件事——</p>
+  <ul>
+    <li><b>手指驱动</b>：手指闭合，夹爪就闭合。所以人操作时的手感就是夹爪的手感，不需要额外控制器；</li>
+    <li><b>手腕处装相机</b>：视角在人手中和机械臂上<b>是同一个物理位置</b>；</li>
+    <li><b>跟踪 6 自由度运动</b>：所以能算出夹爪位姿，进而算出锚定动作。</li>
+  </ul>
+  <p>同一个夹爪可以直接装到机械臂上做末端执行器。<b>这是整条路线成立的前提：采集工具 = 执行工具。</b></p>
+
+  <h3>零件二：Visual Evidence Budget——用预算逼出注意力</h3>
+  <p>这部分是全文技术含量最高的一处，值得把式子摊开看。</p>
+  <div class="fml">
+    <div class="name">gate 打分 + token 缩放</div>
+    \[ p_j=\sigma\Big(f\big(\text{token}_j,\ \bar{c}\big)\Big),\qquad \tilde{x}_j=\big(\phi+(1-\phi)\,p_j\big)\cdot x_j \]
+    <div class="exp">\(f\) 是一个小网络，输入是<b>某个图像 token</b> 和<b>指令的池化摘要 \(\bar c\)</b>——也就是说"这个位置重不重要"是<b>相对当前指令</b>判断的，不是绝对的。\(\phi\) 是 floor，保证每个 token 至少留一点信息痕迹（不至于被完全抹掉）。<br>所以这个 gate 不是"硬裁剪"，而是<b>按重要性做软缩放</b>：重要的 token 保持原样，不重要的被压小。</div>
+  </div>
+  <div class="fml">
+    <div class="name">budget loss：只约束平均值，不告诉它看哪</div>
+    \[ \mathcal{L}_{\text{budget}}=\Big(\frac{1}{N}\sum_{j=1}^{N}p_j-\tau\Big)^2 \]
+    <div class="exp">这就是全部的监督信号：<b>一个视野里 N 个 token 的平均保留概率，要接近目标值 \(\tau\)。</b>没有 mask、没有 box、没有任何区域标注。<br>精妙之处在于两个损失的<b>分工</b>：budget loss 管"总量"（你不能全都看，也不能全都不看），action loss 管"怎么分配"（在总量固定的前提下，看哪里能让动作更准）。<b>约束总量、放开分配——这是"无监督注意力"能work的关键。</b></div>
+  </div>
+  <p>实测效果很干净：在 25 个子任务上，gate 都更关注<b>夹爪本身和它正在操作的物体</b>，而桌面、背景、房间其他区域的权重下降。也就是说，<b>它自己学会了"注意力应该跟着手走"</b>——而这恰恰是迁移到新地点时最需要的性质。</p>
+  <p>post-training 阶段还多了一层用法：<b>把 gate 也作用到 attention 上</b>。做法是停止 keep probability 的梯度、把它投影成符合预算的形式，构造一个先验，加进 Action Token 对 Image Token 的注意力分数里，权重在前 500 步内从 0 升到 1。所以 gate 有两个身份——<b>输入端缩放器</b>和<b>注意力的先验</b>，两者在部署时都保留。</p>
+
+  <h3>零件三：Non-uniform Streaming Decoding——让两个 slot 就够用</h3>
+  <p>这部分解决的是"怎么能既连续又跟得上变化"。先把标准做法和它的毛病讲清楚：</p>
+  <ul>
+    <li><b>标准 Flow Matching 推理</b>：每个动作块都从纯噪声重新生成，跑 10 次网络。缺点：块与块之间没有连续性，接缝明显；</li>
+    <li><b>Streaming decoding</b>（FlashVLA 引入 VLA）：维护一个 \(M\) 个 slot 的 buffer，每个 slot 处在不同噪声水平，不同块之间用因果注意力。每次查询只把最前面那个块推到干净并执行，新的噪声从尾部进。<b>这样每个块会在连续 M 次观察中被逐步细化，还能用上前面的上下文。</b></li>
+  </ul>
+  <p>但等距噪声有个两难：</p>
+  <div class="step"><div class="t">两难</div><div class="d"><b>slot 少</b> → 每次更新幅度大 → 执行前最后一次修正是"猛改" → 出现接缝；<br><b>slot 多</b> → 每个块早在很久之前的观察下就基本定形了 → 场景变了反应不过来。<b>本质是"平滑"和"响应速度"在抢同一个预算。</b></div></div>
+  <p>A-0 的解法是让<b>更新幅度取决于"离执行还有多远"</b>：只用 <b>2 个 slot</b>，噪声水平从 1 直接大步走到 0.1，然后在执行前只做 0.1 → 0 的<b>小幅修正</b>。</p>
+  <div class="fml">
+    <div class="name">非均匀噪声 schedule</div>
+    \[ \text{进入 buffer}:\ 1\ \longrightarrow\ 0.1\ \ \text{(大步粗化)},\qquad \text{执行前}:\ 0.1\ \longrightarrow\ 0\ \ \text{(小步精修)} \]
+    <div class="exp">大白话：<b>新来的块先被"大概画个草图"（大步去噪），之后只用最新一次观察做细微调整（小步修正）。</b>因为每个动作都锚定在"查询时刻的夹爪位姿"上，所以每次小修正都是相对最新位姿的，不会和已经发生的动作打架。<br>训练时每个 slot 的噪声水平从对应区间采样，同时覆盖 steady-state 和 cold start。<b>decoder 不增加任何参数</b>——噪声水平通过 Action Expert 本来就有的时间条件输入进去。<b>也就是说这是一个零参数成本的改动。</b></div>
+  </div>
+  <p>收益有两块：动作在块与块之间连续，同时还能及时响应场景变化；以及<b>算力</b>——观察只编码一次，steady state 下 Action Expert 只评估 <b>2 次</b>（标准要 10 次），H200 上单次查询约 <b>60 ms</b>。</p>
+
+  <h3>零件四：stage EMA——防止一次误判带偏整段</h3>
+  <p>阶段预测每次查询都重新做一次。这意味着<b>一次错判，Action Expert 就可能收到"下一个步骤"的指令</b>，动作立刻跑偏。而真实的阶段转换是渐进的（拖布取下来了，但还没开始装新的）。</p>
+  <p>所以用<b>阶段预测概率的指数移动平均</b>选最高概率阶段。效果：孤立的错误预测几乎不改变结果（被历史平均掉），真实的阶段转换则会随着过程展开被跟上。<b>而且查询频率变化时不需要重新调参</b>——这是 EMA 相对"固定窗口"的天然优势。</p>
+
+  <h3>三个关键数字</h3>
+  <table>
+    <tr><th>测什么</th><th>结果</th><th>怎么读</th></tr>
+    <tr><td>十项任务平均成功率</td><td><b>78%</b>（对比 VLA 最强 27%）</td><td>一套 recipe 通吃 vs 对手逐任务搜超参</td></tr>
+    <tr><td>跨本体</td><td>Franka / TX-G2 / OpenArm / UR，<b>同一套权重</b></td><td>表示层做对了，不需要适配层</td></tr>
+    <tr><td>数据 scaling</td><td>数据翻倍，post-training loss 降 <b>2.4%</b></td><td>有效，但很"钝"——见第四节</td></tr>
+  </table>
+  <p>scaling 那条曲线的拟合形式是这样的：</p>
+  <div class="fml">
+    <div class="name">预训练数据量与 post-training loss 的幂律关系</div>
+    \[ \mathcal{L}_{\text{post}}\ \propto\ N^{-\alpha},\qquad N=\text{预训练时长（小时）},\ \ \alpha\ \text{使数据翻倍时 loss 下降约 }2.4\% \]
+    <div class="exp">读法：这是典型的<b>幂律收益</b>——不是"越多越好"的线性，而是"每次翻倍只能换来一个固定小比例改善"。从约 1,000 小时到 16,000 小时（四次翻倍），累计下降约 <b>9%</b>。<b>方向对，斜率低。</b></div>
+  </div>
+
+  <h3>那个最有意思的失败案例</h3>
+  <p>作者专门测了一次"执行中被打断"：A-0 正把绿色零件送往绿色格子时，操作者把整排格子推向一侧，让红色格子来到夹爪下方。机械臂原本在向下运动，<b>但它在一个连续动作里转向了绿色格子的新位置，并把零件放进去</b>。之后又交换绿黄格子，A-0 依然跟着新的绿色走。</p>
+  <p>这个行为由两个零件共同支撑：策略根据<b>视觉观察</b>判断该放哪（不是记住格子原来的位置），非均匀流式解码让每次新观察都能更新预测、同时保持运动连续。<b>注意这里没有任何"重新规划"的显式步骤</b>——没有地图、没有规划器，场景一变，预测跟着变。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：78% vs 27% 是真的，但这个比较有一半是"数据的胜利"</h2>
+
+  <h3>它真正证明了什么</h3>
+  <div class="box good">
+  <p><b>1. 它把"数据规模化"从一句口号变成了一条可执行的路径。</b>"人均 150 小时 × 一百多人"这个结构，是任何实验室都能复制的——不需要一百台机器人。而且它把整套东西都开放了：数据、预训练权重、post-training recipe、YUBI 硬件设计和采集软件。<b>这是"数据基础设施"级别的工作，不是一篇模型论文。</b></p>
+  <p><b>2. 锚定动作这个表示，是全文最值得抄的一招。</b>它用一句"相对于你现在的位姿"就同时解决了跨本体、误差不累积、控制频率解耦三个问题。<b>好的表示设计就是这样——一个决定，三个收益。</b></p>
+  <p><b>3. Visual Evidence Budget 是"无监督注意力"的一个漂亮范式。</b>约束总量、放开分配、用动作损失来教它分配——这三句话可以搬到任何"有冗余输入、缺区域标注"的场景里（比如长视频理解、多传感器融合）。</p>
+  <p><b>4. 零参数成本的 streaming 改进。</b>只改噪声 schedule（2 个 slot、1→0.1→0），就把计算量从 10 次评估降到 2 次，还顺手解决了接缝问题。这种"改调度不改结构"的思路，在部署侧价值很高。</p>
+  </div>
+
+  <h3>需要打问号的地方</h3>
+  <ol class="crit">
+    <li><b>78% vs 27% 这个对比，混淆了"数据规模"和"方法设计"。</b>A-0 用的是<b>自己 16,151 小时预训练出来的 checkpoint</b>，四个对比模型用的是<b>各自的公开 checkpoint</b>。所以这 51 个百分点里，有多少来自"数据多了几个数量级"，有多少来自"锚定动作 / 两级语言 / 视觉预算"？<b>论文没有做消融来分离这两者</b>——比如用同样 16k 小时数据、但关掉 visual budget 训一个 A-0 变体。诚实地说，它证明的是<b>"这条路线能走通"</b>，不是<b>"这套架构更优"</b>。作者给对手搜了动作时域 4–16、多种频率、6/8/10 万步，算是尽力了，但数据这个变量没法对齐。</li>
+    <li><b>成功率口径要看清：15 次试验、部分完成给部分分。</b>"部分完成的任务获得部分分数"意味着 78% 不是"完整完成率"，而是一个<b>加权完成度</b>。这在长程任务评测里是合理做法（有些任务要跑两分钟，全或无太粗），但它让"78%"读起来比实际更好。对比模型的 27% 很可能也是同一口径，所以<b>相对差距可信，绝对水平要打折</b>。</li>
+    <li><b>没有任何失败 / 恢复示范，这是路线级隐患。</b>论文明确说"数据中没有机器人动作、失败或恢复的示例"。所以策略学的是"人是怎么成功的"，从来没见过"抓空了怎么办"。它靠视觉闭环硬扛扰动，但<b>抓取失败和"格子被推走"是两种完全不同的扰动</b>——后者还在演示分布附近，前者已经完全出界了。真机上抓空一次之后它怎么恢复，论文没给。</li>
+    <li><b>那个放错桌子的错误模式，暴露了最本质的弱点。</b>最主要的失败是"把托盘放回起点桌而不是目标桌"——因为两张桌子外观完全相同。这说明<b>模型没有持久的空间记忆</b>，所有空间知识都在当前两张手腕图像里。<b>两张一样的桌子，它就分不清自己站在哪。</b>这不是调参能解决的，是表示层缺了一个"我在空间中的位置"的变量。有意思的是，同期 Mobile DVA 撞在同一堵墙上（见另一篇解析）——<b>两个团队、两条路线，同一个短板：缺一个显式的自我定位量。</b></li>
+    <li><b>2.4% 这个幂律斜率，意味着这条路的尽头不远。</b>数据翻倍只降 2.4% loss，四次翻倍才累计 9%。要再降一半 loss，需要的数据量是天文数字。<b>换算成人力：现在是一百多人录 1.6 万小时，翻四倍就是四百多人录 6.4 万小时。</b>这条路能走，但走不到"通用机器人"那么远。作者把这条曲线如实报出来，是负责的；但读者不该把它读成"继续堆数据就行"。</li>
+    <li><b>"跨本体"是最容易高估的一条。</b>四种机器人都装 YUBI 夹爪，所以"换本体"实际上是"换一个能精确跟踪同一串位姿的底座"。<b>它证明了表示层的本体无关性，但没证明"任意机械臂"。</b>一旦机械臂够不到示范里人手能到的地方（窄缝、深处、高架），锚定动作依然成立，但<b>可达性不成立</b>——这是手持路线一个没被讨论的隐含假设：<b>人手能到的，机械臂也得到。</b></li>
+    <li><b>评测地点"零训练数据"是优点，但"地点"数量没说清。</b>文章强调"在测试地点，训练数据没有一条来自该地点"，这很好；但十项任务是在几个地点测的？如果只有一个测试地点，那"泛化到新地点"这句话的证据强度就有限。<b>换地点这件事，样本量比成功率的绝对值更重要。</b></li>
+    <li><b>4 小时 post-training 这个数字容易被误读。</b>它是"8×H200、单节点、<4 小时"——按当前市价这一轮训练不是小钱。而且这 4 小时的前提是<b>你已经有 16k 小时预训练出来的 backbone</b>。拿这个数字去比"传统方法要调试两周"，是不对等的比较。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>这篇的真正贡献不在 78%，而在它把一句话变成了工程现实：<b>想让机器人数据变多，别去造更多机器人，去让更多人愿意戴上夹爪干一件真事。</b>为了兑现这句话，它必须在三个地方同时补洞——用锚定动作抹掉本体差异、用两级语言补回进度信息、用视觉预算扛住地点漂移。<b>这三个补丁彼此不独立，是同一个约束（"只有人手和两个手腕相机"）在三个方向上的投影。</b>至于 78% 里有多少是数据的功劳、有多少是设计的功劳——论文没拆，这也是它最该被追问的地方。<b>但有一件事已经很清楚了：那条"数据翻倍降 2.4%"的曲线，说明这条路的天花板不在方法上，在"还能动员多少人去录数据"上。</b></p>
+  <p class="src">原文：《假如给你1.6 万小时 UMI 类数据和 128 张 H200》，公众号 human five，2026-11-04。论文：AIRoA-0，arXiv:2611.03815。相关：UMI、YUBI、π0.5（arXiv:2504.16054）、S2（See Less, Specify More）、FlashVLA（streaming decoding）、HiFi-UMI、RealOmni-Open。对比模型：π0.5、Xiaomi-Robotics-1（XR-1）、GR00T N1.7、MolmoAct2。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ 来源：公众号 human five</footer>
+</div></body>
+</html>

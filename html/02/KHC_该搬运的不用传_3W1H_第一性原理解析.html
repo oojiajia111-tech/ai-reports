@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kinematic Hypothesis Context: Embodiment-Conditioned Learned Video Coding for Bandwidth-Limited Robot Policy Uplinks</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:25px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.87;margin-top:10px;line-height:1.7;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .box.note{background:#f4f6f9;border:1px solid var(--border);}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top;}
+  th{background:#f2f6fc;}
+  td.num{text-align:center;font-variant-numeric:tabular-nums;}
+  .win{background:#eafaf1;font-weight:700;}
+  .lose{background:#fdf0e6;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>Kinematic Hypothesis Context: Embodiment-Conditioned Learned Video Coding for Bandwidth-Limited Robot Policy Uplinks<span class="sub">云端 VLA 的瓶颈被大家默认成"带宽不够"，于是所有精力都在压码率。这篇说：<strong>要传的那部分内容，绝大部分根本不是新信息</strong>——机器人自己的关节角已经告诉了接收端像素该往哪走，静止场景的位移是几何确定的，唯一未知的只有深度那一维。但"知道该搬多少"和"把像素搬到"是两件事：把姿态当成 24 维向量广播过去，收益 <strong>−0.6%</strong>（等于零）；把同一份信息做成<strong>搬运后的像素</strong>，收益 <strong>−23.9%</strong>。同一份已知信息，两种投递形式，差了 40 倍。</span></h1>
+  <div class="meta">
+    <div><b>来源</b> arXiv 2611.07411</div>
+    <div><b>论文发布</b> 2026-11-05 · arXiv 2611.07411</div>
+    <div><b>机构</b> 清华大学（Yuze Lu，单作者预印本）</div>
+    <div><b>实验</b> LIBERO 200 测试集 · 闭环 20,800 配对 episode（扩展共 38,400）· DROID 真机数据</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>视频压缩一百年来的做法都是"用解码端已经有的东西去预测"：用上一帧预测这一帧。机器人相机流特殊的地方在于，<strong>上一帧到这一帧之间发生了什么，是两台机器共同持有的确定性知识</strong>——关节角、连杆模型、相机标定，接收端全都有，而且<strong>传这些数字几乎不花比特</strong>（实测只多 7 个关节角）。</p>
+  <p>那么按信息论，这份旁信息必然能省比特（条件互信息非负）。但论文证明的第二件事才是真正的关键：<strong>省不到。</strong>因为预测器的感受野是局部的——位移一旦超出窗口，邻域里没有可用的像素，你把姿态这个"数字"给它，它也搬不动任何东西。实测把完整的相机+末端运动当成 24 维全局向量广播进网络：<strong>−0.6%，置信区间跨零</strong>。而把同一份运动学<strong>变成一张张被搬运过的参考图</strong>（平面扫描 + 机器人分层渲染 + 末端平面 + 背景记忆），<strong>−23.9%</strong>。</p>
+  <p>所以它的立论不是"机器人有先验"，而是：<strong>旁信息的价值不由它包含什么决定，由它以什么形式到达接收端决定。</strong>数字要经过学习才能变成位移，像素已经是位移本身。这条和昨天那篇"同一条信号的两条投递路径"是同一个母题——信息的值取决于投递形式，而不是信息本身。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">瓶颈被归错因了</a>
+  <a href="#s2">公理链：位移是已知量</a>
+  <a href="#s3">从比特到任务成功率</a>
+  <a href="#s4">值与不值：三个笨办法</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>"带宽不够"这个诊断，少看了一层</h2>
+
+  <p>场景先摆清楚：VLA 模型（RT-2、OpenVLA-OFT、π0/π0.5）动辄几十亿参数，跑在远端 GPU 上。机器人每 8 个控制步（0.4 秒）发一个包：本体的关节角和位置（无损）+ 每路相机一帧压缩图。现场机器人走蜂窝或卫星链路、一个机队共享一个 AP、水下平台——上行只有<strong>几 kbps</strong>。</p>
+
+  <p>在这个量级上，任务成败完全由上行决定。而所有现成方案都做了同一个假设：<strong>把观测流当成固定载荷，去优化编解码器。</strong>于是竞争维度变成"谁的架构更强"——DCVC-RT（CVPR'25）这类实时神经编解码器，靠砍掉显式运动估计换来速度。</p>
+
+  <div class="box bad">
+    <b>被漏掉的那一层：</b>机器人相机的帧间变化，<strong>大部分是自己造出来的，而且造它的那些量，接收端本来就有</strong>。手臂抬起、相机转向、云台平移——这些不是"新信息"，是"已经付过款的已知量"在画面上留下的痕迹。<br>
+    历史条件化的编解码器必须从像素里<strong>重新发现</strong>这件事（估计运动、编码残差），而它其实一直在会话建立时就被共享了：连杆网格、相机内参、手眼变换。
+  </div>
+
+  <p>作者把这份共享知识叫 <b>kinematic hypothesis context（KHC，运动学假设上下文）</b>。名字里的"假设"是关键：它不是一个预测，而是一<strong>组</strong>候选——因为深度未知，所以"这个像素该搬到哪"有一整个一维的解族，网络逐像素去挑。</p>
+
+  <table>
+    <tr><th>槽位</th><th>它解释什么</th><th>谁来算</th></tr>
+    <tr><td>恒等（j=0）</td><td>跟着相机一起动的东西（腕部视角里的夹爪）、静止相机的静态场景</td><td>直接复制上一帧</td></tr>
+    <tr><td>平面扫描（j=1..D）</td><td>相机自身运动造成的整体位移，深度从 3 m 扫到 8 cm</td><td>单应矩阵 H<sub>d</sub>，D=32 个候选</td></tr>
+    <tr><td>机器人层（j=D+1）</td><td>手臂：每个像素按它自己所属的连杆动</td><td>双方各渲一张机器人（只用模型+关节角，不含场景）</td></tr>
+    <tr><td>末端平面（j=D+2）</td><td>夹住的东西跟着末端走</td><td>过末端执行器的平面单应</td></tr>
+    <tr><td>背景记忆（j=D+3）</td><td>手臂移开后露出的桌面</td><td>解码端自己维护，不需要重传</td></tr>
+  </table>
+
+  <p>这五个槽位全部<strong>零比特</strong>：两端用同一份确定性代码、同一份共享数据算出同一批参考图。<strong>不增加任何可学习参数</strong>（对照基线也是 7.0 M），不增加网络 FLOPs——代价只是几何计算（P 帧编码 26.7 ms，其中机器人渲染 1.95 ms/相机）。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>公理链：位移是已知量，未知量只剩一维</h2>
+
+  <div class="step">
+    <div class="t">公理 1　比特只应该花在接收端算不出来的部分</div>
+    <div class="d">这是率失真理论的老话，但机器人流里"算不出来"的部分比想象中小得多。两台机器共享：上一帧解码结果 \(\hat{X}_{\le s}\)、关节角轨迹 \(q_{\le t}\)、连杆模型 \(M\)、相机标定 \(\Theta\)。这四样合起来构成"共享上下文" \(C_t\)。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 1　"具身信息"：条件互信息，非负但没给大小</div>
+    \[
+    R_{X_t\mid \hat{X}_{\le s},\,K_t}(D)\;\le\;R_{X_t\mid \hat{X}_{\le s}}(D),
+    \qquad
+    \Delta R^{\star}=\underbrace{H\!\left(Z_t\mid \hat{X}_{\le s}\right)-H\!\left(Z_t\mid \hat{X}_{\le s},K_t\right)}_{\text{省下的码长}}=\;I\!\left(Z_t;\,K_t\mid \hat{X}_{\le s}\right)\;\ge\;0
+    \]
+    <div class="exp">
+    \(Z_t\) 是量化后的表示，\(K_t\) 是由 \((q_s,q_t,M,\Theta)\) 完全决定的运动学上下文，\(I(\cdot;\cdot\mid\cdot)\) 是条件互信息。<br>
+    <b>说人话：</b>"双方都知道的东西，不该再花钱传一遍"。这个式子只保证<strong>不会更差</strong>，完全没说能省多少——省多少取决于 \(K_t\) 里到底有多少是 \(Z_t\) 需要的、而历史帧里没有的。<br>
+    <b>所以式 1 是个开胃菜。</b>它真正的用处是给后面两节定了个靶子：既然理论上非负，那么"现有编解码器拿不到这份收益"这件事就必须有<strong>机制上的解释</strong>，而不是"架构不够强"。
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 2　静止场景 + 已知相机运动 = 像素位移完全确定</div>
+    <div class="d">这一条是纯粹的刚体几何，跟学习无关。空间一个点 \(P\)，在相机 t 里是 \(Z K_t^{-1}\tilde{x}\)，在相机 s 里是 \(RP+t\)。两边拍同一个点，中间的映射就是一个只依赖 \((R,t)\) 和深度 \(Z\) 的变换。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　位移公式与一维运动族：未知量只剩 \(\rho\)</div>
+    \[
+    \tilde{x}'\;\sim\;K_s\left(R\,K_t^{-1}\tilde{x}+\rho\,t\right),
+    \qquad \rho=\frac{1}{Z}\in[\rho_{\min},\rho_{\max}]
+    \]
+    \[
+    H_d=K_s\left(R+\rho_d\,t\,e_3^{\top}\right)K_t^{-1},
+    \qquad
+    \|\Delta u\|\;\le\;\Delta\rho\,\big\|\partial u/\partial\rho\big\|
+    \]
+    <div class="exp">
+    \(R,t\) 是由关节角经正运动学算出的相对位姿，\(\rho\) 是<strong>逆深度</strong>，\(H_d\) 是深度取 \(\rho_d\) 时的单应矩阵（一块平面上的所有点共用一个 H）。<br>
+    <b>关键洞察：</b>相机一动，每个像素的二维位移看着有无数种可能，但它们<strong>全都落在一条曲线</strong>上，这条曲线只由 \(\rho\) 一个标量参数化。换句话说，<strong>整帧的运动被压成了一维</strong>。纯旋转时更极端：\(\rho\) 干脆消失，位移与深度无关。<br>
+    <b>说人话：</b>你以为要给每个像素传"往哪走"（二维矢量场，很贵）；其实只要告诉它"这块面在多远"，位置就自动算出来了。<strong>"距离"是一个数，"方向"是这个数的副产品。</strong><br>
+    <b>第四式是工程规则：</b>想做到亚像素精度，平面数 \(D\) 得够密。实测 \(D=4\) 就已经拿到 12.6%，\(D\) 从 4 加到 32 对延迟几乎没影响（41.2→41.8 ms）——所以这条曲线很平，取大点不吃亏。
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 3　知道位移 ≠ 能搬动像素（全文最锋利的一步）</div>
+    <div class="d">这是"旁信息为什么没被用上"的机制解释，也是整篇文章唯一真正反直觉的地方。想象一个只能看邻域的预测器：位移是 40 像素，感受野是 8 像素。它要去取的那个像素，<strong>根本不在它能看见的窗口里</strong>。你把位移作为一个数字告给它，它能做什么？什么也做不了——因为窗口里没有内容可搬。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3　传输盲区：知道去哪，但够不着</div>
+    \[
+    e_r(\delta)=\sigma_N^{2}+\operatorname{Var}\!\left[X_s(u-\delta)\;\middle|\;X_s(u+v),\;\|v\|_\infty\le r\right]
+    \qquad\Longrightarrow\qquad
+    \Delta R \approx \frac{1}{2}\log_2\frac{e_r(\delta)}{\sigma_N^{2}}\ \text{bit/sample}
+    \]
+    <div class="exp">
+    \(X_s\) 是上一帧（建模成平稳高斯场），\(X_t(u)=X_s(u-\delta)+N_t(u)\)，\(\delta\) 是由运动学<strong>已知</strong>的位移，\(r\) 是感受野半径，\(\sigma_N^2\) 是噪声方差。<br>
+    <b>读法：</b>当 \(\|\delta\|_\infty\le r\)（位移在窗口内），\(e_r=\sigma_N^2\)，<strong>没有损失</strong>；一旦位移超出窗口一个相关长度，条件方差趋近 \(\sigma^2\)，误差<strong>等于"什么都没预测"</strong>——纯噪声。<br>
+    <b>说人话：</b>这解释了一件事：<strong>为什么把姿态当数字传是白费。</strong>对预测器来说，"位移=40"这个数字提供不了那 40 像素外的那块图像；它需要的是<strong>已经被搬过来的像素</strong>。所以旁信息必须被<strong>加工成"搬运结果"</strong>再投递，而不是原样丢进去。<br>
+    <b>实测验证（很硬）：</b>把完整相对运动做成 24 维全局向量广播给网络（GVEC 对照）→ 相对纯历史条件化 <b>−0.6%，置信区间跨零</b>；把运动学<strong>搬成像素</strong>（KHC）→ <b>−23.9%</b>。同一个信息，差 40 倍。此外还做了两个排除项：喂别的事集的运动学（SHUF）只变 +1.2%，多给一帧参考（HIST2）只变 +2.9%——<strong>说明收益既不是容量效应、也不是"更多时间上下文"，就是搬运本身。</strong>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 4　收益只在成功曲线的"悬崖"上兑现</div>
+    <div class="d">压缩指标（PSNR）变好，不等于任务成功率变高。策略对画质是<strong>饱和</strong>的：画质够好时，再清晰也不涨分；画质跌破某个点，成功率断崖式下跌。所以同一个 BD-rate，在平台段等于零，在悬崖段等于几十个点。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 4　悬崖公式：编码收益如何变成任务收益</div>
+    \[
+    S_B(R)\;\approx\;S_A\!\left(\frac{R}{1+\gamma}\right)
+    \qquad\Longrightarrow\qquad
+    S_B(R)-S_A(R)\;\approx\;-\underbrace{\frac{dS_A}{d\log R}}_{\text{悬崖斜率}}\cdot\log(1+\gamma)
+    \]
+    <div class="exp">
+    \(S_A(R)\) 是用编解码器 A、速率 R 时的成功率；\(\gamma\) 是 BD-rate（负值表示 B 更省比特）。<br>
+    <b>说人话：</b>收益 = <strong>悬崖有多陡 × 你省了多少</strong>。悬崖平坦（策略饱和），省一半比特也看不出差别；悬崖陡峭，省 20% 就能换来二十个点。<br>
+    <b>这一式是全文的自证：</b>它也解释了为什么这篇的结论适用范围很窄——只有当链路真的落在悬崖区时，这一切才值钱。作者据此先摸曲线再定预算（把预算钉在悬崖上），这是很专业的做法；但它同时意味着<strong>结论的适用域是"极端窄带"，不是"一般机器人网络"</strong>。<br>
+    <b>补充：</b>校准误差是二阶的（式略）——KHC 用的几何两端<strong>同错</strong>，只会削弱假设、不会凭空造出收益，所以所有对比都是保守的。这个论证很漂亮。
+    </div>
+  </div>
+
+  <p>五条串起来就是一条完整的因果链：<strong>比特该花在算不出来的地方（1）→ 相机运动是算得出来的，位移由深度一维决定（2）→ 但局部感受野拿不到位移后的内容，所以旁信息必须"搬成像素"（3）→ 而且只有在悬崖段才换成任务成功率（4）</strong>。这条链没有一步是"我们设计了一个更强的网络"，全部是"重新分配了已知信息的投递形式"。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>从比特到任务成功率</h2>
+
+  <p>先看纯编码这一层（LIBERO 测试集 200 episode，真实码流，两路 256×256 相机）：</p>
+
+  <table>
+    <tr><th>对照</th><th>PSNR 等质量 BD-rate</th><th>读法</th></tr>
+    <tr><td>HIST（同容量、纯历史上下文）</td><td class="num win">−23.9% [−25.0,−22.8]</td><td>核心对照：同一网络，只差运动学</td></tr>
+    <tr><td>　其中 腕部相机 / 第三人称相机</td><td class="num win">−12.3% / −37.9%</td><td>第三人称收益最大（手臂+背景记忆几乎全对）</td></tr>
+    <tr><td>x264 / x265 / SVT-AV1</td><td class="num win">−55.8% / −49.0% / −39.7%</td><td>对传统编码器</td></tr>
+    <tr><td>DCVC-RT（CVPR'25，最强实时神经编码器）</td><td class="num">+7.5% [−0.5,16.4]</td><td><b>PSNR 上仍略输</b>（参数只有它的 1/3）</td></tr>
+    <tr><td>DCVC-RT，但按"动作偏差"比</td><td class="num win">−23.2%</td><td>换成离策略更近的指标，反超</td></tr>
+  </table>
+
+  <p>这里有个很值得注意的模式：<strong>指标越靠近策略，KHC 越占优</strong>（PSNR +7.5% 落后 → LPIPS −13.6% 领先 → 动作偏差 −23.2% 领先）。因为机器人层和末端平面恰好把<strong>手臂和被夹住的物体</strong>重建得很锐利，而这两块正是驱动操作动作的区域。<em>"对人有用的清晰度"和"对策略有用的清晰度"不是一回事</em>——这是本文顺带给出的一个方法论贡献。</p>
+
+  <h3>闭环：把预算钉在悬崖上</h3>
+
+  <p>策略用官方 OpenVLA-OFT（不微调），4 个 suite × 10 任务 × 40 个初始状态 = 1,600 配对 episode，每档预算跑一遍。预注册规则先摸 HIST-skip 曲线，把预算定在"从 SKIP 地板（1.9 kbps，0% 成功）爬升到未压缩与地板之间 30%/60%/85% 的位置"，得到 6.0 / 8.3 / 10.7 kbps。</p>
+
+  <table>
+    <tr><th>6 kbps</th><th>KHC-skip</th><th>对照</th><th>差</th></tr>
+    <tr><td>vs HIST-skip（同编码器无运动学）</td><td class="num">43.1%</td><td class="num">22.8%</td><td class="num win">+20.4</td></tr>
+    <tr><td>vs DCVC-RT（同预算控制器）</td><td class="num">43.6%</td><td class="num">49.0%</td><td class="num lose">−5.4</td></tr>
+    <tr><td>vs 直接降到 128×128 再上采样</td><td class="num">43.6%</td><td class="num">53.1%</td><td class="num lose">−9.5</td></tr>
+    <tr><td>vs 降低发图频率（每 2 次查询发一帧）</td><td class="num">43.6%</td><td class="num">47.9%</td><td class="num lose">−4.2</td></tr>
+  </table>
+
+  <p>这张表必须并排看，因为摘要只给了第一行。<strong>在最紧的那一档，它输给了三个"笨办法"。</strong>而作者的应对是另训一个低码率版本 KHC-LR：6 / 8.3 / 10.7 kbps 分别达到 <b>72.6% / 86.0% / 88.9%</b>（同为低码率训练的 HIST-LR 是 49.0 / 80.3 / 85.6），此时比 DCVC-RT 高 23.6 / 19.4 / 19.5 点——<strong>摘要里的"几乎翻倍"和"高 23.6 点"，用的就是这个重训版本。</strong></p>
+
+  <p>另外几个很硬的结果：</p>
+  <ul>
+    <li><b>丢包下优势更大</b>：8.3 kbps 丢 10% 包，KHC 46.4% vs HIST 22.9%（+23.5），比无损时的 +16.6 还大。因为丢一帧后，运动学仍能把旧帧搬到新位姿（kinematic SKIP），而纯历史上下文只能显示一张过期的图。</li>
+    <li><b>换策略也成立</b>：π0.5（flow-matching，查询频率 4 Hz）在 13.4 kbps 从 55.5% → 77.4%（+21.9，p≈1e−24）。架构、动作头、查询率都不同，预算由同一规则自动定出。</li>
+    <li><b>消融干净</b>：去掉机器人层 +26.4%（贡献最大）、去掉平面扫描 +9.0%、去掉背景记忆 +5.8%、去掉末端平面 +5.3%。把平面扫描换成<strong>真值深度</strong>只能再省 18.3%——<strong>说明剩下的提升空间不多，一维扫描已经覆盖了大部分</strong>。</li>
+    <li><b>跨主机可插拔</b>：塞进 Scale-Space-Flow 编码器省 7.0%；塞进纯熵模型（重建比特级不变）省 7.8–12.2%。</li>
+    <li><b>真机数据</b>：DROID（Franka，腕部+两路外部相机）腕部省 11.2%，三路合计 4.7%——外部相机没有可用外参，退化回 HIST。<strong>这个 4.7% 很诚实地暴露了它的部署前提。</strong></li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">值不值</span>批判：三个笨办法和一步被修正的门</h2>
+
+  <h3>它做对了什么</h3>
+  <p>先说公道话。这篇的方法论水准明显高于一般的预印本：容量严格对齐（都是 7.0 M 参数）、三个零假设对照（SHUF / HIST2 / GVEC）、真实码流而非估计比特、按 episode 做配对 bootstrap、McNemar 精确检验 + Holm 多重比较校正、任务聚类区间、预注册预算规则、20,800 个 episode 全部过比特级一致性检查。<strong>单作者能把这个体量做扎实，很少见。</strong>而且它承认自己输的地方（PSNR 输给 DCVC-RT、外部相机无外参退化、动态场景不覆盖），没有藏。</p>
+
+  <h3>该被追问的地方</h3>
+  <ol class="crit">
+    <li><strong>摘要的基线选错了。</strong>"43.1% vs 22.8%，几乎翻倍"比的是<strong>它自己的消融对照</strong>（同一个 7 M 网络，去掉运动学）。真正的对手是 DCVC-RT、降分辨率、降帧率——在 6 kbps 这一档，<strong>它三个都输</strong>（−5.4 / −9.5 / −4.2）。这不是"效果不好"，是<strong>叙述框架的问题</strong>：把"我们的上下文有用"讲成了"我们的系统最好"，而这两句话的适用范围完全不同。</li>
+    <li><strong>"翻倍"依赖一步事后修正的门。</strong>为了让 KHC-LR 和 HIST-LR 可比，作者设了一个验证门：最低码率必须降到原来的 0.6 以下。实测<strong>没达标</strong>（0.63 / 0.61），于是<strong>把门改成只看 P 帧码率</strong>（0.49 / 0.51）——理由是 I 帧用的冻结帧内模型改不了。<br>理由本身成立，但这是整篇里<strong>最敏感的一个自由度</strong>：摘要和结论的核心数字（72.6%、+23.6 点）全部来自这个重训版本。作者诚实地披露了，但"预注册"在关键处被放宽过一次，读者应该知道。</li>
+    <li><strong>定理 1 是同义反复。</strong>条件互信息非负——这是熵的性质，不是发现。它不给下界、不给可实现性、不说能省多少。真正的内容全在定理 2（传输盲区）和定理 3（一维运动族），而这两条都是<strong>几何</strong>，不是信息论。用一个空定理开场，容易让人高估理论的支撑力度。</li>
+    <li><strong>"全局向量无用"被从玩具模型推成了普遍结论。</strong>定理 2 的前提是：平稳高斯场、单一位移、严格 \(r\)-局部感受野。现代编解码器有多尺度下采样，等效感受野远超 \(r\)；而 GVEC 的实现只是把 24 维向量接进融合网络。<strong>"这个实现拿不到收益"和"任何全局条件化都拿不到收益"是两回事</strong>，后者需要的是对 GVEC 的上界，不是对局部预测器的上界。</li>
+    <li><strong>整套东西建立在"静止刚体场景"上，而这恰好排除了最危险的情况。</strong>人、可变形物体、液体都不属于任何假设（作者承认）。更要紧的是 <b>kinematic SKIP</b>：极端预算下只发一个槽位索引，接收端<strong>直接把机器人按当前位姿渲染出来显示</strong>。在有人走动的车间里，这一招会把"人已经进了工作区"这件事<strong>渲染掉</strong>。论文只在静态桌面场景测过它，安全性一个字没提。</li>
+    <li><strong>闭环全在仿真。</strong>LIBERO 是 MuJoCo/robosuite 重渲染，配对设计很干净，但它是<strong>静止桌面</strong>；DROID 只做了离线率失真，<strong>没有真机闭环</strong>。而它的整个卖点是"闭环任务成功率"。真机链路还有时延抖动、曝光变化、卷帘快门——这些都会直接打破"状态与图像同步"这个前提（作者自认一帧偏移就会把假设反过来）。</li>
+    <li><strong>布置前提很硬：要标定、要同步、要有连杆模型。</strong>受益最大的是第三人称相机（−37.9%），但它需要外参；腕部相机能自标定（DROID 上 11.2%），外部相机没有外参就直接退化（三路合计只剩 4.7%）。<strong>收益的分布与"能不能拿到几何"完全重合</strong>——这意味着它不是"通用编码改进"，是"把标定质量变现"。</li>
+    <li><strong>单作者、预印本、代码未放出</strong>（"待正式投稿后公开"）。所有数字目前不可独立复现。这一点不影响其思想价值，但影响它能被引用成什么。</li>
+  </ol>
+
+  <div class="box bad">
+    <b>一个必须说的交叉点。</b>昨天那篇讲的是"同一条信号的两条投递路径"：把动作信息用离散 token 送到 VLM，还是用梯度送进去，两条路单独开效果几乎一样——<strong>信息只有一份，走哪条管子次要，能不能到才主要</strong>。<br>
+    这篇把它推到了更狠的一步：<strong>连"到"都还不够，还得是"到成了什么形态"</strong>。同一份运动学，作为 24 维数字投递过去，网络拿不到任何收益（−0.6%）；作为被搬运过的像素投递过去，拿到 23.9%。<strong>数字要经过学习才能变成位移，像素已经是位移本身。</strong><br>
+    所以"投递形式决定信息价值"这句话，现在有了两个独立证据：在训练侧是<strong>码率</strong>（token 窄、梯度宽），在通信侧是<strong>形态</strong>（符号要学、像素免学）。<strong>两篇合起来给出的可操作结论是：当你手里有一份"对方已知"的信息时，别传它，把它预先算成对方能直接用的形状。</strong>
+  </div>
+
+  <h3>一句话总账</h3>
+  <p>这篇真正的贡献不是"省了 24% 比特"，而是<strong>把"带宽不够"这个诊断换成了"已知信息没有被搬运"</strong>：机器人自己的关节角，本来就是对端手里的一份免费旁信息，但只有把它做成<strong>搬运后的像素</strong>而不是<strong>一个姿态向量</strong>，这份旁信息才会变成比特。<strong>−0.6% 与 −23.9% 之间那 40 倍的差距，就是"投递形态"的价格。</strong></p>
+  <p>它最该被追问的是另一头：<strong>它赢的是自己的消融，不是这个领域的对手。</strong>在最紧的 6 kbps 上，输给降分辨率 9.5 个点——一个只改了输入尺寸的笨办法。这说明在极端窄带下，<strong>"少看一点"往往比"聪明地看"更划算</strong>，而这一点在摘要里看不到。真正站得住的结论应该写成：<strong>在中等窄带（8–11 kbps）区间、几何可得、场景静止的条件下，把运动学搬成像素是比换编码器更划算的一步。</strong>——限定词一个都不能删。</p>
+
+  <p class="src">论文：<a href="https://arxiv.org/abs/2611.07411" target="_blank">arXiv 2611.07411 · Kinematic Hypothesis Context: Embodiment-Conditioned Learned Video Coding for Bandwidth-Limited Robot Policy Uplinks</a>（2026-11-05，清华大学 Yuze Lu）</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解　|　论文：arXiv 2611.07411（2026-11-05）</footer>
+</div></body></html>

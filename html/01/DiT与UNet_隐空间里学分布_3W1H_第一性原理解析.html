@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DiT、U-Net 与 Latent Spaces</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>DiT、U-Net 与 Latent Spaces<span class="sub">为什么今天的生成模型长成这个样子：一个压缩器、一个画笔、一个遥控器 · 3,145,728 维为什么不能直接学 · patchify 到底在干什么 · VAE 存在的唯一理由 · SD3 的 80 亿与 Movie Gen 的 300 亿</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-05</div>
+    <div><b>关键词</b> Flow Matching · DiT · U-Net · VAE · 隐空间 · SD3 · Movie Gen</div>
+    <div><b>一句话</b> 架构不是选出来的，是被三条硬约束逼出来的</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>这一节表面上在讲三种架构（DiT、U-Net、VAE），实际在回答一个问题：<b>既然 Flow Matching 的目标函数那么简洁，为什么生成模型的网络结构这么复杂？</b>答案藏在三条约束里。第一条，<b>要学的是"往哪挪一点"，不是"这是什么"</b>——所以网络必须同形状进、同形状出，这一条直接排除了分类器式的设计，也解释了为什么 U-Net 天然合适、DiT 必须加一个反 patchify 才能收尾。第二条，<b>时间步必须能调制每一层，不能只拼在输入上</b>——因为时间步决定的是"现在该粗调还是微调"，这个信息必须在网络深处还在。第三条最狠：<b>一张 1024×1024 的图是 314 万个维度，在这个空间上做生成在算力上是荒谬的</b>，所以必须先压缩、再生成——这就是隐空间，也是 VAE 存在的全部理由。换句话说，<b>今天的生成模型 = 一个压缩器（VAE）+ 一个画笔（DiT 或 U-Net）+ 一个遥控器（条件嵌入）</b>。这三个零件不是并列的技术选项，是被约束逐层逼出来的唯一解。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么拆</a>
+  <a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：把"生成一张图"拆成三步</h2>
+  <p>先设定任务。我们要学一个<b>条件向量场</b> \(v_\theta(x_t, t, c)\)，它有三个输入和一个输出：</p>
+  <ul>
+    <li><b>\(x_t\)</b>：当前（带噪的）样本，形状和图像一样；</li>
+    <li><b>\(t\)</b>：时间标量，从 0 到 1；</li>
+    <li><b>\(c\)</b>：条件——一个类别标签，或一段文本；</li>
+    <li><b>输出</b>：和 \(x_t\) <b>同形状</b>的速度场。</li>
+  </ul>
+  <p>只要这个场学对了，从纯噪声出发、沿它一点点积分，就能走到一张真图。所以整个问题就一句话：<b>怎么用神经网络把这三个输入喂进去、输出一个同形状的东西。</b></p>
+  <p>文章把答案拆成三个独立的问题，对应三个零件：</p>
+  <table>
+    <tr><th>零件</th><th>解决的问题</th><th>对应技术</th></tr>
+    <tr><td><b>条件嵌入</b>（遥控器）</td><td>时间标量、类别、文本，怎么变成网络能吃的向量</td><td>Fourier 特征 · 可学习嵌入表 · 冻结的 CLIP / T5</td></tr>
+    <tr><td><b>骨干网络</b>（画笔）</td><td>同形状进、同形状出，还要能缩放到很大</td><td>U-Net（卷积）· DiT（Transformer）</td></tr>
+    <tr><td><b>隐空间</b>（压缩器）</td><td>维度太高，直接学不起</td><td>自编码器 / VAE</td></tr>
+  </table>
+  <p>两个案例做收尾：<b>Stable Diffusion 3</b>（图像，最大 80 亿参数，50 步采样，CFG 权重 2.0–5.0）和 <b>Meta Movie Gen Video</b>（视频，最大 300 亿参数）。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：五条公理，把架构从一个"选择"变成一个"推导"</h2>
+
+  <h3>公理一：生成模型学的是"方向"，所以网络必须同形状进出</h3>
+  <p>分类网络 \(\text{图}\to\text{标签}\) 会一路把空间尺寸压小、通道数拉大，最后变成几十维的向量。<b>这个形状变化在生成任务里是不允许的</b>：你要求它输出一张和输入同尺寸的图，它却一路把尺寸压没了。</p>
+  <p>这一条解释了两个看起来无关的设计：</p>
+  <ul>
+    <li><b>U-Net 为什么"天然合适"</b>：它本来就是为图像分割设计的——输入图、输出图（掩码），形状天然一致。所以它在扩散模型早期被直接拿来用，几乎不用改。</li>
+    <li><b>DiT 为什么必须有个"反 patchify"结尾</b>：Transformer 吃的是序列，进来时图像被打成了 patch token，出去时还是 token。必须再拼回图像张量，否则形状对不上。</li>
+  </ul>
+  <div class="step"><div class="t">推论 1</div><div class="d">文章里那句"低维输出不允许缩小卷积栈"就是在说这件事：<b>分类可以靠不断降维来省算力，生成不行</b>。这个区别不是工程细节，是任务定义决定的。</div></div>
+
+  <h3>公理二：时间步必须"调制"每一层，不能只拼在输入上</h3>
+  <p>这是最容易被做错的一处。新手直觉是：把 \(t\) 拼到输入向量后面不就完了？对玩具分布确实够用。但在真实模型里不行，原因是<b>时间步决定的是"整体策略"，不是一个局部特征</b>。</p>
+  <p>\(t\) 接近 1 时，输入几乎全是噪声，网络该做的是"决定大方向、粗粒度地摆出结构"；\(t\) 接近 0 时，输入已经很接近真图，网络该做的是"修补细节、不要破坏已有的东西"。<b>这是两种完全不同的计算模式</b>，而且这个切换必须发生在网络的<b>每一层</b>，不能只在第一层生效。</p>
+  <p>所以有了 AdaLN（自适应归一化）：用 \(t\) 算出一组 scale / shift，去调制每层的归一化激活。</p>
+  <div class="fml">
+    <div class="name">时间调制归一化（AdaLN）</div>
+    \[ \gamma,\ \beta \;=\; \mathrm{MLP}\big(\,\mathrm{TimeEmb}(t)\,\big),\qquad \mathrm{AdaLN}(h;\gamma,\beta)=\gamma\odot\mathrm{Norm}(h)+\beta \]
+    <div class="exp">转成大白话：先做一次归一化（把激活的分布拉回标准形状），再<b>用时间算出的两个向量，把每一个通道整体放大/缩小（\(\gamma\)）、整体平移（\(\beta\)）</b>。同一个网络权重，在 \(t\) 大和 \(t\) 小的时候，每一层的"性格"都不一样了。<br>这就是为什么它叫"自适应"——不是在输入端带一个时间标签，而是<b>让时间渗透到每一层的计算里</b>。</div>
+  </div>
+  <p>同一逻辑的另一半：<b>时间不能只给原始标量</b>。标量 \(t\) 经过一个普通 MLP，很容易学成一条平滑曲线，表现不出"高频"的细节依赖。所以要先把它展开成一组不同频率的正弦波（Fourier 特征），再送进 MLP。</p>
+  <div class="fml">
+    <div class="name">时间嵌入：把 1 个标量摊成 d 维</div>
+    \[ \mathrm{TimeEmb}(t)=\Big[\sin(2\pi f_1 t),\cos(2\pi f_1 t),\dots,\sin(2\pi f_{d/2} t),\cos(2\pi f_{d/2} t)\Big],\quad f_i=10000^{-\frac{2i}{d}} \]
+    <div class="exp">大白话：用一堆"快慢不同的尺子"去量同一个时间点。慢的尺子（低频）给出粗略位置，快的尺子（高频）给出精细位置。这样网络既有"现在大致到哪了"，也有"现在精确到哪了"。文章也老实说了：<b>这个具体形式不是必须的，它只是一个方便的归一化方式</b>——换成别的频率方案大概率也能训。</div>
+  </div>
+
+  <h3>公理三：3,145,728 维，在像素上直接学是不可能的</h3>
+  <p>算一下就明白了。一张 \(1024\times1024\) 的 RGB 图：</p>
+  <div class="fml">
+    <div class="name">数据空间的维度</div>
+    \[ D = 3\times1024\times1024 = 3{,}145{,}728 \]
+    <div class="exp">三百万维。视频还要再乘帧数 \(T\)。在这个空间上做扩散 / flow，每一步积分都要跑一次完整网络，还要几十上百步——<b>不是"慢"，是量级上不可行</b>。</div>
+  </div>
+  <p>出路只有一个：<b>先降维，再在低维里学分布</b>。这就是两阶段设计——</p>
+  <ol>
+    <li><b>第一段（压缩）：</b>训练一个自编码器，把 314 万维压到比如 \(32\times32\times4\) 这种量级的隐变量；</li>
+    <li><b>第二段（生成）：</b>在隐空间里跑 flow / 扩散，学"隐变量怎么分布"。</li>
+  </ol>
+  <div class="step"><div class="t">推论 2</div><div class="d">这个拆法的代价很硬：<b>第一段的上限，就是整个系统的上限。</b>如果编码器把"手指有几根"这个信息丢了，第二段再强也生成不出来。这就是为什么 SD3 论文的一大贡献不是模型结构，而是<b>训了一个好的自编码器</b>——它不是配角，它是天花板。</div></div>
+
+  <h3>公理四：光压缩不够——压出来的分布可能根本学不了</h3>
+  <p>这里是全文最精妙的一处推理。假设你已经训好了一个普通自编码器（编码器 \(E\)、解码器 \(D\)），重建损失就是均方误差：</p>
+  <div class="fml">
+    <div class="name">标准自编码器的重建损失</div>
+    \[ \mathcal{L}_{\mathrm{AE}}=\big\|x-D(E(x))\big\|^2 \]
+    <div class="exp">大白话：压下去再解出来，看像不像。看着很合理，但它<b>只保证"能还原"，不保证"压出来的东西好生成"</b>。</div>
+  </div>
+  <p>问题出在哪？我们真正要学的是隐分布 \(p(z)\) 的生成模型。但重建损失<b>完全不管 \(p(z)\) 长什么样</b>——它可能被拉成一个奇形怪状、多峰、有洞的分布。<b>你成功把数据压小了，同时把它变成了一个没法建模的东西。</b></p>
+  <p>VAE 就是来补这个洞的：<b>把编码器从确定性函数改成随机分布，再加一项正则，把隐分布往标准高斯上拉。</b></p>
+  <div class="fml">
+    <div class="name">VAE 的两项损失</div>
+    \[ q(z\mid x)=\mathcal{N}\big(\mu_\phi(x),\ \mathrm{diag}(\sigma_\phi^2(x))\big),\qquad p(z)=\mathcal{N}(0,I) \]
+    \[ \mathcal{L}_{\mathrm{VAE}}=\underbrace{\mathbb{E}_{q(z\mid x)}\big[-\log p_\theta(x\mid z)\big]}_{\text{重建}}+\ \beta\underbrace{D_{\mathrm{KL}}\big(q(z\mid x)\,\|\,p(z)\big)}_{\text{把隐分布拉向标准高斯}} \]
+    <div class="exp">第一项：给一个 \(z\)，能不能把 \(x\) 还原出来（对数似然，高斯情形下就是均方误差加常数）。<br>第二项：<b>这一项才是 VAE 的灵魂。</b>它不管重建质量，只管"编码出来的分布像不像标准高斯"。\(\beta\) 控制强度。<br>两项在打架：重建项想让 \(z\) 尽量携带信息（于是分布散开、各有各的形状），KL 项想让 \(z\) 无关紧要（于是分布坍缩到标准高斯）。<b>VAE 的全部工程难点，就是让这场架打成平手。</b></div>
+  </div>
+  <p>KL 项在高斯对高斯时有解析解，可以直接算：</p>
+  <div class="fml">
+    <div class="name">对角高斯之间的 KL 散度</div>
+    \[ D_{\mathrm{KL}}\big(\mathcal{N}(\mu,\sigma^2)\,\|\,\mathcal{N}(0,1)\big)=\tfrac{1}{2}\sum_{i=1}^{d}\Big(\sigma_i^2+\mu_i^2-1-\log\sigma_i^2\Big) \]
+    <div class="exp">读这个式子：<b>\(\mu_i\) 偏离 0 就被罚（\(\mu_i^2\)），\(\sigma_i\) 偏离 1 也被罚（\(\sigma_i^2-1-\log\sigma_i^2\)，这个函数在 1 处取到唯一最小值 0）</b>。所以训练的净效果是：把每个隐变量的均值压向 0、方差压向 1——<b>让整个隐空间变成一个规规矩矩的标准高斯球</b>。</div>
+  </div>
+  <p>还有个工程细节必须提：\(q(z\mid x)\) 里有采样，采样不可导，梯度传不回去。解法是<b>重参数化</b>——把随机性挪到一个与参数无关的噪声上：</p>
+  <div class="fml">
+    <div class="name">重参数化技巧</div>
+    \[ z=\mu_\phi(x)+\sigma_\phi(x)\odot\varepsilon,\qquad \varepsilon\sim\mathcal{N}(0,I) \]
+    <div class="exp">大白话：<b>"从 \(\mathcal{N}(\mu,\sigma^2)\) 采样" 改写成 "拿一个固定的标准噪声 \(\varepsilon\)，用 \(\mu,\sigma\) 去缩放平移它"</b>。这样随机性全在 \(\varepsilon\) 身上，\(\mu,\sigma\) 是确定性的网络输出，梯度可以正常流过去。<b>整个 VAE 能训练，就靠这一行。</b></div>
+  </div>
+
+  <h3>公理五：正则太强会把编码器"教懒"——后验坍缩</h3>
+  <p>\(\beta\) 调大会发生什么？KL 项占主导，编码器发现"最省事的办法是完全忽略输入 \(x\)，直接输出标准高斯"——这样 KL 就是 0，完美。<b>但这样一来 \(z\) 里一个 bit 的信息都没有，解码器只能输出数据集平均值。</b></p>
+  <p>这就是后验坍缩（posterior collapse）。文章给的两个对策都很实用：</p>
+  <ul>
+    <li><b>\(\beta\) 取得极小</b>（现代自编码器都是 \(\beta\ll1\)），让重建项压倒性主导；</li>
+    <li><b>KL warm-up</b>：\(\beta\) 从 0 开始，在前几个 epoch 慢慢升到目标值，先让编码器学会携带信息，再慢慢规整它。</li>
+  </ul>
+  <div class="box good"><b>公理链收口：</b>要学方向所以同形状进出（公理一）+ 时间要渗到每层所以用 AdaLN（公理二）+ 像素空间维度不可行所以要压缩（公理三）+ 压缩会破坏可学性所以要 KL 正则（公理四）+ 正则过强会坍缩所以要小 \(\beta\) 与 warm-up（公理五）= <b>「VAE + DiT + AdaLN 条件化」不是三种流行技术的拼盘，而是五条约束依次排除后剩下的那条路。</b></div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：三条数据流</h2>
+
+  <h3>流一：DiT 内部，一张图怎么变成 token 再变回图</h3>
+  <p>DiT 的做法是把 ViT 搬到生成任务上，一步不多一步不少：</p>
+  <ol>
+    <li><b>patchify（切块重排）</b>：把 \(x\in\mathbb{R}^{3\times H\times W}\) 切成 \(p\times p\) 的小块，重排成 \(N\times(3p^2)\) 的矩阵，其中 \(N=HW/p^2\)。这一步<b>不丢信息，只是换排列</b>。</li>
+    <li><b>线性投影</b>：乘一个可学习矩阵，把每个 patch 变成 \(d\) 维 token（\(d\) 是隐藏维度）。</li>
+    <li><b>拼入条件</b>：把时间嵌入、提示嵌入和 patch token 拼成一个序列——<b>注意此时三者维度已经统一</b>，这是 Transformer 能处理它们的前提。</li>
+    <li><b>过 L 层 DiTBlock</b>：每层做三件事——patch 之间的自注意力、对提示的交叉注意力、用 AdaLN 施加时间条件。</li>
+    <li><b>反 patchify</b>：把 token 序列映射回原图像形状，得到最终输出，也就是预测的速度场。</li>
+  </ol>
+  <p>每层内部的具体计算值得看一眼，因为它是"三种条件注入方式"的教科书式并列：</p>
+  <div class="fml">
+    <div class="name">一个 DiT Block 里的三件事</div>
+    \[ \mathrm{Attn}(Q,K,V)=\mathrm{softmax}\!\left(\frac{QK^{\top}}{\sqrt{d_k}}\right)V \]
+    \[ h \leftarrow h+\mathrm{AdaLN}\big(\mathrm{SelfAttn}(h);\ \gamma_1(t),\beta_1(t)\big) \]
+    \[ h \leftarrow h+\mathrm{AdaLN}\big(\mathrm{CrossAttn}(h,\ \text{prompt});\ \gamma_2(t),\beta_2(t)\big) \]
+    \[ h \leftarrow h+\alpha\odot\mathrm{MLP}\big(\mathrm{AdaLN}(h;\gamma_3(t),\beta_3(t))\big) \]
+    <div class="exp">第一行是普通的缩放点积注意力（除以 \(\sqrt{d_k}\) 只是防止内积太大让 softmax 饱和）。<br>第二到四行是<b>三个子层 + 三次残差</b>：自注意力管"图内各块之间互相看"，交叉注意力管"去看提示"，MLP 管"逐位置加工"。<br>关键在每一个子层的归一化里都塞了 \(\gamma(t),\beta(t)\)——<b>时间这个东西不是出现在输入端就完了，它在每一层都重新调一次参数。</b>最后一个可学习门控 \(\alpha\) 是训练稳定性的小技巧（相当于把新加的分支先"压低"，学稳了再放开）。</div>
+  </div>
+
+  <h3>流二：U-Net 内部，一条 U 形路</h3>
+  <p>U-Net 的思路完全不同，它是"先缩再放"：</p>
+  <ul>
+    <li><b>编码器（下采样）</b>：图像过若干级卷积，每级<b>通道数变多、高宽变小</b>——语义变粗、分辨率变低；</li>
+    <li><b>midcoder</b>：最底部的隐处理块，分辨率最低、语义最抽象；</li>
+    <li><b>解码器（上采样）</b>：反着来，通道变少、分辨率变回原尺寸；</li>
+    <li><b>跳连</b>：编码器第 \(i\) 级的特征直接接到解码器对应的那级。</li>
+  </ul>
+  <p>为什么它适合参数化向量场？因为它的<b>输入和输出都是图像形状</b>（通道数可能不同）。这恰好就是公理一要求的"同形状进出"，而且不用加任何额外操作。</p>
+  <p>那个跳连也不是可有可无的：下采样过程中细节会被压缩掉，如果只靠解码器自己恢复，纹理就糊了。<b>跳连把"高频细节"从编码器直接空运到解码器</b>，让解码器只需要操心"怎么把语义和细节对上"。</p>
+  <p>实践中还有一个混合形态：<b>在纯卷积的 U-Net 里塞注意力层</b>（通常在低分辨率层）。原因是卷积的感受野天然受限，而生成任务常常需要全局一致性（比如"左边这只鞋和右边这只鞋要成对"）。<b>注意力管全局，卷积管局部</b>，两者在 U-Net 里分工。</p>
+
+  <h3>流三：完整一条生产线</h3>
+  <p>把三个零件串起来，一次生成是这样的：</p>
+  <table>
+    <tr><th>阶段</th><th>做什么</th><th>在哪训练</th></tr>
+    <tr><td>① 压缩</td><td>真图 \(x\) → 编码器 → 隐变量 \(z\)</td><td>VAE 单独训（重建 + \(\beta\)KL）</td></tr>
+    <tr><td>② 加噪</td><td>\(z_t=(1-t)z_0+t\,\varepsilon\)</td><td>flow matching 训练时现场构造</td></tr>
+    <tr><td>③ 预测</td><td>\(v_\theta(z_t,t,c)\) → 速度场</td><td>DiT / U-Net 主网络</td></tr>
+    <tr><td>④ 积分</td><td>沿速度场走几十步 → \(z_0\)</td><td>推理时，欧拉法即可</td></tr>
+    <tr><td>⑤ 解码</td><td>\(z_0\) → 解码器 → 图像</td><td>复用 ① 的解码器</td></tr>
+  </table>
+  <p>注意 ⑤ 有个小细节：<b>解码时取均值而不是随机采样</b>，否则会在图上叠一层噪声。这也是"VAE 是随机编码器、但推理时我们只用它的均值"这个常见做法背后的原因。</p>
+
+  <h3>案例一：Stable Diffusion 3 的三个选择</h3>
+  <p>SD3 不是"又一个扩散模型"，它的价值在于把上面每一个岔路口的选择都试过了，并且公开了结论：</p>
+  <ul>
+    <li><b>目标函数选 Flow Matching</b>：他们"广泛测试了各种 flow 和扩散替代方案，发现 Flow Matching 表现最好"。训练用无分类器引导（训练时随机丢掉标签）。</li>
+    <li><b>架构选 MM-DiT</b>：原版 DiT 只能吃类别标签，SD3 要同时吃两路文本嵌入——<b>CLIP 提供粗粒度、覆盖性的整体语义；T5-XXL 提供细粒度、能对上具体词的序列</b>。为了容纳序列条件，他们把 DiT 改成同时 attend 图像 patch 和文本 token，这就是多模态 DiT。最大 80 亿参数，50 步采样，CFG 2.0–5.0。</li>
+    <li><b>隐空间来自一个专门训好的自编码器</b>：文章特别点出，训好自编码器是第一版 SD 论文的一大贡献——<b>再次印证公理三的推论：压缩器就是天花板。</b></li>
+  </ul>
+
+  <h3>案例二：Movie Gen Video 多出来的那一维</h3>
+  <p>视频就是给图像加一个时间轴，但每一处"加一维"都要付代价：</p>
+  <ul>
+    <li><b>数据空间</b>从 \(\mathbb{R}^{3\times H\times W}\) 变成 \(\mathbb{R}^{3\times T\times H\times W}\)，维度直接乘 \(T\)。<b>自编码器的重要性在视频上比图像更极端</b>——这也解释了为什么当前视频生成普遍只能做几秒。</li>
+    <li><b>时间自编码器（TAE）</b>：专门处理新增的时间维，把视频映射到 \(z\in\mathbb{R}^{c\times t\times h\times w}\)。</li>
+    <li><b>时间 tiling</b>：长视频切成多块，每块单独编码，再把隐变量拼起来。<b>本质是"分段压缩"</b>，代价是段与段之间的长程一致性只能靠后面的模型自己补。</li>
+    <li><b>DiT 骨干</b>在时空两个维度上做 patchify，自注意力管 patch 之间，交叉注意力管文本。</li>
+    <li><b>三路文本嵌入</b>：UL2（细粒度文本推理）+ ByT5（字符级细节，比如要求画面里出现特定文字）+ MetaCLIP（图文共享空间）。最大 300 亿参数。</li>
+  </ul>
+  <p>把 SD3 和 Movie Gen 放一起看，会发现一个规律：<b>架构创新越来越少，条件注入的通路越来越多。</b>80 亿 vs 300 亿的差距主要不是架构，是"要容纳多少种模态的条件"。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：这是一张清晰的地图，但它画的是 2025 年的地形</h2>
+
+  <h3>它真正讲清楚了什么</h3>
+  <div class="box good">
+  <p><b>1. 把"为什么这么设计"讲透了，而不是只讲"是什么"。</b>"U-Net 同形状所以合适"、"时间必须调制每层所以有 AdaLN"、"维度爆炸所以要先压缩"——这三条推理链，比背十个架构图有用得多。它们是可以迁移到别的模态（音频、蛋白质、动作序列）的。</p>
+  <p><b>2. VAE 那一节是全书最诚实的一段。</b>它没有把 VAE 包装成"更好的自编码器"，而是明确指出：<b>重建损失只保证能还原，不保证隐分布可学</b>。这一句点破了所有"latent xxx"模型的根本假设。</p>
+  <p><b>3. 把 KL 的解析式和重参数化都推了一遍。</b>这两块是 VAE 唯一真正"必须动手"的地方，跳过它们，VAE 就变成一句咒语。特别是重参数化那一步"把随机性挪到与参数无关的噪声上"，讲清楚了为什么它能训练。</p>
+  </div>
+
+  <h3>需要打问号的地方</h3>
+  <ol class="crit">
+    <li><b>它把 DiT 讲成"一个通用设计"，但实际上 DiT 家族的内部分歧很大。</b>文章自己也承认"DiT 有不同流派，特定实现可能因模型和应用而异"。可 SD3 的 MM-DiT 和原版 DiT 已经是两个东西了（一个吃类别，一个吃双路文本序列）。<b>把"MM-DiT"当成"DiT 加一点扩展"会低估这个改动的分量</b>——它改的是条件注入的基本形式。</li>
+    <li><b>U-Net 为什么输给 DiT，这一节没有回答。</b>这是 2023–2024 年最重要的架构转变，文章只描述了"两者都是选项"，没解释"为什么 SD3 选了 DiT"。真实原因是可扩展性——Transformer 的 scaling 规律清晰、能吃更多数据和参数，而卷积栈的归纳偏置（平移等变、局部性）在超大规模下从优势变成了束缚。<b>这个"为什么"缺席，是本节最大的空白。</b></li>
+    <li><b>"隐空间是免费的午餐"这个印象需要纠正。</b>压缩确实把算力降下来了，但它同时<b>拍平了高频细节</b>。这就是为什么这类模型在手指、文字、细小纹理上容易崩——不是主网络不行，是<b>隐空间里本来就没有这些信息</b>，解码器再强也变不出来。文章提了"感知损失改善锐度"，但没把这个因果关系讲清楚。</li>
+    <li><b>\(\beta\ll1\) 这个说法值得再推敲。</b>文章说"所有现代自编码器中 \(\beta\) 都非常小"。但 \(\beta\) 的量级高度依赖重建项怎么归一化（是逐像素平均还是求和、是 NLL 还是 MSE）。<b>脱离归一化谈 \(\beta\) 大小没有意义。</b>这句话在工程上容易误导——照着抄一个 \(10^{-6}\) 可能完全不 work。</li>
+    <li><b>两个案例都是"结论汇报"，没有失败的路径。</b>SD3 说"广泛测试后发现 Flow Matching 最好"，但没给对比数字；Movie Gen 说用了三路文本嵌入，但没说去掉哪一路会掉多少。<b>这些恰恰是复现时最需要的信息。</b>作为教材这是可以接受的取舍（篇幅有限），但读者不该把"作者的选择"当成"唯一正确的选择"。</li>
+    <li><b>视频那一节对"长程一致性"这个真正难点着墨太少。</b>时间 tiling 把视频切块编码，本质上是在说"我们放弃了跨块的长程建模"。可视频生成最难的恰恰就是"第 1 秒的杯子和第 8 秒的杯子是同一个杯子"。<b>文章把这个妥协当成一个技术点带过，读者容易低估它的代价。</b></li>
+    <li><b>完全没有提训练成本、数据规模和评估方法。</b>这一节能教会你怎么搭架构，但教不会你判断"这个模型好不好"。生成模型的评估（FID、CLIP score、人类偏好）本身是一大块，完全缺席。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>这一节最值得带走的是一个判断习惯：<b>看到一个复杂的架构，先别记它有几个模块，先问"它被哪几条约束逼成这样"。</b>DiT 的反 patchify 是被"同形状进出"逼出来的，AdaLN 是被"时间要渗到每层"逼出来的，VAE 是被"三百万维学不动"和"压出来的分布可能不可学"两条一起逼出来的。<b>理解了约束，架构就不用背了——因为约束变了，你也能自己推一个新架构出来。</b></p>
+  <p class="src">原文：《DiT、U-Net 与 Latent Spaces》，公众号 human five，2026-11-05。内容对应 Flow Matching / 扩散模型系列讲义第 6 节（6.1 神经网络架构 / 6.2 隐空间与 VAE / 6.3 案例研究），含备注 29（DiT Block）、备注 30（KL 散度背景）、备注 32（在隐空间中工作）与算法 6（VAE 训练流程）。案例来源：Stable Diffusion 3、Meta Movie Gen Video 技术报告。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ 来源：公众号 human five</footer>
+</div></body>
+</html>

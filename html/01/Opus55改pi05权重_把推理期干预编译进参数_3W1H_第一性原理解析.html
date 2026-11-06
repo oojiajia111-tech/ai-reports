@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我们让 Opus-5.5 修改 π₀.₅ 的权重，AutoResearch 让它成为现实。</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>我们让 Opus-5.5 修改 π₀.₅ 的权重，AutoResearch 让它成为现实。<span class="sub">一行代码能修好的 bug，模型花两小时在参数空间里近似了一遍 · 30/35/40 Hz 分别快 4.3% / 7.4% / 12.0% · chunk 跳变降 89.8% · 只改 1.16% 参数 · 不用反向传播、不动推理代码</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-06</div>
+    <div><b>关键词</b> 权重编辑 · AutoResearch · RoPE · RTC 前缀 · π₀.₅</div>
+    <div><b>一句话</b> 它真正证明的不是"改权重能提速"，而是"研究过程可以被自动化"</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>这件事的难点从来不是"把机器人调快"，而是<b>"快"这个属性根本不在代码里</b>。π₀.₅ 以 30 Hz 出动作、一次预测 50 步，这个节奏是<b>示范数据喂出来的</b>，藏在几十亿参数的权重里，没有任何一个可调的旋钮。想改它，只有三条路：重采数据重训、改推理代码、或者<b>改权重</b>。作者选第三条，并且加了三道硬约束——<b>不用反向传播、不动生产推理代码、只交一份可回滚的独立 checkpoint</b>。于是 "提速" 被逼成一个纯推理问题：<b>在参数空间里，找到那个能让动作推进更快的方向</b>。Opus-5.5 找到两条：一条是 RoPE 位置间隔放大后拟合进 Q/K 投影，另一条是顺手发现了 Training-Time RTC 官方实现里一个没人报过的前缀 bug，用最终归一层的时间调制权重把前缀更新量压到零。真机上放瓶子快 4.3%–12.0%、chunk 跳变降 89.8%。但真正值钱的是过程：<b>它先算清时间花在哪，再提假设，再被实验打回（输出层拟合失败），然后换方向</b>——这是一次完整的 AutoResearch，而不是一次调参。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么拆</a>
+  <a href="#worth">④ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：把"让机器人快一点"翻译成一个权重编辑任务</h2>
+  <p>先把场景说清楚。π₀.₅ 是一个 VLA（视觉-语言-动作）模型，跑的是 <b>Training-Time RTC</b>（Real-Time Chunking）配置。它的工作方式是：</p>
+  <ul>
+    <li>一次预测一个 <b>action chunk = 50 步未来动作</b>，每步包含两臂 12 个关节目标 + 2 个夹爪目标；</li>
+    <li>按 <b>30 Hz</b> 采样，每轮<b>只执行 32 步</b>；</li>
+    <li>下一段推理不等当前 chunk 跑完，提前开始；把旧计划剩下的<b>前 6 步当作条件前缀（RTC prefix）</b>喂进去，让新动作接得上。</li>
+  </ul>
+  <p>作者给的题目是：<b>让机器人执行得更快</b>。给 Opus-5.5 的"实验台"一共五样东西——一张 RTX 4090、已训练的 π₀.₅ checkpoint、模型与推理源码、136 条历史执行轨迹（5 类任务）、154 条人类示范（3 类任务）。它通过 Claude Code 调工具，全程离线，<b>没碰过真机、没拿过任何在线物理反馈</b>。</p>
+  <p>约束条件比题目更值得看，因为它决定了后面所有设计：</p>
+  <table>
+    <tr><th>约束</th><th>排除掉的做法</th><th>逼出来的做法</th></tr>
+    <tr><td>不用反向传播 / 优化器 / LoRA</td><td>梯度微调</td><td>只能<b>前向实验 + 闭式拟合</b></td></tr>
+    <tr><td>不动生产推理代码</td><td>改采样循环、改位置编码实现</td><td>只能把干预<b>编译进权重</b></td></tr>
+    <tr><td>尽量少改参数</td><td>整体重训</td><td>只改<b>个别层的局部增量</b></td></tr>
+    <tr><td>要独立可回滚</td><td>就地覆盖原 checkpoint</td><td>交一份新权重，原版权重不变</td></tr>
+  </table>
+  <p>最终交付：<b>全模型 1.16% 的参数被改动</b>，8 个测试输入全部给出有效输出。研究开销：首轮 <b>1 小时 50 分 42 秒</b>，193 次工具调用（Bash 163 / Write 18 / Read 8 / 其他 4），187 次 API 请求，输出约 18.5 万 token。</p>
+  <p>两处修改分别叫<b>前缀修复</b>和<b>节奏加速</b>，合起来叫<b>联合编辑</b>。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：五条公理，把"提速"逼到唯一一个可拧的旋钮上</h2>
+
+  <h3>公理一：模仿学习策略的"节奏"是数据给的，不是代码给的</h3>
+  <p>行为克隆学的是 \(p(a \mid o)\)：给定观察，人做了什么动作。注意这里<b>没有时间这一维</b>——训练数据里 "人花 0.8 秒把这个瓶子搬过去" 这件事，被压缩成了"第 1 步到第 26 步的动作长这样"。策略学到的不是速度，是<b>动作序列的形状</b>。执行时钟（30 Hz）是外面套上去的。</p>
+  <p>所以"快"不是某个模块的参数，而是<b>整条动作轨迹在时间轴上的密度</b>。你想让它快，等价于让模型在同样的步数里推进更远。</p>
+  <div class="step"><div class="t">推论 1</div><div class="d">"提速"不是找一个开关，是<b>找一个映射</b>：把"第 \(n\) 步"这个序号，映射到"走了多远"。而模型里唯一显式携带序号的东西，就是位置编码。<b>旋钮只有这一个。</b></div></div>
+
+  <h3>公理二：RoPE 把"序号"变成了"角度差"，所以拧序号等于拧速度</h3>
+  <p>RoPE（旋转位置编码）的做法是：把第 \(n\) 个动作的 Query/Key 向量，按 \(n\theta\) 的角度转一下。两个动作之间的注意力分数只取决于<b>角度差</b>：</p>
+  <div class="fml">
+    <div class="name">旋转位置编码的注意力内积</div>
+    \[ q_n^{\top}k_m \;=\; \mathrm{Re}\!\left(\sum_{i=1}^{d/2} \tilde q_i\,\tilde k_i^{\ast}\,e^{\,\mathrm{i}(n-m)\theta_i}\right) \]
+    <div class="exp">转成大白话：第 \(n\) 步和第 \(m\) 步"看彼此有多近"，只由 <b>(n − m)</b> 这个差值决定。旋转本身不改变向量长度，只改变"两个向量之间的夹角"。</div>
+  </div>
+  <p>于是干预变得非常干净：把位置从 \(n\) 改成 \(k n\)，相对距离就变成 \(k(n-m)\theta\)——<b>相当于告诉模型"这些动作之间隔得更远"</b>。执行时钟还是 30 Hz，物理上的时间一点没变。</p>
+  <p>Opus-5.5 的原话是："My leading hypothesis is that action timing depends on RoPE positions." 它把 \(k\) 从 1.13 试到 2.0，发现 1.13 / 1.25 / 1.5 都能提高离线路径进度，<b>2.0 收益消失、偏差反而变大</b>——说明模型学到的时间-位移关系有个上限，不是线性可外推的。</p>
+  <div class="step"><div class="t">推论 2</div><div class="d">这条曲线的形状（先升后平）本身就是证据：<b>如果位置只是"标签"，放大它不该有任何效果；如果位置被模型当成了"时间刻度"，放大它才会改变速度，而且必然在某个点失效</b>——因为训练数据里从来没有那么大的间隔。</div></div>
+
+  <h3>公理三：投影权重是共享的，它不认"第几步"，所以只能靠特征去近似</h3>
+  <p>接下来的问题很硬：<b>怎么把"改位置规则"变成"改权重"？</b>因为生产推理代码不能动，你不能在推理时偷偷加一次旋转。</p>
+  <p>但这里有个结构性障碍：Q/K 的投影矩阵 \(W_Q, W_K\) 是<b>所有动作 token 共用一套</b>，它们根本不接收"这是第几步"这个输入。它们只看到隐藏特征 \(h\)。要想让同一套权重对不同位置产生不同旋转，只能指望 \(h\) <b>自己带着位置痕迹</b>。</p>
+  <p>这就解释了一个看起来很怪的设计决定：<b>为什么只拟合第 1–17 层，放着第 0 层不改？</b>因为第 0 层的输入还没经过动作注意力混合，特征里没有"我排第几"的信息，硬拟合只会拟合噪声。第 1 层之后，注意力已经把位置差搅进特征了，才有东西可拟合。</p>
+  <div class="step"><div class="t">推论 3</div><div class="d">"把推理期干预编译进权重"这件事的<b>可行性上限，由特征里有没有那个信息决定</b>。这是所有 weight editing 类工作的通用判据：<b>先看特征是否可分，再看权重能否拟合。</b></div></div>
+
+  <h3>公理四：一次编辑必须"局部"，否则整条轨迹一起漂</h3>
+  <p>权重一动，所有输入的行为都会变。而这里的目标极其局部：<b>只想在前缀那几个时刻生效、只想在某一个旋转方向上生效、其他一律不动</b>。所以两处修改都用了同一套手法——<b>先构造"我想要的增量"，再用带正则的最小二乘去逼近它，同时拉回原权重</b>。</p>
+  <p>前缀修复甚至连拟合都省了：因为它的目标增量只在一个时刻非零，可以直接用<b>外积</b>构造出一个秩一矩阵，精确写进去。</p>
+
+  <h3>公理五：先诊断，再动手——不诊断就会去优化错的东西</h3>
+  <p>这是整个案例里最容易被忽略、又最像人的一步。Opus-5.5 没有直接试"让动作快一点"，它先问：<b>一次任务的时间到底花在哪？</b></p>
+  <p>它去读部署配置，把 136 条历史轨迹里的推理时间、动作指令、实测关节状态对齐，算出一个数字：<b>一次推理约 105–109 ms，而计划更新周期约 1.073 s</b>。也就是说推理只占 10%，而且记录里没有出现"等下一次推理"的空窗。</p>
+  <div class="step"><div class="t">推论 4</div><div class="d"><b>瓶颈不在等推理，在动作本身推得慢。</b>如果跳过这一步，最自然的做法会是"优化推理速度"——那是一条完全错的路，而且看起来非常合理。这一步决定后面 90% 的工作有没有意义。</div></div>
+
+  <div class="box good"><b>公理链收口：</b>节奏藏在权重里不可直接调（公理一）+ 唯一显式序号是 RoPE（公理二）+ 投影共享所以只能靠特征近似（公理三）+ 编辑必须局部（公理四）+ 必须先诊断瓶颈（公理五）= <b>"改权重让机器人变快"是一个有唯一解空间的工程问题，不是一个玄学调参问题</b>。这也解释了为什么 Opus 能在 2 小时内做完——<b>路径是被公理限定的，不是被搜索出来的。</b></div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：两次失败、两个发现</h2>
+
+  <h3>第一步：把"要快"拆成两个可验证的小问题</h3>
+  <p>诊断出瓶颈在动作执行之后，Opus 把问题切成两条独立线索：</p>
+  <ul>
+    <li><b>线索 A：</b>新旧 chunk 切换时那个突变（chunk 跳变）是不是生成过程出了问题？</li>
+    <li><b>线索 B：</b>能不能在<b>保持路线不变</b>的前提下，让动作在同样时间内推进更多？</li>
+  </ul>
+  <p>A 变成了前缀修复，B 变成了节奏加速。这个"切两刀"的动作很关键：它们后来被证明是<b>可叠加</b>的（一个管接缝平滑，一个管推进速度），而且各自有独立的验证方式。</p>
+
+  <h3>发现一：Training-Time RTC 官方实现里，前缀在最后一轮被改写了</h3>
+  <p>这是全文最有意思的地方——<b>它不在任务范围内，是 Opus 自己撞见的。</b></p>
+  <p>RTC 的流程是：模型在等待下一段推理时，机器人继续执行旧 chunk；把预计要执行的前 6 步作为条件喂给新的一次生成，让新动作"接在前面"。官方实现里，<b>每轮去噪前都会把条件前缀恢复成给定的旧动作</b>——这样前缀在采样过程中不会被污染。</p>
+  <p>但最后一轮不一样：<b>做完最后一次积分更新后，直接 return 了，没有再恢复一次前缀。</b>于是最后一次 flow matching 的更新量（velocity，不是机械臂物理速度）留在了前缀上。</p>
+  <p>什么时候会出事？<b>当实际延迟比预留的前缀短时。</b>比如你预留了 6 步，但这次推理提前返回，只算得 4 步——那第 5、6 步本来要执行，却已经被改写了。官方 demo 用的是"固定延迟"仿真，会把整个前缀丢掉，所以<b>从来没暴露过这个问题</b>。</p>
+  <p>一行代码就能修：<code>actions[:, :6] = target[:, :6]</code>。但推理代码不许动，所以只能改权重。Opus 的做法非常巧：</p>
+  <div class="fml">
+    <div class="name">前缀修复：把"更新量为零"写成一个秩一权重增量</div>
+    \[ \gamma'=-1,\quad \beta'\ \text{s.t.}\ h^{\top}W_{\text{out}}+\beta'=\mathbf{0} \]
+    \[ X_{\text{time}}\,\delta=\big[\underbrace{\Delta}_{1},\underbrace{0,\dots,0}_{10}\big]^{\top}\quad\Longrightarrow\quad \Delta W=\delta\otimes w \]
+    <div class="exp">第一步：把 scale 设成 −1，直接消掉动作特征 \(h\) 的影响；再求一个 shift，让 \(h'W_{\text{out}}+\beta'\) 正好等于零——<b>这样不论特征是什么，输出都是零增量</b>。<br>第二步：前缀用生成时间条件 \(\tau\)、其余 10 个采样时刻用 0。要让"前缀时刻的增量是 \(\Delta\)、其他时刻是 0"，就得解一个 1024 维的系数向量 \(\delta\)。因为矩阵乘法可结合，\(\delta\) 与调制权重那一行的外积就是需要的权重增量——<b>秩一，只动一行</b>。<br>它被写进了 <code>final_norm_1.Dense_0.kernel</code>，也就是最终归一化层里把时间特征映射成 scale/shift 的那个线性层。</div>
+  </div>
+  <p>效果：36 个示范 + 24 个历史观测上，前缀关节误差从约 <b>0.095 rad</b> 降到很低，后续动作最大变化只有 <b>0.0034 rad</b>，路径进度几乎不变。切换点步长从原版 <b>19.16 mm</b> 降到 <b>1.80 mm</b>——而直接用代码恢复前缀是 <b>1.88 mm</b>。<b>参数层面的修复和代码层面的修复，效果几乎一样。</b></p>
+  <div class="step"><div class="t">这件事的真正意义</div><div class="d">它证明了一件事：<b>"运行时需要一步操作" 和 "参数里写死一个效果"，在很多情况下是可互换的。</b>这跟把 LoRA 蒸馏回基座、把 BN 折进卷积核是同一类操作——只不过这次被折叠进去的，是采样循环里的一个控制流细节。</div></div>
+
+  <h3>发现二：把 RoPE 干预"预编译"进 Q/K 投影</h3>
+  <p>回到提速主线。RoPE 干预本身很好（\(k\) 取 1.5 左右，60 个观测里 58 个有效，离线路径进度比中位数 1.13、路径偏差 1.23 mm），但它<b>改的是位置规则</b>——生产推理代码里没有这一行。所以必须把它变成一个只改权重的版本。</p>
+  <p><b>Opus 先走错了：只拟合末端输出层。</b>逻辑上最省事——你只要让最后一层的输出等于 teacher 的输出就行了。24 个示范观测上拟合三轮，关节 RMS 只有 <b>0.0050 rad</b>，看起来成了。</p>
+  <p>然后一测留出集就崩了：另外 12 个示范 + 16 个历史观测上，误差跳到 <b>0.0239 rad</b>，路径偏差 <b>8.256 mm</b>，jerk 比 <b>3.245</b>。意思是——<b>动作抖了三倍。</b></p>
+  <div class="box bad"><b>为什么会崩：</b>末端输出层的拟合是"死记"的。它学的是"在这个具体输入下输出该是什么"，不是"位置规则变了"。换个输入，它没有可迁移的东西。而 RoPE 干预是一个<b>结构性</b>改动——它改变的是注意力怎么读取序列，这个效应必须写在更深的表示上。</div>
+  <p>于是转向 Q/K 投影。思路是：既然"改变位置规则"在代数上等价于"给 Q/K 额外转一个角度"，那我直接把<b>旋转后的 Q/K 当作目标</b>，用同一批隐藏特征去拟合新的投影权重。</p>
+  <div class="fml">
+    <div class="name">构造目标 + 带正则的闭式最小二乘</div>
+    \[ Y_Q = \mathrm{Rot}(\Delta\Theta)\,X W_Q^{\top},\qquad Y_K = \mathrm{Rot}(\Delta\Theta)\,X W_K^{\top} \]
+    \[ W_{\text{new}}=\arg\min_{W}\ \big\|XW^{\top}-Y\big\|_F^2+\lambda\big\|W-W_{\text{orig}}\big\|_F^2 \]
+    <div class="exp">第一行：目标不是"更快的动作"（那是人工标签，拿不到），而是 <b>同一份隐藏特征在额外旋转后的 Q/K</b>。这一步把"需要标注"变成了"纯代数"——<b>目标由已知旋转直接算出来，不需要任何监督信号</b>。<br>第二行：拟合时加一个 \(\lambda\) 把权重往原版拉，防止为了拟合训练样本把整层改烂。<b>正则项不是装饰，它是"局部性"这个约束的实现。</b>求解时用线性方程而不是显式求逆，也不使用反向传播。</div>
+  </div>
+  <p>还有个细节值得记：初版拟合全部 18 层，把共同测试上的归一化动作 RMS 从 0.03694 压到 0.00298——拟合得很好。但改进版<b>故意保留第 0 层，只拟合第 1–17 层</b>，teacher 也只在第 1–17 层做旋转。理由就是公理三说的那条：第 0 层还没经过动作注意力，特征里没有位置区分信息，硬拟合没有意义。</p>
+  <p>结果：留出测试上的路径进度比从 1.17 升到 <b>1.20</b>，偏差从 1.26 降到 <b>1.08 mm</b>，jerk 比从 1.47 降到 <b>1.37</b>。</p>
+
+  <h3>第三步：真机上到底快了多少</h3>
+  <p>真机在 <b>YAM 双臂</b>上做，三个任务，每个条件 3 次执行，成功率都是 100%。</p>
+  <table>
+    <tr><th>任务</th><th>指标</th><th>原版</th><th>联合编辑版</th><th>变化</th></tr>
+    <tr><td>放瓶子 · 30 Hz</td><td>平均完成时间</td><td>—</td><td>—</td><td><b>−4.3%</b></td></tr>
+    <tr><td>放瓶子 · 35 Hz</td><td>平均完成时间</td><td>—</td><td>—</td><td><b>−7.4%</b></td></tr>
+    <tr><td>放瓶子 · 40 Hz</td><td>平均完成时间</td><td>—</td><td>—</td><td><b>−12.0%</b></td></tr>
+    <tr><td>放瓶子 · 三档汇总</td><td>平均 chunk 跳变</td><td>30.88 mm</td><td><b>3.14 mm</b></td><td><b>−89.8%</b></td></tr>
+    <tr><td>投硬币</td><td>夹取→交接放手</td><td>5.85 s</td><td><b>4.64 s</b></td><td><b>−20.7%</b></td></tr>
+    <tr><td>叠方块</td><td>平均完成时间</td><td>19.46 s</td><td>19.28 s</td><td>−1.0%（<b>无意义</b>）</td></tr>
+  </table>
+  <p>一个容易被忽略的细节：<b>编辑版的收益可以和"提高执行频率"叠加。</b>编辑版在 35 Hz 下的用时已经接近原版 40 Hz；两者都在 40 Hz 时，编辑版还平均提前 <b>2.15 s</b> 完成。这说明它不是"偷偷改了时钟"，而是<b>真的改变了动作生成的方式</b>。</p>
+  <p>另一个细节相反方向：跳变的<b>降幅</b>在随频率提高而衰减——30 Hz 降 94.5%、35 Hz 降 90.7%、40 Hz 降 85.2%，编辑版内部绝对跳变从 1.43 mm 涨到 3.09 / 4.89 mm。<b>提速和动作连续性之间是有取舍的，不是双赢到底。</b></p>
+
+  <h3>第四步：确认"是它学到的，不是碰巧"</h3>
+  <p>作者补了两组基线，用来排除"随便改权重也能蒙对"：</p>
+  <ul>
+    <li><b>时间缩放</b>（把轨迹均匀加速 1.214×）：偏差和 jerk 都<b>更低</b>，但保留了原来的 chunk 跳变；</li>
+    <li><b>随机权重方向</b>：路径偏差 24.05 mm、jerk 比 <b>31.07</b>——行为彻底崩了。</li>
+  </ul>
+  <p>然后做了一个机制层的拆解：在同样的隐藏特征上，只干预"动作读动作"那块注意力分数，离线进度比是 <b>1.087</b>；只干预"动作读上下文（图像/文本/状态）"，是 <b>1.039</b>；完整干预是 <b>1.140</b>。也就是说 <b>大部分进度收益来自动作之间的相对关系，不是来自"看得更仔细"。</b>这也和公理二对上了：RoPE 放大的是动作与动作之间的距离。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：收益不大，但这个案例的"过程"比"结果"重要一个量级</h2>
+
+  <h3>它真正证明了什么</h3>
+  <div class="box good">
+  <p><b>1. 它第一次把"权重编辑"从一个玄学演示，变成了一条有判据的工程路径。</b>"特征里有没有那个信息 → 权重能不能拟合 → 正则能保多少局部性"，这条链条是可以复用的。尤其是"第 0 层不能改"这个判断——它不是因为实验失败才发现的，是因为想清楚了才提前避开的。</p>
+  <p><b>2. 自主发现了一个官方代码里的 bug，这是全文最强的一击。</b>不是"按要求完成任务"，而是"在完成任务的过程中注意到一个别人没注意到的问题，并且在不改代码的约束下给出了等价修复"。权重修复 1.80 mm vs 代码修复 1.88 mm，这个对照干净得少见。</p>
+  <p><b>3. "把运行时操作折叠进参数"这个范式值得单独拿出来讲。</b>凡是"某一步推理期干预效果很好、但不能进生产代码"的场景，都可以试着走这条路：先算清干预的代数形式，再把它拟合成权重增量。这是 BN folding、LoRA merge 的推广版。</p>
+  </div>
+
+  <h3>需要打问号的地方</h3>
+  <ol class="crit">
+    <li><b>提速幅度小，而且"最快的那个"恰恰是最可疑的那个。</b>4.3% / 7.4% / 12.0% 随频率升高而变大，这个趋势本身要小心读：执行频率越高，同样 32 步覆盖的物理时间越短，<b>绝对时间的缩短自然更容易被放大成百分比</b>。论文自己也没给"每步推进距离"这个能直接归因的指标。稳妥的说法是：<b>在 30 Hz（也就是原始配置）下，收益是 4.3%，约 0.96 秒。</b>这个量级放在工业场景里不算小，但离摘要给人的印象差很远。</li>
+    <li><b>三个任务里一个显著、一个中等、一个为零，而每组只有 3 次执行，没有统计检验。</b>叠方块 −1.0%（0.19 s）作者诚实地说"无意义"；投硬币的 20.7% 只出现在"夹取后到交接"这一段，整任务时间没报。<b>n=3 的均值 ± 标准差，无法支撑"这个方法有效"的普遍结论</b>，只能支撑"这个方向上有效果"。这在具身论文里是常态，但必须说清楚。</li>
+    <li><b>最关键的对照缺失：没有和"前缀修复 + 时间缩放"比。</b>论文明确承认"由于未比较前缀修复+时间缩放，这不证明编辑优于所有后处理方案"。这是最大的漏洞——<b>一行恢复前缀的代码 + 一个 1.214× 的时间缩放系数，可能就拿到了大部分收益</b>。而后者不需要 2 小时 AutoResearch、不需要显卡、不需要模型。如果真是这样，那这项工作的价值就完全落在"过程"上，而不是"结果"上。</li>
+    <li><b>离线指标 1.20 倍路径进度，对应真机 4.3% 时间缩短——差了一个量级。</b>论文特意注明"进度 1.214 倍不等于成功任务时间缩短 21.4%"，这个提醒很负责，但也暴露了离线指标的解释力不足。<b>离线拟合的方向是对的，但幅度完全不可外推。</b>这意味着"用离线指标做模型选择"这条路在这里是走不通的。</li>
+    <li><b>放瓶子任务原本就是 100% 成功率。</b>所以这 4%–12% 是"在已经会做的任务上省时间"，不是"把不会的变会"。这两件事的难度差一个数量级。后者需要改变动作分布，前者只需要压缩时间轴——而压缩时间轴恰好是"时间缩放"基线已经能做到的事（虽然 jerk 更好、跳变更差）。</li>
+    <li><b>前缀修复的价值被"官方会丢弃整个前缀"这件事稀释了。</b>论文说得很清楚：官方固定延迟示例会丢整个前缀，所以没暴露问题。那真实部署里有多少系统会遇到"实际延迟 < 预留前缀"？<b>只有那些为 IK 耗时波动预留了保守余量的系统。</b>论文举的 OpenWAM 例子（IK 耗时中位数 22.9 ms、最高 921.2 ms）说明这个场景真实存在，但它不是普遍场景。所以这个发现很漂亮，适用范围要打折。</li>
+    <li><b>"AutoResearch"这个词被用得比实际更重。</b>它确实做了假设-实验-修正的完整循环，但整个搜索空间是被五条约束框住的（不改代码、不用梯度、只改 1.16% 参数）。真正开放的探索只有"改哪里"这一个自由度。把它叫"研究自动化"没错，但如果被读成"模型能自己选题、自己定义问题"，那就过头了。<b>题目是人的，约束是人的，只有路径是它的。</b></li>
+    <li><b>只有一次运行、一个模型（Opus-5.5）、一次研究。</b>没有"换个种子/换个模型会怎样"的重复实验。1h50m 的探索过程里有大量偶然（比如它恰好去读了 RTC 的采样循环才发现 bug）。<b>可复现性未知</b>——这是所有"AI 做科研"类工作共同的软肋。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>这篇的标题很容易被误读成"AI 把机器人调快了 12%"。它实际讲的是：<b>当你把"不许改代码、不许用梯度、只交权重"这三道锁扣上，一个模糊的工程目标就会被压缩成一组可以被推导出来的步骤</b>——先量瓶颈、再找一个携带序号的变量、再把这个变量的干预代数化、再拟合成权重、再用正则保证局部。收益只有 4.3%（30 Hz 下），但<b>整条推理链是可审查的</b>。而那条意外发现的 RTC 前缀 bug，才是这次运行真正的产出：<b>它证明了模型能在"完成任务"的同时，顺手把任务边上的东西也修好——这才是 AutoResearch 和 AutoML 的区别。</b></p>
+  <p class="src">原文：《我们让 Opus-5.5 修改 π₀.₅ 的权重，AutoResearch 让它成为现实。》，公众号 human five，2026-11-06。作者：Ziyang Gong、Kaifeng Zheng、Yingrui Huang、Wendi Chen、Jiaguo Tian、Junkai Yang、Minghuan Liu、Zhenjie Yang。项目页：cuzyoung.github.io/robotics-weight-editing/en。相关工作：π₀.₅（arXiv:2504.16054）、Training-Time RTC（arXiv:2512.05964v2）、RoFormer（arXiv:2104.09864）、Sparks of Weight-Space Programming（MIT CSAIL, 2026）。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ 来源：公众号 human five</footer>
+</div></body>
+</html>
