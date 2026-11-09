@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Localizing and Editing the Goal Representation of a Vision-Language-Action Model</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:24px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>Localizing and Editing the Goal Representation of a Vision-Language-Action Model<span class="sub">"否定"在语言里是取补集的算子，在 OpenVLA 里退化成了一个修饰词 · 模型看得见 "not"（第 4 层就能 100% 分辨），却从不拿它去改目标 · 这不是没听懂，是根本没接线</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-06 · arXiv 2611.08895</div>
+    <div><b>来源</b> arXiv cs.RO</div>
+    <div><b>机构</b> University of Louisville</div>
+    <div><b>模型</b> OpenVLA-7B · LIBERO-Goal</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>这篇论文问的不是"VLA 听不听话"，而是一个可以精确定义的数学问题：<strong>"不要做 f" 的合规动作集合是 \(\mathcal{A}=\mathcal{G}\setminus\{f\}\)（九个目标的补集），而模型实际执行的是 \(\mathcal{A}=\{f\}\)。</strong>作者在方法一节里把这两件事写成了两行公式，剩下的全文就是在测模型落在哪一行。<br>
+  三组证据把结论钉死了。行为层：120 次否定指令里有 <strong>95 次（79%）照样执行了被禁止的任务</strong>；在 92 组匹配对照上，禁止任务的执行率 76/92 与普通指令的成功率 81/92 <strong>没有统计差异（McNemar p=0.30）</strong>——"不要说 X"和"说 X"产生了同一个行为。表征层：目标读出 \(p(X)\) 在 "X"、"not X"、"please X" 三种指令下都 ≥0.73，否定压根没压低它。机制层：一个线性探测器在<strong>第 4 层就以 1.00 的平衡准确率</strong>把 "not" 和等长中性插入区分开。<br>
+  第三层是最要命的：<strong>模型完全"看得见"这个否定词，它只是从不把它接到目标上。</strong>所以这不是理解失败，是<u>接线失败</u>——而接线失败是训练信号的结构性后果，不是模型容量不够。这决定了唯一的解法：<strong>禁止不能走语义通道，必须走控制通道。</strong></p>
+</div>
+
+<div class="toc">
+  <a href="#s1">是什么：一个取补集的问题</a>
+  <a href="#s2">为什么：五步公理链（监督里没有"不"）</a>
+  <a href="#s3">怎么做：四个公式 + 三个定位实验</a>
+  <a href="#s4">价值与八条硬批判</a>
+  <a href="#s5">结论：约束该放在哪一层</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>它不是"对齐问题"，是一个集合论问题</h2>
+
+  <p>直觉的读法是："VLA 不够听话，需要更多安全对齐。"这个读法把问题放在了<strong>意愿</strong>上——模型有能力遵守，但没被训练成遵守。</p>
+
+  <p>这篇论文的读法完全不同。它先把"禁止"写成一个<strong>集合</strong>，然后问模型输出的集合是什么。方法一节里只有两行，但这两行是全文的地基：</p>
+
+  <div class="box good"><b>"do c" 的合规集合是 \(\mathcal{A}=\{c\}\)（一个目标）。<br>"do not f" 的合规集合是 \(\mathcal{A}=\mathcal{G}\setminus\{f\}\)（九个目标）。</b><br><span class="src">这不是修辞上的区别。前者是一个点，后者是全集挖掉一个点——**一个是"做什么"，一个是"不做什么"，后者的解空间大了九倍。**</span></div>
+
+  <p>这个定义立刻解释了为什么问题难：如果模型被训练成"从指令里读出一个目标"，那么它读 "do not f" 时，句子里唯一的名词性目标就是 \(f\)。它没有"取补集"这个操作可用，因为**训练时从来没有人教过它这一步**。</p>
+
+  <h3>为什么能标出"这条轨迹执行了哪个目标"</h3>
+
+  <p>这类研究最难的一步通常是实验设计：你怎么知道模型"实际在做什么"？如果靠人看视频，样本量上不去、判定也不一致。</p>
+
+  <p>作者用了一个很聪明的抓手：<strong>LIBERO-Goal 的 10 个任务共享同一个场景</strong>。同一个厨房、同一批物体，区别只在"要达成哪个目标"（把碗放盘子上 / 把碗放炉子上 / 打开抽屉……）。于是可以给每个任务写一个符号化的目标谓词 \(g_k\)，然后<strong>用"哪个谓词最先持续成立"来自动判定这条 rollout 实际执行了哪个目标</strong>。</p>
+
+  <p>这一步的意义被大大低估了：它把"意图识别"这个模糊问题，变成了"谓词首次持续成立"这个可计算的量。后面所有的统计（79%、p=0.30、AUROC）都建立在这上面。<strong>没有这个抓手，整篇论文做不出来。</strong></p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>公理链：训练信号里根本没有"不"这个字</h2>
+
+  <p>五步。前两步是常识，第三步是全文的理论核心，后两步是它的必然结果，并且都被实验证实了。</p>
+
+  <div class="step">
+    <div class="t">① 指令是目标的压缩，动作是目标的实现</div>
+    <div class="d">VLA 的训练目标是学 \(\pi_\theta(a_t \mid o_t, \text{instr})\)。给定观测和指令，输出动作。要学这个映射，需要"指令 → 成功轨迹"的配对。这一步没有任何争议。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">② 但训练数据只收"做成了"的轨迹</div>
+    <div class="d">遥操作数据集是按"任务成功"筛的。一条"把碗放到盘子上"的轨迹被留下，"把碗碰倒了"的轨迹被丢掉。<b>这个筛选动作就是全部的根源</b>：它保证了每个指令只与"一个具体目标"绑定，而"未达成"的样本被系统性剔除了。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">③ 于是"不做 f"在训练集里没有任何监督</div>
+    <div class="d">要让模型学会"不做 f"，你需要"指令为 not f 且确实没做 f"的轨迹。但"没做 f"不是一个动作，它是<b>九个目标里任意一个</b>——对应无穷多条轨迹。而数据里既没有 not f 这种指令（数据集是"做 X"格式），也没有"什么都没做"的正样本。<br><b>一个"一对多"的映射，在只有"一对一"样本的训练集里，梯度信号为零。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">④ 梯度为零不等于参数不变——它会就近收敛到最近的可用解</div>
+    <div class="d">这是关键的一步。当模型遇到"do not put the bowl on the stove"，它并不会输出"我不知道"，它会<b>用训练分布里最接近的模式去解释这句话</b>。而最接近的模式是什么？句子里的物体（bowl, stove）和动词（put）全都在，只有那个 "not" 是分布外的。于是它把 "not" 当成噪声词跳过，提取出 "put the bowl on the stove"，执行它。<br>用作者的数据说：<b>79% 的情况下，禁止句被读成了命令句。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">⑤ 所以 "not" 会被编码，但不会被使用</div>
+    <div class="d">这一点被实验精确验证，也是全文最锋利的一处。作者训练了一个线性探测器，专门区分 "not" 和<u>等长的中性插入词</u>：<b>第 4 层平衡准确率 1.00</b>，第 16 层 0.87，第 28 层 0.76。<br>也就是说，模型在很浅的层就完整地识别出了"这句是否定句"。同时，目标读出 \(p(X)\) 在 "X"、"not X"、"please X" 下都保持在 0.73 以上直到第 28 层。<br><b>这两条放在一起，结论是唯一的：模型知道这是否定，但它从不用这个信息去改目标。信息存在，通路不存在。</b></div>
+  </div>
+
+  <h3>为什么 LLM 能处理否定，VLA 不能</h3>
+
+  <p>这里有一个容易被混淆的类比，值得说清楚。大语言模型处理否定是相当可靠的（"这句话是假的吗"这类任务做得不错），为什么同样的底座放到 VLA 上就不行了？</p>
+
+  <p>因为<strong>两者需要的"下一步"不同</strong>。LLM 处理否定时，输出空间是<u>词表</u>，而文本里有海量的"否定 → 另一个肯定"的配对（"不是 A，而是 B"），下一个 token 的分布是尖锐的、可学的。VLA 处理否定时，输出空间是<u>连续动作</u>，而"不往炉子上放"的下一步动作有无数种合法答案上——分布是平的，没有可学的峰值。</p>
+
+  <div class="box bad"><b>一句话总结这个不对称：</b>"不"在语言里是一个有确定后继的算子（否定命题之后通常跟着修正），在动作空间里是一个<strong>没有后继的约束</strong>——它的作用是"排除"，而"排除"不产生轨迹，因此不产生梯度。<br><b>凡是不产生轨迹的东西，模仿学习都学不到。</b></div>
+
+  <p>这条推论远大于这篇论文的范围：它意味着所有"用指令表达的安全性"在模仿学习范式下<strong>结构性失效</strong>，不管你用多大的模型、多好的数据。要修它，只能改训练范式（把约束变成可判定的奖励 / 过滤信号），而不是改模型。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>四个公式，三个实验，一条"目标在第 12~16 层之间换手"</h2>
+
+  <h3>公式一：怎么自动判定"这条轨迹做了什么"</h3>
+
+  <div class="fml">
+    <div class="name">式 1｜执行目标 \(y\) 的自动标注</div>
+    \[ y \;=\; \arg\min_{k\in\{1,\dots,10\}} t_k, \qquad t_k \;=\; \min\Big\{\,t \;:\; g_k \text{ holds for } w_g=5 \text{ consecutive steps}\,\Big\} \]
+    <div class="exp">大白话：给 10 个任务各写一个"目标达成"的谓词检查函数 \(g_k\)（比如"碗在盘子上"= 两个物体的位姿关系满足条件）。一条轨迹跑完，看哪个谓词<b>最先连续成立 5 步</b>，就把这条轨迹记成"执行了任务 \(k\)"。一个谓词都没成立过 → 记为 <b>stall（卡住）</b>，\(y=\varnothing\)。<br>为什么要求"连续 5 步"而不是"成立一次"？因为机械臂经过某个位置时会瞬时满足谓词（比如手举着碗从炉子上方经过），只是路过不算达成。<b>这个 5 步窗口是一个防误判的去抖，也是整套标注能自动化的关键。</b></div>
+  </div>
+
+  <h3>公式二：禁止与允许，是一个补集关系</h3>
+
+  <div class="fml">
+    <div class="name">式 2｜指令定义的合规集合 \(\mathcal{A}\)</div>
+    \[ \mathcal{G}=\{1,\dots,10,\varnothing\},\qquad \text{"do } c\text{"}\Rightarrow\mathcal{A}=\{c\},\qquad \text{"do not } f\text{"}\Rightarrow\mathcal{A}=\mathcal{G}\setminus\{f\} \]
+    <div class="exp">大白话：把所有可能的结果（10 个任务 + 卡住）当成全集 \(\mathcal{G}\)。"去做 c" 把允许集合缩到一个点；"不要做 f" 则把它缩小成"全集减掉 f"——<b>九个元素</b>。<br>这两行是整个安全性讨论的<b>形式化地基</b>。它把"禁止"从一个语言学概念（否定）变成了一个集合论操作（取补），从而<b>可以被检验</b>：模型的行为 \(y\) 落在 \(\mathcal{A}\) 里吗？实验答案：79% 的情况下不落在里面。<br>顺带说，这个写法也提示了正确解法：如果你要保证 \(y\in\mathcal{A}\)，最可靠的做法不是让模型"理解补集"，而是在输出端<b>直接检查 \(y\) 是否属于 \(\mathcal{A}\)</b>——这就是后文的监控方案。</div>
+  </div>
+
+  <h3>公式三：读目标 + 算违规分</h3>
+
+  <div class="fml">
+    <div class="name">式 3｜目标探针与"规范感知"评分</div>
+    \[ p_\phi(k\mid h_t), \qquad s_t \;=\; \max_{k\notin\mathcal{A}} \log p_\phi(k\mid h_t)\;-\;\max_{k\in\mathcal{A}} \log p_\phi(k\mid h_t) \]
+    <div class="exp">大白话：\(h_t\in\mathbb{R}^{4096}\) 是 Llama-2 在第 \(l\) 层、<b>决策 token</b>（最后一个 prompt token，它负责吐出第一个动作 token）处的残差流。用逻辑回归从这 4096 维里读出"模型认为当前在做哪个任务"的概率分布 \(p_\phi\)。<br>然后算违规分 \(s_t\)：<b>最像的"违规目标"的对数概率，减去最像的"合规目标"的对数概率</b>。\(s_t>0\) 表示模型更倾向于违规。这个量比"直接看 \(p(X)\) 高不高"聪明得多，因为它<b>带上了规范 \(\mathcal{A}\)</b>——同一个 \(p\) 分布，在不同指令下会给出不同的 \(s\)。这就是论文标题里"against the specification"的含义。</div>
+  </div>
+
+  <h3>公式四：定位——某层被替换后，行为转移了多少</h3>
+
+  <div class="fml">
+    <div class="name">式 4｜归一化 logit 差 \(\rho\)（activation patching 的核心读数）</div>
+    \[ \rho \;=\; \frac{\mathrm{LD}-\mathrm{LD}_c}{\mathrm{LD}_d-\mathrm{LD}_c}, \qquad \text{以及动作维度的转移}\;\; \frac{a-a_c}{a_d-a_c} \]
+    <div class="exp">大白话：拿同一帧画面，分别用指令 \(c\) 和指令 \(d\) 跑一遍，得到两个"答案"。然后<u>把某一层某几个位置的激活，替换成 \(d\) 那一次运行的值</u>，再跑一次，得到 \(\mathrm{LD}\)。<br>\(\rho=1\) 表示"完全变成了 \(d\) 的行为"，\(\rho=0\) 表示"完全没变"。<b>它测的是"这一层的这几个位置，对最终答案有多大决定权"</b>——这就是"定位"的全部含义。<br>这个手法借自语言模型的事实定位研究（ROME / IOI），本文把它第一次系统地用到了 VLA 上。作者的贡献不在发明 \(\rho\)，在于<b>用 \(\rho\) 画出了一张"目标在 VLA 内部如何换手"的层间地图</b>。</div>
+  </div>
+
+  <h3>实验一：目标在第 12 层到第 16 层之间"换手"</h3>
+
+  <p>这是全文最漂亮的结果，而且是一个<strong>干净的阶跃</strong>，不是渐变：</p>
+
+  <table>
+    <tr><th style="width:30%">被替换的位置</th><th style="width:20%">第 8 层</th><th style="width:20%">第 12 层</th><th>第 16 层起</th></tr>
+    <tr><td><b>指令 token</b>（c 与 d 不同处）</td><td><b>ρ = 0.94</b></td><td>ρ = 0.69</td><td>ρ = 0.18</td></tr>
+    <tr><td><b>决策 token</b>（最后那个 prompt token）</td><td>ρ = 0.04</td><td>—</td><td><b>ρ = 0.77</b></td></tr>
+  </table>
+
+  <p>读法：<strong>第 8 层时，第一个动作几乎完全由指令 token 决定（0.94），决策 token 几乎不参与（0.04）；到第 16 层之后完全反转（0.18 vs 0.77）。</strong>中间的第 12~16 层就是这个信息的交接点。</p>
+
+  <p>这个结果有一个非常实用的含义，也是作者给出的第一条工程建议：<strong>如果你要改机器人的目标，必须在第 12 层之前动手。</strong>因为在第 16 层之后，目标已经被写进了决策 token，而决策 token 会逐步吐出整串动作 token——你在 prompt 上做的任何修改，都追不上已经流出去的动作。</p>
+
+  <h3>实验二：改目标——早期一次就够，晚期要逐个 token 打</h3>
+
+  <p>定位给出预测，编辑实验验证它。结果相当干脆：</p>
+
+  <table>
+    <tr><th style="width:38%">编辑方式</th><th style="width:22%">重定向成功</th><th>说明</th></tr>
+    <tr><td><b>第 8 层，指令跨度上的固定向量</b></td><td><b>12 / 18（67%）</b></td><td>离线时每个动作维度的转移都 ≥0.90，闭环真的换了任务</td></tr>
+    <tr><td>第 12–20 层的固定向量 / prefill 补丁</td><td><b>0 / 158</b></td><td>完全无效</td></tr>
+    <tr><td>第 16 层起，<b>对每个解码出的动作 token</b>都打补丁</td><td>第 24 层 <b>15 / 18</b></td><td>只有逐个 token 打才有效</td></tr>
+  </table>
+
+  <p>这三行合起来讲了一个很清楚的故事：<strong>目标是"一次写入、然后被复制"的。</strong>在写入点（第 8 层）改一次，后面全部跟着变；写入之后（第 16 层之后），你只能一个一个地把已经流出去的动作 token 改掉——因为每个动作 token 都自带一份"我要做什么"的副本。</p>
+
+  <p>这也解释了为什么"第 12–20 层的 prefill 补丁"是 0/158：prefill 只改一次（在解码开始前），而那个阶段目标已经转移到决策 token 并且开始复制了。<strong>改的时机和复制的时机错开了，就完全无效。</strong></p>
+
+  <h3>实验三：监控——在"中途改指令"的场景里有效，在"否定"场景里彻底失效</h3>
+
+  <p>这是全文最诚实、也最令人不安的一组数字。作者把 goal probe 当成一个"合规监控器"来用，和第 32 层目标读出比较的对象是各种失败检测器：</p>
+
+  <table>
+    <tr><th style="width:34%">监控器</th><th style="width:22%">AUROC（重定向未遵循）</th><th style="width:22%">否定场景 TPR</th><th>否定场景 FA</th></tr>
+    <tr><td><b>Goal probe（第 32 层）</b></td><td><b>0.94 [0.88, 0.98]</b></td><td><b>1.00</b></td><td><b>1.00</b></td></tr>
+    <tr><td>视觉+文本（DINOv2）</td><td>0.92 [0.84, 0.97]</td><td>1.00</td><td>1.00</td></tr>
+    <tr><td>物体位姿（特权信息，线性）</td><td>0.90 [0.83, 0.93]</td><td>0.89</td><td>0.80</td></tr>
+    <tr><td>成功探针（第 32 层）</td><td>0.87 [0.78, 0.94]</td><td>0.07</td><td>0.00</td></tr>
+    <tr><td>动作熵</td><td>0.77 [0.66, 0.85]</td><td>0.21</td><td>0.19</td></tr>
+    <tr><td>任务对+时间先验（无模型）</td><td>0.96（配对内仅 0.76）</td><td>—</td><td>—</td></tr>
+  </table>
+
+  <p>这张表要分左右两半读，而且两半的结论<strong>方向相反</strong>：</p>
+
+  <p><strong>左半（重定向场景）是成功。</strong>goal probe 的 AUROC 0.94，明显高于"成功探针"（0.87）和"动作熵"（0.77）。这两个都是常见的失败检测器，而它们在这里几乎没用——因为它们检测的是"任务要失败了"，而不是"任务走偏了"。<u>走偏的任务往往执行得非常流畅，熵很低、成功探针很自信。</u>这正是"用目标读数监控"的价值所在：它监控的是"做的是不是那件事"，不是"做得好不好"。</p>
+
+  <p><strong>右半（否定场景）是彻底失败。</strong>TPR=1.00 看起来完美——它抓到了全部 95 个违规。但 <strong>FA=1.00</strong>：它把 25 个"卡住没动"的合规 rollout 也全部标成了违规。<u>一个把所有东西都标红的报警器，等于没有报警器。</u>作者自己写得很直白："在否定条件下，我们的目标监控器并不比一条关键词规则更好。"</p>
+
+  <div class="box bad"><b>为什么在否定场景里必然失效——这一点论文没有明说，但可以从式 3 推出来：</b><br>监控器假设"模型内部的目标读出 \(p_\phi\) 会反映出它真正在做的事"。在重定向场景里这个假设成立（指令变了、目标变了、读出也跟着变）。<br>但在否定场景里，<b>模型内部的目标表征就是 \(f\) 本身</b>（这正是本篇的核心发现）。所以 \(p_\phi(f\mid h_t)\approx 1\)，而 \(f\notin\mathcal{A}\)，于是 \(s_t>0\) 恒成立——<b>不管它是在违规执行还是在合规地卡住不动。</b><br>换句话说：<u>监控器读的是"模型想做什么"，而不是"模型最终做了什么"。当"想做的"和"该做的"不一致时（重定向），它能抓到；当"想做的"本身就是违规时（否定），它只能一直报警。</u>这不是调参能修的，是设计层面的错位。</div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">价值与局限</span>它证到了一件大事，但结论被摘要拉宽了</h2>
+
+  <p>先说功劳，而且要说足。这篇论文做成了三件在具身智能可解释性里相当少见的事：</p>
+
+  <p>第一，<strong>它把"安全约束"变成了一个可检验的命题</strong>（式 2），而不是一个价值观讨论。第二，<strong>它给出了一张层间地图</strong>（第 8 层指令主导 → 第 16 层后决策 token 主导），而且是干净的阶跃，不是含糊的渐变。第三，<strong>它把"定位"和"编辑"接起来了</strong>——不只是说"目标在这里"，还验证了"在这里改就有效、在那里改就无效"（12/18 vs 0/158 vs 15/18）。</p>
+
+  <p>而且它非常克制。Limitations 里主动写了三件事：只有一个模型、一个仿真场景、闭环编辑只用了 18 个 rollout（"所以 0/18 意味着真实成功率可能高达 18%"）。这种自我设限在当下的论文里是稀缺品。</p>
+
+  <p>但它的核心结论，被摘要的措辞拉宽了一大截。以下八条。</p>
+
+  <ol class="crit">
+    <li><b>最硬的一条：五种否定措辞的执行率差异高达 30 个百分点，而摘要只报了合并后的 79%。</b>附录里的原始数字是："not" 27/30（<b>90%</b>）、"do not" 27/30（<b>90%</b>）、"don't" 12/20（<b>60%</b>）、"never" 13/20（<b>65%</b>）、"you must not" 16/20（<b>80%</b>）。<br>摘要和正文都说"否定未检测到影响"（79%，95% CI [71,85]），并引用 92 组匹配案例的 McNemar p=0.30。但那个检验是<b>把所有措辞混在一起</b>做的。<u>分措辞看，从句式 A 的 60% 到句式 B 的 90%，差了一倍半。</u><br>这意味着"否定完全无效"这个结论过强了：<b>至少 "don't" 和 "never" 这两种更口语、更短的否定形式，被部分遵守了</b>（各 40%/35% 的情况下没执行）。论文既没有做分措辞的显著性检验，也没有讨论"为什么某些措辞更有效"——而这恰恰是最有工程价值的一条线索（如果换个说法能让违规率从 90% 降到 60%，那"怎么说"就是有意义的）。</li>
+
+    <li><b>"禁止整个任务"是被刻意挑出来的最坏情况，不是典型情况。</b>作者自己标注了这些禁令是 "benign whole-task prohibitions"（良性的整任务禁令）。也就是说，禁令的形式是"不要执行任务 7"，而任务 7 恰好是训练集里一个完整的、有专门数据的任务。<br>真实的安全约束几乎不长这样。真实的是"不要碰那个杯子"（物体级，跨任务）、"不要进入那个区域"（空间级）、"不要用超过 30N 的力"（连续量级）。<b>这些约束在训练集里连"被禁止的那个目标"都不存在</b>，因此问题的性质完全不同——不是"取补集失败"，而是"约束提到了分布外的东西"。论文用最坏情况证明了"否定无效"，但<b>没有证明这个结论能迁移到物体级/连续量级的约束上</b>，而后者才是部署时的真实形态。</li>
+
+    <li><b>监控器在否定场景下的失效，直接抽掉了论文标题后半句的支撑。</b>标题是 "Localizing and <u>Editing</u> the Goal Representation"，摘要结尾建议 "monitoring goal read-outs against the specification"。但实验显示：在最需要监控的场景（否定）里，监控器 TPR=1.00 同时 FA=1.00，即<b>完全不可用</b>。<br>作者诚实地写出来了（"no better than a keyword rule"），这是好的。但读者需要自己把这个裂缝补上：<u>它证明的是"目标可以被读出、可以被编辑"，而不是"违规可以被检测"</u>。这两件事在论文里被并列呈现，实际强度差得很远。</li>
+
+    <li><b>goal probe 的标签用了"未来信息"，这削弱了"目标表征"的解释力。</b>原文写："Each step of a nominal rollout is labeled with the <u>eventual</u> \(y\) of that rollout." 也就是说，probe 是在学"<strong>这条轨迹最后去了哪</strong>"，而不是"<strong>此刻想做什么</strong>"。<br>这是一个方法论上的重要区别。在"中途改指令"的场景里，一条轨迹的前半段和后半段被贴上了同一个标签（最终归宿），所以 probe 实际上学到的是"轨迹的身份"，而它表现好，可能部分来自这个后验信息。<b>要在"当前意图"上做文章，标签应该用"从当前步往后的 rollout 终点"（per-step hindsight labeling），而不是整条轨迹的终点。</b>论文没有讨论这个选择的影响。</li>
+
+    <li><b>"内部探针"并没有赢过"外部看图像"——这是对可解释性必要性的一次反证。</b>表里很清楚：goal probe（0.94）vs 视觉+文本 DINOv2（0.92）vs 物体位姿（0.90，且用特权信息）。三个数字几乎一样。<br>如果外部特征就能达到同样效果，那么"打开模型读残差流"的<b>实用价值</b>就主要剩下"不用特权信息"这一点（物体位姿那条确实用了仿真真值）。作者把这写成 "performs comparably"，措辞是公允的；但如果要论证"必须做可解释性"，这个对照其实是<u>不利于</u>论证的。<b>更诚实的说法应该是：可解释性提供了机制层面的解释，但没有提供更好的监控性能。</b></li>
+
+    <li><b>0/158 这个数字掩盖了"层 × 补丁方式"的交互，让读者无法判断到底哪个因素在起作用。</b>第二组编辑实验把"第 12–20 层的固定向量"和"prefill 补丁"合并成一个 0/158 来报。但第 24 层的 decode-stream 补丁是 15/18。于是读者面临一个无法回答的问题：<u>如果第 24 层用 prefill 补丁，会是多少？如果第 14 层用 decode-stream 补丁，会是多少？</u><br>这个 2×2（层 × 补丁方式）的格子只填了对角线上的两格，另外两格空着。而"到底是层重要还是补丁方式重要"恰恰是这条工程建议的核心。<b>把两个变量合并成一个分母，是这张表最大的设计缺陷。</b></li>
+
+    <li><b>"在第 12 层之前改"这条建议，不可迁移到别的模型，而论文没给"怎么找到这一层"的方法。</b>第 12~16 层的交接点是 OpenVLA-7B（Llama-2 主干）的解剖结果。换一个基座——Qwen2.5-VL、PaliGemma 的其他规模、π0 的 flow 头——这个交接点必然移动，而且很可能不是阶跃而是渐变。<br>论文没有给出一个"自动定位"的流程（比如："用一个探针扫所有层，找 ρ 从 >0.9 掉到 <0.2 的那一层"）。而这恰恰是把这套方法变成工具的关键一步。<b>现在这条建议的可操作形式是："你先有一篇这样的论文，再照做"。</b></li>
+
+    <li><b>仿真 + 模板化指令 + 单一模型，三个限制叠在一起，让"79%"这个数字的边界条件非常窄。</b>LIBERO-Goal 的指令是模板化的短句（"put the bowl on the plate"），五个否定变体是把模板加一个前缀。这种高度规整的分布，恰恰最有利于"关键词提取"策略——而真实的操作员指令是"哎别放那儿""小心点那个是热的"。<br>换句话说：<b>这个实验设计最大化了"否定被忽略"的概率</b>（因为模板里除了否定词以外一切都指向 \(f\)）。这不算错——它把现象暴露得很干净——但读者不能把 79% 当成"任意 VLA 在任意指令下违反禁令的概率"。</li>
+  </ol>
+
+  <h3>还有一条论文完全没问的问题</h3>
+
+  <div class="box bad">
+  <p>整篇论文把"否定无效"归因到<strong>目标表征</strong>层（\(p(X)\) 没被压低）。但它<b>没有测"否定在语言侧是否被正确解析"。</b>也就是说，它证明了"模型知道这是否定句"（探测器 1.00），但没有证明"模型知道否定的作用域是什么"。</p>
+  <p>"不要把碗放在炉子上"这句话，有两种可能的错误解析：<b>(a)</b> 否定被忽略，整体读成"把碗放炉子上"；<b>(b)</b> 否定被正确识别但作用域搞错，比如读成"不要把碗<u>放在炉子上</u>"→"把别的东西放炉子上"。这两种错误在行为层看起来一样（都执行了 f），但需要的修法完全不同。</p>
+  <p>要区分它们，只需要一个实验：<b>把否定换成"把碗放在<u>别处</u>"（同样是禁止，但是肯定的表述）</b>。如果模型遵守了这个版本，那问题就是"否定这个词"，而不是"补集这个操作"——那么解法就变成了"训练时做否定的数据增强"，比论文建议的"外部监控"便宜得多。<u>这个对照实验论文没有做，而它恰好是最能指导工程的那一个。</u></p>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">结论</span>约束应该放在控制层，不该放在语义层</h2>
+
+  <p>如果只带走一句话：<strong>"不要做 X" 不是一条指令，是一个约束；而约束不能通过指令传达。</strong></p>
+
+  <p>这个区分在工程上是决定性的。指令走的是"语义 → 目标 → 动作"这条通路，它的输出是一个概率分布；约束需要一个"无论如何都不能越过"的边界，它必须在动作被采样出来<u>之后</u>、被执行<u>之前</u>起作用。</p>
+
+  <p>论文给出的所有证据都指向同一个结论：在语义层加约束，等于让模型在分布外做一次"取补集"的推理，而它从来没有被训练过这件事——所以它会把"不"当成噪声。</p>
+
+  <div class="box good">
+  <b>给三类读者的判断标准：</b><br><br>
+  <b>① 如果你在设计机器人的安全逻辑</b>——不要把禁令写进 prompt 就以为安全了。按这篇的数据，它在 79% 的情况下无效，而且"无效"还是最好的情况（最坏是它理解了但执行偏了）。应该做的是：<b>在动作输出端加一个硬约束层</b>（安全滤波 / 可达集检查 / 谓词监控），并用目标读出做<b>事后告警</b>而不是事前保证。<br><br>
+  <b>② 如果你在做 VLA 的可解释性</b>——这篇给了一个可复用的模板：<u>找一个"共享场景、多目标"的 benchmark → 用谓词自动标注执行目标 → 用 activation patching 扫层 → 用 steering 验证因果 → 用 probe 做监控</u>。这条流水线比它的具体结论更有价值。<br>但要注意两个坑：标签用"最终归宿"会高估 probe 的意图识别能力；"层 × 补丁方式"必须分开报，不能合并分母。<br><br>
+  <b>③ 如果你要判断"该不该信 79% 这个数"</b>——把它读成"在最有利于忽略否定的条件下、最容易被忽略的措辞下，违规率约九成；换成更口语的否定（don't / never），会降到六到六成五"。<b>这个区间（60%–90%）比那个点估计（79%）有用得多</b>，因为它告诉你"措辞是有影响的"——而这本身就是一条可以立刻用的工程线索。
+  </div>
+
+  <p>最后说一句这篇论文真正的贡献。它表面上是在测"VLA 听不听话"，实际上给出了一个更普适的判断工具：<strong>判断一个能力能不能靠指令获得，就看它在训练数据里有没有对应的轨迹。</strong></p>
+
+  <p>"不要做 X" 没有轨迹（因为"不做"不产生动作），所以学不到。"把碗放盘子上"有海量轨迹，所以学得很好。这个判据简单到近乎显然，但它能一次性解释一大堆现象：为什么 VLA 学不会"轻一点"（力的大小缺乏标注轨迹）、学不会"等一会儿"（等待不产生动作）、学不会"如果……就……"（条件分支在演示里很少出现）。</p>
+
+  <p>而这篇论文的价值，在于它把这个判据<strong>第一次钉在了一个可测量的量上</strong>：\(p(X)\) 在 "X" 和 "not X" 下都是 0.73 以上。这一行数字，比任何关于"具身智能安全性"的论述都更有说服力。</p>
+
+  <p class="src">论文：<a href="https://arxiv.org/abs/2611.08895" target="_blank">Localizing and Editing the Goal Representation of a Vision-Language-Action Model</a>（arXiv 2611.08895，2026-11-06，Sudhanshu Srivastava &amp; Faisal Aqlan，University of Louisville）· 模型：OpenVLA-7B 在 LIBERO-Goal 上微调（名义成功率 78%，95% CI [73,82]）· 实验规模：352 名义 / 120 否定 / 285 重定向 rollout</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解　|　所有数字与公式均引自 arXiv 2611.08895v1 原文与方法节</footer>
+</div></body></html>

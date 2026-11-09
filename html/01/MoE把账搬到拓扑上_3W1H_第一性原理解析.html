@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoE：从架构设计到大规模训练（上）</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>MoE：从架构设计到大规模训练（上）<span class="sub">MoE 不生产算力，它只做一次成本搬运 · 省下的是账面 FLOPs，账单以 All-to-All 的形式立刻寄回来 · 而全交换天生比归约慢一个数量级——稀疏化的门槛不在数学，在拓扑</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-06</div>
+    <div><b>原手册</b> HF · The Ultimate MoE Training Handbook（前两章）</div>
+    <div><b>环境</b> AWS P5 · 8×H100 80G · EFA</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>开门前 20 名开源权重模型里有 18 个是 MoE，这件事让人误以为稀疏化是"更省"。但它省的只有一样东西：<strong>每个 token 要做的稠密乘法</strong>。而它换来的新成本，是<strong>把 token 搬到专家所在的那张卡上</strong>——因为路由是数据依赖的，运行时才知道谁去哪，所以你没法在编译期把计算安排好。<br>
+  这次搬运的通信模式叫 <strong>All-to-All（全交换）</strong>，和稠密训练里那个 All-Reduce（归约）不是同一种东西：归约可以边传边压，全交换必须一张卡给每一张卡发<u>不同的内容</u>，无法压缩，且延迟由最慢的那条链路决定。<strong>手册实测：All-Reduce 398.52 GB/s，All-to-All 39.84 GB/s——差整整 10 倍。</strong><br>
+  所以真正的结论是：<strong>MoE 的可行性由互联拓扑决定，而不是由架构有多聪明决定。</strong>你手里那 6.86B 参数、每 token 只激活 1.22B（17.8%）的漂亮数字，只有在一条能扛住全交换的网络上才兑现成速度；在一条扛不住的网络上，它兑现成等待。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">是什么：一次成本形态的转换</a>
+  <a href="#s2">为什么：公理链六步</a>
+  <a href="#s3">怎么做：手册的三段式与首跑</a>
+  <a href="#s4">价值与八条硬批判</a>
+  <a href="#s5">结论：先测网络，再改模型</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>不是一个"更聪明的层"，是一次"成本换形态"</h2>
+
+  <p>先把最常见的误读拆掉。很多介绍 MoE 的文章会说"MoE 用多个专家分工，所以更强"。这个说法把架构和效果绑在了一起，而这本手册<b>根本没有做这个检验</b>——它整本书的目标是"如何把一次 MoE 训练跑通、以及跑不通时怎么查"。所以读它的时候，凡是看到"专家""分工""专业化"，都应该替换成"<strong>另一套成本结构</strong>"。</p>
+
+  <p>真正的变化只有一句话：</p>
+
+  <div class="box good"><b>稠密层是"所有 token 走同一条路"，稀疏层是"每个 token 走 k 条路中的几条"——而"走哪几条"由运行时算出来的 router 决定。</b></div>
+
+  <p>前半句是收益：计算量从"∝ 全部参数"降到"∝ k 个专家的宽度"。后半句是代价：因为路径是动态的，<strong>计算发生在哪张卡上也是动态的</strong>。而 GPU 不能把数据"隔空"算掉，只能把数据搬过去。</p>
+
+  <p>手册把这件事拆成三个新问题，这个拆法很干净，值得照搬：</p>
+
+  <table>
+    <tr><th style="width:18%">新问题</th><th style="width:40%">它在解决什么</th><th>它带来的新失败方式</th></tr>
+    <tr><td><b>Router</b></td><td>每个 token 该用哪些专家</td><td>路由崩塌：少数专家吃掉全部 token，其余专家的梯度恒为 0</td></tr>
+    <tr><td><b>负载均衡</b></td><td>让各专家分到的 token 数量接近</td><td>你等的不是平均时间，是最热那张卡的时间（长尾）</td></tr>
+    <tr><td><b>跨 GPU 交换</b></td><td>专家分布在不同卡上时，每层都要交换 token</td><td>一种稠密训练里从未出现过的通信模式，带宽和延迟都要重新测</td></tr>
+  </table>
+
+  <p>这里有个细节值得停一下：手册把这三个问题称为"<strong>从 Dense 转向 MoE 后崭新的失败方式</strong>"，并给了一张"先看症状、再找最早出现的异常信号（煤矿里的金丝雀）、然后翻到对应章节"的排查图。<strong>这个"症状 → 根因"的倒推结构，才是这本手册真正的价值所在</strong>，因为它承认了一个事实：MoE 训练失败的报错信息，几乎从来不告诉你原因。</p>
+
+  <h3>它给你的第一个数字，是个陷阱</h3>
+
+  <p>手册反复强调一个数字：示例模型总参数 <b>6.86B</b>，每个 token 只激活 <b>1.22B</b>。算一下比例：</p>
+
+  <div class="fml">
+    <div class="name">式 1｜稀疏度：账面省下来的那部分</div>
+    \[ \rho \;=\; \frac{P_{\text{active}}}{P_{\text{total}}} \;=\; \frac{1.22\text{B}}{6.86\text{B}} \;\approx\; 17.8\% \]
+    <div class="exp">大白话：参数里只有 17.8% 参与每个 token 的计算，剩下 82% 处于"待命"。如果一切顺利，这意味着<b>同样的显存能装下 5.6 倍的参数量而计算量不变</b>。<br><b>但这是"参数口径"，不是"算力口径"</b>——这一点手册没有强调，却是最容易踩的坑：Attention、Embedding、Router、LayerNorm 全是稠密的，真正被稀疏化的只有 FFN。当 FFN 只占整层 FLOPs 的一半左右时，端到端能省下的算力远小于 82%。<b>用参数比去估加速比，是这类文章最常见的误导。</b></div>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>公理链：从"省 FLOPs"推到"被拓扑锁死"</h2>
+
+  <p>这六步里，前两步是常识，第三步是整个 MoE 工程复杂性的<strong>唯一源头</strong>，后三步是它的必然结果。</p>
+
+  <div class="step">
+    <div class="t">① 稠密层的成本是"本地、均匀、可预测"的</div>
+    <div class="d">同一组权重、同一批 token、每张卡算自己那份。通信只需要在反向传播时做一次 All-Reduce 把梯度求和。这类通信是<b>规整的、可预期的</b>，可以和计算重叠（overlap），所以它几乎不进入关键路径。你在写稠密训练脚本时从来不需要关心网络拓扑，原因就在这里。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">② 稀疏化把"算全部"改成"算 k 个"，账面算力确实降了</div>
+    <div class="d">每个 token 经过 top-k 个专家。参数总量放大、单 token 计算量不变甚至更小。<b>到这一步为止，MoE 看起来是一笔纯赚的买卖。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">③ 但"走哪 k 个"是数据依赖的，编译期算不出来</div>
+    <div class="d">这是<span style="color:#b45309;font-weight:700">整个复杂性的源头</span>。router 的输出取决于这个 token 自己的隐状态，也就是取决于输入内容。你无法在编译期知道"第 37 个 token 会去 5 号专家"，因此<b>你也无法提前把数据和权重放到同一张卡上</b>。<br>对比一下：卷积的切分是静态的，数据并行也是静态的——它们都能在编译期画出一张通信表。MoE 画不出来。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">④ 于是必须在运行时把 token 搬到专家所在的卡上</div>
+    <div class="d">每一层 MoE 有<b>两次</b>全交换：先把 token 发到持有对应专家的卡（dispatch），算完再把结果送回原来的位置（combine）。手册给的缓解手法是让"每个节点上的专家数量与 GPU 数量相同"（EP 组内一次交换），但这只是把交换限制在组内，消不掉它。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">⑤ 全交换和归约，在物理上不是同一件事</div>
+    <div class="d"><b>All-Reduce</b>：所有卡的最终目标是<b>同一个求和结果</b>。因为目标是同一个，所以可以在传输途中做压缩（ring/tree 结构里，每跳只传部分和）。<br><b>All-to-All</b>：每张卡要给<b>每一张其他卡</b>发<b>各不相同</b>的一份数据。没有"共同目标"，因此<b>无法压缩、无法用树结构聚合</b>——物理上它就是"每张卡对每张卡各开一条流"，也就是一个完全图。<br>完全图的边数是 \(n(n-1)\)，树是 \(n-1\)。这不是实现优劣，是<b>拓扑决定的量级差</b>。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">⑥ 净收益 = 省下的 FLOPs − 通信时间 − 长尾等待</div>
+    <div class="d">三项一旦写出来，结论就自明了：<b>MoE 的收益不是"架构属性"，是一个"预算平衡"</b>。同样的模型，放在 NVLink 全互联的机器上和放在跨机架的以太网上，净收益可以是正的和负的。<br>手册的实测：All-Reduce 达到 <b>398.52 GB/s</b>，而 All-to-All 只有 <b>39.84 GB/s</b>。注意这是在"较慢的两节点测试"里测到的——同一个网络、同一批卡，只换通信模式，带宽掉到 1/10。</div>
+  </div>
+
+  <h3>把"净收益"写成能算的式子</h3>
+
+  <div class="fml">
+    <div class="name">式 2｜每层 MoE 的交换量</div>
+    \[ V_{\text{comm}} \;=\; 2 \cdot B \cdot S \cdot k \cdot d \cdot \text{sizeof(dtype)} \]
+    <div class="exp">大白话：<b>2</b> 是去+回两次交换，<b>B·S</b> 是批内 token 总数，<b>k</b> 是每个 token 选几个专家，<b>d</b> 是隐维。<br>关键在 <b>k</b>：k 从 1 加到 2，交换量直接翻倍，而<b>计算量只翻一倍</b>——也就是说<b>增大 k 不会改变"通信/计算"的比例</b>，它只是把两边一起放大。真正能改善比例的只有两件事：降低 d（专家变窄）或提升互联带宽。<b>这解释了为什么"更细的专家粒度"会成为主流</b>：专家越窄，同样参数下 k 可以更大（表达力更强），而单次交换的 d 更小。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3｜把通信折算进加速比</div>
+    \[ S_{\text{net}} \;=\; \frac{1/\rho}{1 + \dfrac{T_{\text{comm}}}{T_{\text{comp}}}} \;=\; \frac{P_{\text{total}}/P_{\text{active}}}{1 + \dfrac{V_{\text{comm}}/BW}{2\,B\,S\,k\,d_{\text{ffn}}\,/\,\text{FLOPS}}} \]
+    <div class="exp">大白话：分子是账面上该赚的（参数的稀疏度倒数，这里约 5.6×），分母是<b>通信把赚到的吃回去多少</b>。<br>代入手册的数字感受一下：如果 All-to-All 带宽只有 All-Reduce 的 1/10，而 MoE 每层要做两次全交换、稠密每步只做一次归约，那么<b>只要通信时间和计算时间同一个量级，5.6 倍的账面收益就会被吃掉大半</b>。这就是手册开篇那句"真正困难的地方在于：如何将推理阶段节省的计算量，转化为训练速度的提升"的算术含义——<u>它不是修辞，是一个除法</u>。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 4｜负载不均衡：你等的是最热的那张卡</div>
+    \[ T_{\text{step}} \;\propto\; \max_{e \in \mathcal{E}} \;\text{load}(e) \quad\Longrightarrow\quad \text{耗时因子} \;=\; \frac{\max_e \text{load}(e)}{\frac{1}{|\mathcal{E}|}\sum_e \text{load}(e)} \]
+    <div class="exp">大白话：一步的耗时不是由 token 的平均分配决定，而是由<b>分到最多 token 的那个专家</b>决定。因为每张卡必须等所有卡都做完才能进下一层。<br>这个式子的残酷之处在于它是 <b>max</b>，不是均值：分配的<b>方差</b>直接变成<b>时间的乘数</b>。一个 2 倍的不均衡，在 8 卡上意味着你有一半的算力在空转——而账面参数一个都没变。这就是为什么负载均衡 loss 必须有，而且为什么它的系数那么难调：系数太小会坍塌，太大会让 router 为了均衡而放弃按内容选专家（等于退化成随机路由）。</div>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>手册的三段式：先测机器，再跑基线，最后才碰专家</h2>
+
+  <p>这本手册最有工程味的地方，是它的<strong>执行顺序</strong>。绝大多数教程的顺序是"先搭模型 → 再调参 → 最后发现跑不快"，它的顺序是：</p>
+
+  <div class="box good"><b>测硬件（All-to-All 带宽）→ 建镜像 → Tokenize → 跑 Dense 基线 → 才加上专家跑第一个 MoE。</b><br><span class="src">这个顺序本身就是一条结论：在动模型之前，先确认这台机器能不能扛住你要的通信模式。</span></div>
+
+  <h3>第一步：先测 All-to-All，不要相信 All-Reduce 的结果</h3>
+
+  <p>手册原话说得很直接：<strong>"即使 All-Reduce 测试结果正常，也不能说明这些 token 交换能够以多快的速度完成。"</strong>这句话是全篇最值钱的一句实践建议，因为它指出了最容易被忽略的一种"假健康"：你的集群跑 Dense 模型跑得好好的，NCCL 带宽测试满分，你以为网络没问题——但它恰恰可能是 MoE 跑不动的那个瓶颈。</p>
+
+  <p>具体测法：每个节点先跑 DCGM Level 1 就绪检查（<code>dcgmi diag -r 1 --fail-early</code>），再在 2/4/8 节点上分别测 All-to-All 带宽。手册给的对照是：两节点上 All-Reduce 398.52 GB/s、All-to-All 39.84 GB/s——<strong>只换通信模式，掉到 1/10</strong>。</p>
+
+  <p>还有一个它点出但没展开的规律：<strong>节点数越多，All-to-All 里需要跨节点传输的比例越高</strong>，所以这个数字还会继续恶化。这意味着一件事——<b>你在两节点上测出的 39.84 GB/s 是乐观值，不是工程值</b>。八节点的数字，手册里没有给。</p>
+
+  <h3>第二步：先跑一个 Dense 基线，把变量按住</h3>
+
+  <p>这是我认为手册最聪明的设计。它的做法是：<u>用同一份数据、同一套训练配置</u>，先跑通一个 Dense 模型；然后把 FFN 换成 64 个专家（<b>参数量是原 Dense FFN 的 8 倍</b>），其余一切不变，再跑一次。这样对比出来的差异，就只剩"MoE 新增的那套机制"。</p>
+
+  <p>这样设计的意义在于<b>排除混淆变量</b>：如果不做 Dense 基线，你看到 MoE 的 loss 曲线抖了，你无法区分是"Moe 本身有问题"还是"数据 pipeline 有问题"还是"超参没调好"。有了基线，问题就被隔离到 router / 均衡 / 通信这三件事上。</p>
+
+  <h3>第三步：首跑会看到什么——以及那是好是坏</h3>
+
+  <p>手册记录的第一个 MoE 训练现场是这样的：</p>
+
+  <table>
+    <tr><th style="width:34%">观察到的现象</th><th style="width:22%">数值</th><th>Dense 基线对照</th></tr>
+    <tr><td>负载均衡 loss</td><td><b>恰好为 1</b></td><td>（Dense 无此项）</td></tr>
+    <tr><td>梯度为零的参数个数</td><td><b>约 32,770 个</b></td><td><b>最多 17 个</b></td></tr>
+    <tr><td>均衡 loss 系数</td><td>1e-3</td><td>—</td></tr>
+  </table>
+
+  <p>三万多个参数梯度恒为零，在 Dense 模型里是 17 个。<strong>这两个数字放在一起，是"专家坍塌"（expert collapse）的教科书式指纹</strong>：一部分专家从来没被路由到过，因此它们的梯度永远为零，永远不更新，永远不会被路由到——一个自我强化的死循环。</p>
+
+  <p>而手册对这个现象的处理方式是——把它解释为"预期行为"，然后继续往下走，去讲怎么关掉 Fused Auxiliary Loss Kernel 来开启确定性模式。<strong>它没有给出"坍塌到什么程度算失败"的判据</strong>，也没有解释为什么 aux loss 恰好是 1.0 这个整数（在一个由 1e-3 系数加权的辅助项上，恰好为整数是可疑的），更没有做 aux loss 系数的敏感性分析。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">价值与局限</span>作为手册它很好，作为证据它很弱</h2>
+
+  <p>先把定位说清楚，否则批判会变成错位的挑刺：<strong>这是一本"操作手册"，不是一篇"论文"</strong>。它的目标是让你能跑起来，不是证明 MoE 更优。所以下面第 4 条批判对它是公允的，但如果有人拿它当"MoE 更强"的依据，那就是读者的问题。</p>
+
+  <p>作为手册，它的贡献是实打实的：把"症状 → 根因"的倒推路径画出来了，把"先测 All-to-All 再改模型"这个顺序钉死了，把 Dense 基线这个隔离变量的手法给出来了。这三件事每一件都能省掉别人几天时间。</p>
+
+  <p>但作为一篇可以被引用的技术材料，它有八处硬伤。</p>
+
+  <ol class="crit">
+    <li><b>那个 10 倍落差，只在"两节点"上测过，而两节点是最不真实的形态。</b>原文写"在上述较慢的两节点测试中，All-Reduce 带宽达到了 398.52 GB/s，而 All-to-All 只有 39.84 GB/s"。注意"较慢的"这个定语——它是从多次测试里挑出来的一个偏低的样本。<b>而真实训练是八节点起</b>，手册自己都说"节点数增加会让跨节点比例上升"。所以：<u>它用一个最不利的小规模数字做了定性论证，却没有给出最有代表性的规模的数字</u>。读者拿 39.84 去估自己的八卡机，可能高估也可能低估，无法判断。</li>
+
+    <li><b>单一环境，没有跨互联的对照，所以这个数字不能当常数用。</b>全部数据来自 AWS P5 + EFA + 8×H100 80GB。没有 InfiniBand 的对照、没有 RoCE 的对照、没有纯 NVLink（单机内）的对照。<b>而"All-to-All 比 All-Reduce 慢多少"恰恰是高度依赖互联技术的</b>——在 NVLink 全互联的机器上，这个差距会小得多。手册给的 398.52 / 39.84，只能读作"在 EFA 上的一次实测"，不能读作"MoE 的固有代价"。</li>
+
+    <li><b>把"参数稀疏度"当成了"算力稀疏度"，这是最容易误导读者的一处。</b>17.8% 这个数字（1.22B/6.86B）被反复引用，但它只描述<b>参数</b>。而端到端加速比取决于 <b>FLOPs</b> 的稀疏度，后者要小得多：Attention、Embedding、Router、LayerNorm 全是稠密的，被稀疏化的只有 FFN。<b>手册从头到尾没有给出一个 FLOPs 口径的稀疏度</b>，也就无法从 17.8% 推出任何加速比。而"MoE 能省 5 倍算力"这类说法，正是从这种口径混用里长出来的。</li>
+
+    <li><b>"64 个专家 = 原 Dense FFN 的 8 倍参数"这个设计，让这套实验根本不检验 MoE 是否更强。</b>这是一个很重要的观察：MoE 的总参数被放大了 8 倍，但激活参数约等于原来的 Dense。也就是说，<b>它的对比基线是"等激活的 Dense"，不是"等参数的 Dense"</b>。<br>在这个设定下，即使 MoE 的表现和 Dense 一模一样，你也只能说"用同样的算力装下了 8 倍参数"——<u>"装下了"不等于"用上了"</u>。要证明 MoE 更强，必须比"等参数的 Dense"，而那需要 8 倍算力的基线，手册没做（也不该做，因为它不是论文）。<b>所以：任何拿这本手册论证"MoE 效果更好"的引用，都是错位的。</b></li>
+
+    <li><b>32,770 个零梯度参数被当成"预期行为"讲过去了，这是全书最大的遗漏。</b>这个现象在 MoE 文献里是有名字的（专家坍塌 / routing collapse），有成熟的处理手段（更强的 aux loss、router z-loss、专家容量因子、甚至改 router 的相似度度量）。<br>手册的做法是：记录这个现象 → 解释"这是 MoE 一侧的正常现象" → 然后话题转到确定性模式。而读者真正需要的是：<b>坍塌比例到多少算病态？aux loss 系数 1e-3 是怎么选出来的？把它调到 1e-2 会怎样？</b>三个问题一个都没答。考虑到这是一本"训练手册"，这个遗漏相当致命。</li>
+
+    <li><b>第 2 章的定位是 smoke test（跑通），但它的 loss/梯度曲线极易被误读成性能对比。</b>手册确实说了"第二章将带你在单个节点上完成一个小型 MoE 模型的训练"，但紧接着给了一堆 loss 变化、梯度统计的对照表。<b>一个刚入门的人读到这些表，几乎必然会理解为"MoE 的训练行为是这样的"</b>，而实际上这些数字只说明"这次跑没崩"。<u>跑通和训好之间，隔着一整个超参搜索。</u></li>
+
+    <li><b>缺两个实操里最痛的坑：EP 与 TP/DP 的组合约束，以及 checkpoint 的专家重编号。</b>前者决定了你能不能用 3D 并行（EP 组的大小受拓扑限制，不是随便设）；后者是扩容时必然遇到的问题——你把 64 专家改成 128 专家，旧 checkpoint 里的专家编号全部失效，需要重排映射，否则"续训"实际上是"从一个被随机打乱的模型继续"。<b>这两个坑在实际工程里比 All-to-All 带宽更常让人卡住</b>，手册（上）一个字没提。</li>
+
+    <li><b>只讲训练，不讲 serving——而部署侧的成本结构和训练侧是反的。</b>MoE 省的是<b>每 token 的算力</b>，但它<b>不省显存</b>：6.86B 参数全部要驻留在显存里（推理时不知道下一个 token 会去哪个专家，只能全放）。所以 MoE 的真实部署形态是"<u>算力便宜、显存昂贵</u>"，而这恰好是当下最贵的那个约束。<br>手册说第四章会讲 serving，但（上）篇里完全没有涉及。这意味着读者如果按前两章的理解去规划部署，会算出完全错误的成本模型。</li>
+  </ol>
+
+  <h3>还有一条关于"故障排查图"的元批判</h3>
+
+  <div class="box bad">
+  <p>手册给了一张"症状 → 最早异常信号 → 对应章节"的排查图，这是它最实用的部分。但请注意它的<b>认识论地位</b>：它是一张<b>经验映射表</b>，不是因果模型。它能告诉你"看到 X 大概去看第 N 节"，但不能告诉你"X 一定是 Y 引起的"。</p>
+  <p>而 MoE 训练的失败特征是<b>高度耦合</b>的：路由坍塌会表现为 loss 抖动，通信拥塞也会表现为 loss 抖动，数据 pipeline 卡了还是会表现为 loss 抖动。<strong>三种完全不同的根因，同一个症状。</strong>所以这张图在真正棘手的场景里会失效——它能处理"已知的常见病"，处理不了"新的并发症"。</p>
+  <p>这不是手册的错（任何手册都做不到），但它意味着：<b>把这张图当成诊断工具是危险的，把它当成检查清单才是对的。</b>顺序应该是"逐项排除"，而不是"按图索骥"。</p>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">结论</span>先测网络，再改模型</h2>
+
+  <p>如果只带走一句话：<strong>MoE 的门槛不在"怎么把 FFN 换成专家"，而在"你的网络能不能扛住全交换"。</strong></p>
+
+  <p>这句话有个很实用的推论：<b>在决定要不要上 MoE 之前，先花两小时测一次 All-to-All 带宽。</b>如果它和你的 All-Reduce 相差不到 2 倍，MoE 大概率划算；如果相差到 10 倍（手册在 EFA 上测到的就是这个量级），那么你账面上那 5.6 倍的稀疏收益，会被通信和长尾吃掉大半——此时更划算的选择可能是"把 Dense 模型做小、把数据做好"，而不是"把模型做稀疏"。</p>
+
+  <div class="box good">
+  <b>给三类读者的判断标准：</b><br><br>
+  <b>① 如果你正准备把 Dense 改成 MoE</b>——严格执行手册的顺序：先测 All-to-All，再跑 Dense 基线，最后才加专家。跳过前两步，你会把"网络不行"误诊成"router 没调好"，然后在超参上浪费两周。<br><br>
+  <b>② 如果你在读别人的 MoE 论文</b>——先看它报的是<b>参数稀疏度还是 FLOPs 稀疏度</b>。前者几乎总是被夸大（因为 Attention/Embedding 是稠密的），后者才对应真实加速。再看它的基线是"等激活"还是"等参数"——只有"等参数"才能证明 MoE 更强。<br><br>
+  <b>③ 如果你在规划部署成本</b>——记住 MoE 省算力<b>不省显存</b>。总参数全部要驻留，所以它是"用显存换算力"的交易。在显存紧张的场景里（端侧、单卡），这笔交易是亏的。
+  </div>
+
+  <p>最后补一句关于这本手册本身的话。它的价值不在"教会你 MoE"，而在<strong>把 MoE 的失败模式从"玄学"降级成"清单"</strong>：三个新问题（router / 均衡 / 交换）、一张症状对照图、一条"先测硬件"的铁律。这三样东西的组合，恰好是一个成熟工程领域该有的样子——不是"我告诉你正确答案"，而是"我告诉你哪里会坏、坏了怎么查"。</p>
+
+  <p>而它没做到的事也很清楚：它没有告诉你<u>什么时候该用 MoE</u>。这个问题的答案不在架构里，在你的网络拓扑和显存预算里。</p>
+
+  <p class="src">原文：<a href="https://mp.weixin.qq.com/s/A1CDULhPUg46Esx816mt9Q" target="_blank">MoE：从架构设计到大规模训练（上）</a>（公众号 human five，2026-11-06）· 原手册：Hugging Face《The Ultimate MoE Training Handbook》第 1–2 章 · 实验环境：AWS P5，8×H100 80GB，EFA 互联，NGC PyTorch 26.06-py3 + Megatron（commit d6316eb45）</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解　|　本篇为工程手册导读与批判，非实验复现；括号内数字均引自原文</footer>
+</div></body></html>

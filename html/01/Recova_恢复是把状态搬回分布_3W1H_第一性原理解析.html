@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recova:从失败恢复迈向自主机器人操作</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>Recova:从失败恢复迈向自主机器人操作<span class="sub">恢复的目标不是"继续把任务做完"，而是"把场景搬回任务策略认识的那个分布里" · 这两件事方向相反：一个要往前走，一个要往回退 · 塞进同一张网就是梯度冲突，拆开才有各自的解</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-07</div>
+    <div><b>论文</b> arXiv 2610.01178 · 2026-10-01</div>
+    <div><b>团队</b> UCSD（Xiaolong Wang 组）× NVIDIA GEAR</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>一个策略只在它<strong>训练过的状态分布</strong>上会做事，出了这个分布，它输出的任何动作都是外推，而外推不可靠——这不是精度问题，是"这里根本没人教过它"。所以<strong>失败的定义就是"状态跑出了支撑集"</strong>。<br>
+  一旦跑出去，"把任务做完"这个目标就失效了：它在支撑集外没有梯度，也没有正确的动作可学。你需要的是另一个目标——<strong>把状态搬回去</strong>。注意这两件事的方向是相反的：完成任务要求"往前走"，恢复要求"往回退"。用同一张网络同时在两个方向上监督，梯度必然互相抵消。Recova 的全部结构，就是围绕这一刀切开的。<br>
+  但它真正的巧劲不在拆分，而在<strong>解决了"恢复数据从哪来"</strong>：真机上的一次失败是<strong>消耗品</strong>（场景已经被破坏，想再试一次得先复位，而复位本身就是专家工作）；数字孪生里的一次失败是<strong>副本</strong>（可以无限回放、随意试错）。把消耗品变成副本，是这套方法能规模化的唯一理由。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">是什么：为什么 VLA 一错就废</a>
+  <a href="#s2">为什么：公理链六步</a>
+  <a href="#s3">怎么做：孪生里造失败、真机上验恢复</a>
+  <a href="#s4">价值与八条硬批判</a>
+  <a href="#s5">一句话总结</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>先交代材料来源（重要）</b>：公众号这篇正文实为一场<strong>线上分享的预告</strong>——内容包括分享时间（11-10 上午 10:00）、交流主题、报名链接与讲者简历，本身不含技术推导。因此本篇的技术内容依据的是文中给出的 <b>arXiv 2610.01178 摘要</b>与项目主页，<b>未读论文全文</b>。凡涉及具体机制的地方属于"按摘要还原"，请以原文为准；批判部分也受到这一限制。
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>失败之后最难受的不是做不到，是"不知道从哪接上"</h2>
+
+  <p>日常用机器人的人都有一个共同体验：机器人抓空了、碰倒了、把物体推到了够不到的地方——这时候你想的不是"它抓得不准"，而是"接下来该怎么办"。因为此刻的场景已经<strong>不是任何一个训练样本</strong>里出现过的场景了。物体位置变了、遮挡关系变了、有些东西已经掉地上了。</p>
+
+  <p>现有 VLA 策略在这个时刻会做一件很蠢的事：<strong>继续按照它原来的计划输出动作</strong>。它看到图像变了，但它的动作头仍然在生成"伸向那个已经不存在的抓取位姿"的轨迹。因为它的训练数据里，从来没有"任务已经失败、现在该收拾残局"这种样本。</p>
+
+  <p>于是工业界的现实做法是：<strong>人工接管</strong>。而这正是 Recova 要解决的那件事——不是让机器人永不失败（做不到），而是让它在失败之后<strong>自己把场景收拾回一个能重新开始的样子</strong>。</p>
+
+  <div class="box good"><b>一句话说清它要解的问题：</b>不是"提高成功率"，是"提高失败之后的第二次成功率"。这两个指标完全不同——前者靠更好的策略，后者靠一套<strong>失败处理系统</strong>。</div>
+
+  <p>这也解释了为什么这篇工作必须把系统拆成好几块：任务策略、恢复策略、技能库、VLM 监控器、人类示教、DAgger 回路。单靠一个更大的模型解决不了，因为这里要的不是更强的能力，是<strong>更强的事后组织能力</strong>。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>公理链：从"策略只在分布内可靠"推到"必须在孪生里造失败"</h2>
+
+  <h3>第一刀：恢复 ≠ 继续任务，它们是两个目标函数</h3>
+
+  <p>把这件事写下来就很清楚。策略 \(\pi\) 学的是一个条件分布：</p>
+
+  <div class="fml">
+    <div class="name">式 1｜任务策略的可靠性，本质是"支撑集内的插值"</div>
+    \[ \pi(a \mid s) \;\text{在}\; s \sim \mathcal{D}_{\text{train}} \;\text{上可靠},\qquad s \notin \mathrm{supp}(\mathcal{D}_{\text{train}}) \;\Rightarrow\; \pi(a\mid s)\ \text{是外推} \]
+    <div class="exp">大白话：神经网络不会"知道自己不知道"。你在它见过的状态上问它，它给你一个靠谱的动作；你在它没见过的状态上问它，它照样给你一个动作，而且语气一样自信。这就是为什么失败会<strong>连锁</strong>——错一次之后，它踩进了一片没有地图的区域，继续自信地乱走。</div>
+  </div>
+
+  <p>所以"恢复"要优化的根本不是同一个量。恢复的目标函数是：</p>
+
+  <div class="fml">
+    <div class="name">式 2｜恢复是一个"搬运"问题，不是一个"完成"问题</div>
+    \[ \pi_{\text{rec}}^{\star} \;=\; \arg\min_{\pi_{\text{rec}}}\ \mathbb{E}_{s\sim\mathcal{U}}\Big[\, d\big(s',\ \mathrm{supp}(\mathcal{D}_{\text{train}})\big) \Big],\qquad s' = f(s, \pi_{\text{rec}}(s)) \]
+    <div class="exp">大白话：\(\mathcal{U}\) 是"失败状态"这个集合，\(d(\cdot,\cdot)\) 是"离正常状态有多远"，\(s'\) 是执行恢复动作后的新状态。整个式子在说一句话：<strong>恢复策略的 KPI 是把状态搬回正常区域，而不是把任务做完。</strong>这两个目标在最典型的场景里是<strong>相反</strong>的——物体掉到地上，任务策略想"再试一次抓取"（往前），恢复策略想"先把它捡起来放回原位"（往回）。</div>
+  </div>
+
+  <p>这就是 Recova 拆成两个策略的理论依据。不是为了模块化好看，是因为<strong>一个网络不能同时朝两个方向下降</strong>：</p>
+
+  <div class="fml">
+    <div class="name">式 3｜共用一张网的梯度冲突（这就是"为什么不合并"）</div>
+    \[ \nabla_\theta \mathcal{L}_{\text{joint}} = \underbrace{\nabla_\theta \mathcal{L}_{\text{task}}}_{\text{往前走}} + \underbrace{\lambda\,\nabla_\theta \mathcal{L}_{\text{rec}}}_{\text{往回退}} \qquad \Big\langle \nabla_\theta \mathcal{L}_{\text{task}},\ \nabla_\theta \mathcal{L}_{\text{rec}} \Big\rangle < 0 \ \text{时互相抵消} \]
+    <div class="exp">大白话：两个损失函数对同一批参数提出的修改方向正好相反时，加在一起不是"兼顾"，而是<strong>互相抹掉</strong>。表现出来就是：任务成功率不见涨、恢复也学不会，训练 loss 看着还挺低。这是多任务学习里最经典的坑，而"继续任务"和"收拾残局"恰好是方向冲突最严重的一对。</div>
+  </div>
+
+  <h3>第二刀：恢复数据从哪来——这才是真正的瓶颈</h3>
+
+  <p>拆开之后，问题并没有解决，只是转移了：任务策略的数据你有很多（示教），<strong>恢复策略的数据你几乎没有</strong>。为什么？</p>
+
+  <div class="step">
+    <div class="t">在真机上采一次"失败→恢复"的成本，远高于采一次成功</div>
+    <div class="d">成功轨迹可以批量采（人重复做同一个动作），失败轨迹不能——因为<b>每次失败都会破坏场景</b>。想再采一次，得先把场景恢复到初始状态，而复位本身就是一件需要专家的活。更要命的是：失败是<b>不可复现</b>的，你没法命令机器人"再像刚才那样失败一次"。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">于是"失败"在真机上是一种消耗品</div>
+    <div class="d">采一次少一次，且采集过程必须有人全程盯着（因为失败之后机器人不会自己收拾）。这直接卡死了规模——而这正是"恢复能力至今仍主要依赖人工接管"的根本原因：不是算法不行，是<b>训练数据造不出来</b>。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">数字孪生把它从消耗品变成副本</div>
+    <div class="d">在由真实观测重建的孪生里，失败可以<b>无限回放、随意重试、并行跑</b>。同一个失败场景，编程智能体可以试一百种恢复程序，挑出成功的那一个。这一刻，"造数据"的成本从"专家工时"降到"算力"。</div>
+  </div>
+
+  <p>这四步连起来，就是整套方法的必然形状：<strong>先在孪生里批量造恢复数据 → 训出恢复策略 → 迁回真机验证精炼 → 部署时由监控器决定调用谁 → 没见过的失败交给人 → 人类示范进 DAgger → 技能库扩充。</strong>最后一环是关键：它让系统具备了"越用越会"的闭环，而这恰恰是人工接管方案永远做不到的。</p>
+
+  <div class="fml">
+    <div class="name">式 4｜干预率的递推（这套系统真正在优化的东西）</div>
+    \[ p_{k+1} \;=\; p_k \cdot \big(1 - c_k\big),\qquad c_k = \Pr\big[\text{第 }k\text{ 轮的失败已被技能库覆盖}\big] \]
+    <div class="exp">大白话：第 \(k+1\) 轮还需要人来救场的概率 \(p_{k+1}\)，等于这一轮的概率乘上"这一轮没被覆盖的比例"。\(c_k\) 随技能库增长而上升，所以干预率会单调下降。这套系统的终点不是"成功率 100%"，而是<strong>\(p\to 0\)：不再需要人</strong>。这就是它和"加个更好的策略"的本质区别——后者优化分子（做对的比例），前者优化<strong>分母的补集</strong>（需要人的比例）。</div>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>三段式：孪生里造、真机上验、部署时学</h2>
+
+  <h3>① 孪生阶段：让智能体自己当"事故调查员"</h3>
+
+  <p>不是简单地"在仿真里跑一万次"。Recova 的做法是给一个编程智能体三项工作：<strong>诊断</strong>（这次为什么失败）、<strong>试程序</strong>（写一段恢复代码，在孪生里跑）、<strong>采数据</strong>（成功的任务轨迹和成功的恢复轨迹分别收进两个数据集）。</p>
+
+  <p>这里有个容易被忽略的设计：<strong>恢复是以"程序"而不是"策略"的形式先出现的</strong>。程序的好处是可读、可复用、可组合、可回滚；坏处是不会泛化。所以它只是<b>第一版</b>——程序跑通之后产生的轨迹，才是用来训恢复策略的原料。这是"用程序 bootstrap 策略"，不是"用程序替代策略"。</p>
+
+  <h3>② 部署阶段：三个判断，缺一不可</h3>
+
+  <table>
+    <tr><th style="width:26%">判断</th><th style="width:22%">谁来做</th><th>做错的后果</th></tr>
+    <tr><td>任务还在推进吗？</td><td>VLM 监控器</td><td>误判停滞 → 过早放弃一个本来能完成的任务</td></tr>
+    <tr><td>该调哪个恢复？</td><td>技能库检索 + 学到的恢复策略</td><td>调错恢复 → 把物体推到更远，二次破坏</td></tr>
+    <tr><td>场景真的恢复了吗？</td><td>VLM 监控器（第二次判断）</td><td>误判已恢复 → 在残局上继续执行，必然再失败</td></tr>
+  </table>
+
+  <p>注意这里的结构：<strong>监控器要判两次，而且判的是两件相反的事</strong>。第一次判"该不该放弃"，第二次判"能不能重新开始"。这两次判断的代价不对称——第一次判错浪费一次机会，第二次判错会把系统带进更深的坑。</p>
+
+  <h3>③ 学习闭环：人类是兜底，也是数据源</h3>
+
+  <p>当技能库里没有合适的恢复时，人来做一次示范。这次示范不是"用完就扔"，而是被路由到对应的策略上做 DAgger 训练。于是每一次人工介入都在<strong>同时</strong>做两件事：救这一次，以及让下一次不需要救。</p>
+
+  <p>这个设计的漂亮之处在于它<strong>把"人工接管"从成本变成了投资</strong>。传统方案里，接管是纯支出（花了人力，系统没变强）；这里接管是数据采集（花了人力，技能库变大）。这个转换一旦成立，"越用越自主"就不是愿景而是算术。</p>
+
+  <h3>数字怎么样</h3>
+
+  <table>
+    <tr><th style="width:30%">测试场景</th><th style="width:22%">Recova</th><th style="width:26%">最强基线</th><th>差距</th></tr>
+    <tr><td>LIBERO-Pro（6 个设置，均值）</td><td><b>78.8%</b></td><td>71.7%</td><td>+7.1 点</td></tr>
+    <tr><td>MolmoSpaces（4 个类别，均值）</td><td><b>64.9%</b></td><td>38.0%</td><td><b>+26.9 点</b></td></tr>
+    <tr><td>真机（4 工位并行采集）· DAgger 微调后</td><td>23.8% → <b>77.5%</b></td><td>—</td><td>+53.7 点</td></tr>
+    <tr><td>真机 · 再加恢复技能</td><td><b>87.5%</b></td><td>—</td><td>再 +10.0 点</td></tr>
+    <tr><td>单任务四轮采集 · 人工干预率</td><td>87.5% → <b>0%</b></td><td>—</td><td>完全消失</td></tr>
+  </table>
+
+  <p>读这张表要注意一件事：<strong>MolmoSpaces 的增益（+26.9）是 LIBERO-Pro（+7.1）的近四倍</strong>。这个不对称本身信息量很大，后面批判里会说——它既是这套方法最有力的证据，也是它最可疑的地方。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">价值与局限</span>它证到了什么，没证到什么</h2>
+
+  <h3>三个真贡献</h3>
+
+  <div class="box good">
+  <b>① 把"恢复"从一个模糊的功能，变成了一个有独立目标函数的模块。</b>式 2 那个"把状态搬回支撑集"的表述，是这篇最有价值的东西——它让"恢复得好不好"第一次有了可测的判据（距离 \(d\)），而不是靠"看起来接上了"。<br><br>
+  <b>② 找到了恢复数据规模化的唯一现实路径。</b>真机失败不可复现、不可批量，这是硬约束，绕不过去。用孪生把消耗品变成副本，是这个约束下几乎唯一可行的解法。这个 insight 比模型结构重要得多。<br><br>
+  <b>③ 把人工接管从成本转成了投资。</b>DAgger 回路本身不新，但把它接到"技能库扩充"上、并用干预率作为主指标，是一个很实际的系统设计。87.5% → 0% 这个数字，即使只在一个任务上成立，也足以说明闭环是通的。
+  </div>
+
+  <h3>八条硬批判</h3>
+
+  <ol class="crit">
+    <li><b>"干预率降到 0"是最漂亮的数字，也是最不可外推的数字。</b>它是<u>单任务、四轮采集</u>的结果，而这个任务就是用来采集的那个任务。本质上是在这个任务上做 DAgger 直到收敛——这在 DAgger 的理论框架里是预期行为，不是新发现。跨任务、跨场景的干预率曲线没有给，"越用越自主"这个一般性声称目前只有 n=1 的支撑。</li>
+
+    <li><b>两个 benchmark 的增益差了近四倍，这个不对称没有被解释。</b>+7.1 vs +26.9，两种解释都对它不利：要么 MolmoSpaces 的基线（38.0%）是个稻草人——一个连"失败后继续"都不支持的纯任务策略；要么这个 benchmark 的失败模式恰好就是"物体被推歪了"这一种，而恢复策略最擅长的正是这一种。<b>无论哪种，"通用恢复能力"这个 claim 都被削弱了。</b>作者只报了均值，没做失败类型的分类统计——而这恰恰是理解不对称的唯一入口。</li>
+
+    <li><b>孪生的保真度是全链条的隐性前提，却完全没有量化。</b>Real2Sim2Real 最经典的问题是：在孪生里成功的恢复，到真机上不成立。论文给的是端到端成功率，缺一个最直接的对照——<strong>"孪生内恢复成功率" vs "同一批恢复到真机上的成功率"</strong>。没有这个数，读者无法判断那 +26.9 点里有多少是"孪生运气"。这是可以补的实验，也是应该补的。</li>
+
+    <li><b>编程智能体写出来的恢复程序，是否有可验证的正确性？</b>如果它写出一个"在孪生里能把物体捡回来、但在真机上会先撞倒旁边瓶子"的程序，系统怎么发现？文中说"迁回真机验证与精炼"，但没说<strong>失败的程序怎么被淘汰、技能库会不会随轮次膨胀变脏</strong>。一个只增不减、且来源是自动生成的技能库，长期看是个隐患——检索会变慢，且可能检索到一个"曾经成功过但已不适用"的技能。</li>
+
+    <li><b>VLM 监控器是整套系统的新单点，但它的准确率没有单独报。</b>它要判"停滞"和"已恢复"两件事，而这两件事的判据都很模糊。一个更保守的监控器会更多求助人类（干预率高、成功率高），一个更激进的监控器干预率低但会偷偷失败。<strong>只报"干预率 0"而不并列"0 干预下的成功率"，这个指标是可以被刷的。</strong>应该同时给：干预率、干预时的成功率、无干预时的成功率，三条一起看才有意义。</li>
+
+    <li><b>"最强基线"是否也具备恢复能力，文中不清楚。</b>如果基线是纯任务策略（不带任何恢复机制），那 78.8 vs 71.7 比的是"有没有恢复模块"，而不是"这个恢复模块做得好不好"——这是典型的模块对比冒充方法对比。真正公平的基线应该是"同样有恢复模块、但用简单方式实现"（比如固定脚本恢复、或人工预设的兜底动作）。</li>
+
+    <li><b>拆成两个策略是有代价的，论文只说了收益没说代价。</b>两个策略意味着：两套数据、两次训练、两个推理前向、以及<strong>一个额外的"该用谁"的判断</strong>。这个判断本身会出错（见第 5 条）。理论上如果两个任务的梯度冲突没那么严重（比如用梯度投影、或者分层策略），一个网络也可能兼顾。论文没有做"合并版"的对照，所以"必须拆开"这个结论目前是<strong>有道理但未证明</strong>的。</li>
+    <li><b>最根本的一条：这篇的题目是"迈向自主"，但系统的自主性上限被"技能库的覆盖度"封死。</b>式 4 里 \(p\to 0\) 要求 \(c_k\to 1\)，也就是"所有失败都被覆盖"。而现实中的失败是长尾的——新鲜失败永远不会停止出现。所以这套系统的渐近行为不是"零干预"，而是"干预率降到与长尾发生率同阶"。87.5% → 0% 只走了四轮，第四轮恰好没有遇到新失败而已。<strong>真正的考验是第 20 轮、第 50 轮，那时新失败的出现频率才是决定性的。</strong></li>
+  </ol>
+
+  <div class="box bad">
+  <b>还有一条元层面的：本篇材料来自摘要，未经全文核对。</b>"孪生里怎么重建场景"、"编程智能体用什么模型、成功率多少"、"VLM 监控器的具体判据"——这些决定成败的工程细节，摘要里一个字都没有。上面第 3、4、5 条批判，严格说都是"摘要没写"，而不是"论文没做"。读者应把这一节理解为<u>待核对的疑点清单</u>，不是定罪。11-10 那场分享如果有答疑，这几个问题值得直接问。
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">结论</span>如果只带走一句话</h2>
+
+  <p>机器人学里最被低估的一个事实是：<strong>失败不是一个事件，是一个状态。</strong>事件过去了就过去了，状态会一直留在那里，挡着后面所有的事。</p>
+
+  <p>Recova 做的事，说穿了就是把"失败"当状态来处理——给它一个独立的目标函数（搬回支撑集）、一套独立的数据来源（孪生里的副本）、一个独立的执行者（恢复策略），以及一个能持续扩大的记忆（技能库）。这四件事单独看都不新，串起来才形成闭环。</p>
+
+  <div class="box good">
+  <b>对做机器人系统的人，三条可迁移的判断：</b><br>
+  <b>① 别把恢复塞进任务策略。</b>"继续做"和"往回退"是两个方向，合在一张网里会互相抵消。哪怕不拆成两个模型，也至少要有一个显式的"我放弃了"的开关。<br><br>
+  <b>② 恢复数据的瓶颈不在算法在场景。</b>如果你采不到失败数据，先别急着改模型——去想办法让失败<u>可复现</u>。孪生是一种解法，日志回放、场景重置脚本、可编程的扰动注入也都是。核心是：<b>把一次性事件变成可重放的副本。</b><br><br>
+  <b>③ 用"干预率"而不是"成功率"当北极星。</b>成功率会饱和（到了 90% 以上就看不出差别），干预率不会——它直接对应"还需要多少人盯着"，也就是这套系统到底省了多少钱。但记得同时报"0 干预下的成功率"，否则这个指标可以被保守策略刷出来。
+  </div>
+
+  <p class="src">原文：Recova:从失败恢复迈向自主机器人操作（公众号 human five，2026-11-07 · 搜狗临时签名链已失效，可用标题检索）<br>
+  论文：<a href="https://arxiv.org/abs/2610.01178" target="_blank">arXiv 2610.01178</a>（Isabella Liu, An-Chieh Cheng, Johan Bjorck, Zhiding Yu, Hongxu Yin, Jan Kautz, Linxi Fan, Yuke Zhu, Sifei Liu · 2026-10-01）<br>
+  项目主页：<a href="https://www.liuisabella.com/Recova/" target="_blank">liuisabella.com/Recova</a>　分享：11-10 10:00（Robotion 社群）</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解　|　技术内容据 arXiv 摘要还原，未读全文</footer>
+</div></body></html>

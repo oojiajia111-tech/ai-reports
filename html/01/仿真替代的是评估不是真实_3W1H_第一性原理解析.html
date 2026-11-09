@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机器人学习，为什么不能在仿真中完成？</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>机器人学习，为什么不能在仿真中完成？<span class="sub">因为仿真在这里不是"替代真实"，而是"替代评估" · 比较两个 checkpoint 只需要排名正确，不需要数值正确 · 保序就够了——这才是仿真能顶住的原因，也是它顶不住的地方</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-06</div>
+    <div><b>机构</b> Moonlake AI（博客）</div>
+    <div><b>平台</b> 双臂 YAM × 3 任务</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>这篇博客表面上在讲"仿真怎么加速训练"，但它真正做成的事是<strong>把一道关于"真实度"的题，换成了一道关于"保序性"的题</strong>。<br>
+  一轮真实迭代要 5.5 天，其中<strong>只有 12 小时在改模型</strong>（9%），剩下 120 小时全花在定义任务、采数据、评估、人工诊断上。所以瓶颈从来不是训练算力，而是<strong>"改动 → 知道好不好"之间的延迟</strong>。<br>
+  仿真能替代的，恰恰是这段延迟里最笨的部分。但它能替代的前提不是"仿真足够真"，而是<strong>评估这个动作本身只要求排名、不要求数值</strong>：你只需要知道 sim-v3 比 sim-v2 好，不需要知道它"真实得分 71.3%"。这就是 MMRV=0.094 这个指标的全部意义——它测的是<u>排序违例</u>，不是绝对误差。<br>
+  <strong>一句话：评估器的价值在于保序，不在于保真。</strong>把这句记住，你就能同时看懂它为什么有效，以及它在哪一步会失效。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">是什么：一道被问错的题</a>
+  <a href="#s2">为什么：公理链五步</a>
+  <a href="#s3">怎么做：四环闭环与那条关键消融</a>
+  <a href="#s4">价值与八条硬批判</a>
+  <a href="#s5">结论：什么时候该信它</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">是什么</span>标题是个反问句，但真正被回答的不是它</h2>
+
+  <p>标题问"为什么不能在仿真中完成"，读完全文你会发现作者的答案其实是：<strong>可以在仿真中完成大部分，但（目前）不能只在仿真中完成</strong>。而且他给出的理由，和大多数人想的那个理由不一样。</p>
+
+  <p>大众版本的答案是"因为 sim-to-real gap：仿真的物理不准、光照不对、摩擦力是假的"。这个答案把问题定位在<strong>保真度</strong>上，于是解法就是"把仿真做得更真"——更好的渲染、更好的物理引擎、更强的域随机化。</p>
+
+  <p>这篇博客的答案把问题定位在另一个地方：<strong>迭代循环的成本结构</strong>。开篇第一句就把这个定位说透了：</p>
+
+  <div class="box good">"几乎所有机器人部署任务在技术上都是可以实现的：只要投入足够的系统集成工作、数据和工程监督……然而，达到这种可靠性所付出的成本，往往超过自动化本身创造的经济价值。"</div>
+
+  <p>注意这句话的结构：它没有说"做不到"，它说"做得到但不划算"。于是整个工作的目标函数从一开始就不是"提高成功率"，而是<strong>降低单位可靠性的成本</strong>。这是一个工程经济学问题，不是物理仿真问题。这个转身很小，但它决定了后面所有设计的选择。</p>
+
+  <h3>它实际拆掉的四个环节</h3>
+
+  <p>传统流程是：在真机上遥操作采数据 → 在真机上训练 → 在真机上评估 checkpoint → 人来诊断失败原因 → 再采数据。博客把这个链条拆成四段，分别用仿真接管：</p>
+
+  <table>
+    <tr><th style="width:22%">环节</th><th style="width:40%">仿真怎么接管</th><th>它替掉的真实成本</th></tr>
+    <tr><td><b>建环境</b></td><td>用少量真实观测（图像/视频/点云）+ 任务描述，通过 world modeling 生成匹配的仿真场景，再用少量真实遥操作轨迹校准相机（位置、镜头、曝光）与物理属性（质量、摩擦）</td><td>不用为每个布局手工搭场景</td></tr>
+    <tr><td><b>评估</b></td><td>在仿真里跑 rollout，按任务指标算进展、做失败诊断</td><td>不用每次评估都有人重置场景、摆放物体、排查硬件</td></tr>
+    <tr><td><b>诊断</b></td><td>由 Agent 自动找高频失败模式，并自动改写仿真环境和测试用例去验证</td><td><b>替掉 1 天人工诊断</b></td></tr>
+    <tr><td><b>改进</b></td><td>引导式域随机化、拒绝采样微调、仿真 RL、特权策略蒸馏</td><td>不用再采一轮真实数据</td></tr>
+  </table>
+
+  <p>值得单独指出的是第三项。大多数"仿真加速"的工作只接管了评估，把诊断留给人；而这里把诊断也交了出去——"Agent 观察到瓶子密集时会把相邻瓶子碰落"这个结论，是 Agent 自己从分层评估里读出来的。这一步很关键，因为<strong>诊断才是那 1 天里最难自动化的部分</strong>：它要求"看图说话"的能力，而不是"跑得快"的能力。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">为什么</span>公理链：从"训练只占 9%"推到"保序就够"</h2>
+
+  <p>这条链有五步。前两步是算术，第三步是全文最关键的一次视角切换，后两步是它的推论。</p>
+
+  <div class="step">
+    <div class="t">① 迭代周期的成本，绝大部分不在训练上</div>
+    <div class="d">纯真实流程一轮 5.5 天，拆开是：<b>采真实数据 2 天 + 训练 12 小时 + 真实评估 2 天 + 人工诊断 1 天</b>。（文中的"任务定义 3 天"是一次性开销，不进入每轮循环，所以不计入——这一点很容易看错，把 7.5 天当成了单轮成本。）一轮里真正在改模型的只有那 12 小时。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">② 所以任何"加速训练"的努力，天花板只有 9%</div>
+    <div class="d">这是全文最容易被跳过、但最重要的一句推论。如果你的迭代里 91% 的时间在等人采数据、等人摆物体、等人看图诊断，那么把训练速度提升 10 倍，整轮也只快 8%。<b>优化的对象必须选在占比最大的那一项上</b>——这是纯算术，没有争议。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">③ 于是问题变成：评估能不能换成一个更快的替代品</div>
+    <div class="d">评估占 2 天，诊断占 1 天，合计 3 天 = 每轮的 55%。如果这三天的功能可以被更便宜的东西顶住，整轮就能压到 20 小时。注意这里的措辞是<b>"顶住功能"而不是"复现结果"</b>——这个区别是整篇文章成立的地基。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">④ 评估的功能是"比较"，而比较只需要顺序</div>
+    <div class="d">你评估一个 checkpoint，从来不是为了知道它的绝对分数，而是为了回答"要不要换掉手上这个"。这是一个<b>排序问题</b>，不是<b>回归问题</b>。排序问题对误差的容忍度高得多：只要所有 checkpoint 都被系统性地低估同样的幅度，排名完全不变。<br>这就是为什么一个"物理不完全准"的仿真仍然能当评估器——它不需要准，它只需要<b>对所有候选犯同样的错</b>。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">⑤ 保序的度量，自然就落在"排序违例"上，而不是"误差"上</div>
+    <div class="d">所以这篇博客给出的相关性指标是 MMRV（平均最大排序违例）= 0.094，而不是 RMSE、不是 R²。这个指标的选择本身就是立论的一部分：它在说"我不承诺数值对得上，我只承诺名次不乱"。</div>
+  </div>
+
+  <p>把这五步连起来，就得到了一个相当锋利的结论：<strong>仿真在这里的真正身份不是"更便宜的物理世界"，而是"更便宜的排名器"。</strong></p>
+
+  <h3>用两个式子把这件事说清楚</h3>
+
+  <div class="fml">
+    <div class="name">式 1｜一轮迭代的成本分解，以及"有效研发占比"</div>
+    \[ T_{\text{cycle}} \;=\; T_{\text{data}} + T_{\text{train}} + T_{\text{eval}} + T_{\text{diag}}, \qquad \eta_{\text{dev}} \;=\; \frac{T_{\text{train}}}{T_{\text{cycle}}} \]
+    <div class="exp">大白话：一轮里真正在"改模型"的时间占比。真实流程 <b>12 / 132 h ≈ 9.1%</b>；仿真流程 <b>12 / 20 h = 60%</b>。仿真做的事，本质上是把 \(\eta_{\text{dev}}\) 从 9% 抬到 60%——<b>它没有让训练变快，它让"等待"变短了。</b>这也是为什么 6.6 倍的加速几乎全部来自把 72 小时的非训练时间压成 9 小时，而不是来自任何算法改进。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2｜保序误差：MMRV 在惩罚什么</div>
+    \[ \text{MMRV} \;=\; \max_{i,j}\ \frac{\max\big(0,\ \operatorname{sign}(s_i - s_j)\cdot(\hat{s}_i - \hat{s}_j)\big)}{N} \quad\text{的均值} \]
+    <div class="exp">大白话：挑出"真实里 A 比 B 好、仿真里 A 却不如 B"的所有配对，看这种<b>名次颠倒</b>有多严重、有多频繁。它完全不关心 \(\hat{s}\) 和 \(s\) 差多少个点——因为评估不用于汇报成绩，只用于决定"下一个该改哪里"。<br><b>但这同时暴露了它的盲区</b>：如果所有候选都被仿真<b>同幅度</b>低估，MMRV 完美为 0，而你可能正把所有候选都评估成"不合格"，从而<b>误杀</b>一个其实能用的策略。保序指标对"整体偏移"完全不敏感，而整体偏移在跨任务、跨机型时恰恰是常态。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3｜净收益：什么时候仿真真的省钱</div>
+    \[ \Delta C \;=\; \underbrace{\big(T_{\text{real}} - T_{\text{sim}}\big)\cdot c_{\text{human}}}_{\text{省下的人力}} \;-\; \underbrace{T_{\text{sim,gpu}}\cdot c_{\text{gpu}}}_{\text{新增的算力}} \;-\; \underbrace{P_{\text{misrank}}\cdot c_{\text{bad-decision}}}_{\text{排序错误的机会成本}} \]
+    <div class="exp">大白话：三项。<b>省人力</b>（评估、摆物体、看图诊断的人都省了）、<b>花算力</b>（仿真环境生成、384 并行 rollout、RL）、<b>赔误判</b>（名次排错导致选错 checkpoint）。<br>这个式子解释了为什么"仿真加速"在<b>接触密集、人工评估贵</b>的任务上收益最大——第一项大；也解释了为什么它在<b>小团队、任务单一</b>的场景里可能不划算——第三项（搭校准管线的固定成本）压不下去。博客的成本图只画了前两项的净值，第三项没有量化。</div>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">怎么做</span>四环闭环，以及那条把整套方法钉住的消融</h2>
+
+  <h3>任务与平台：三个双臂任务，一个共同点</h3>
+
+  <p>实验用三台双臂 YAM，三个任务：</p>
+
+  <ul>
+    <li><b>sort-from-tote</b>：从灰色收纳箱里分拣螺母、螺栓、轴承环到红色分拣器，最右侧槽位要求双臂精确交接小物体——<b>高接触密集</b>。</li>
+    <li><b>bottles-in-the-bin</b>：抓桌上的瓶子放进收纳箱。工作空间有限，需要双臂协调着挪动箱子才能抓全——<b>基础 pick-and-place，但带协作约束</b>。</li>
+    <li><b>mug-flipping</b>：把倒置的杯子翻正。YAM 腕关节行程不够转半圈，必须双臂交接——<b>纯运动学难题</b>。</li>
+  </ul>
+
+  <p>三个任务的共同点是：<strong>都能被 IK + 轨迹规划解出来</strong>。这一点后面会变成一条批判——因为如果一个任务不需要"学"就能解，用它来证明"学习范式更高效"是可疑的。</p>
+
+  <h3>怎么让仿真"可信"：靠物理，不靠画质</h3>
+
+  <p>这是全文最实用的一段，也是最反直觉的一段。作者明确写：<strong>相较于视觉因素，物理因素对实现高 Policy-level 相关性影响更大。</strong>具体三条：</p>
+
+  <ul>
+    <li>为任务选合适的 solver 和 kernel；</li>
+    <li>只在<b>不影响 policy 行为</b>的前提下对物理过程做近似，以换取速度；</li>
+    <li>按物体在具体任务中的使用方式建模细节，例如精细的碰撞代理（fine-grained collision proxies）。</li>
+  </ul>
+
+  <p>第三条值得展开。为什么"碰撞代理"比"渲染"重要？因为策略的失败几乎全部发生在<u>接触的那一刻</u>：抓偏 2mm、碰倒邻瓶、交接时滑脱。而像素好不好看，只影响策略"看不看得懂"，不影响"抓不抓得住"。前者是感知的输入质量，后者是成败的物理判据。<strong>评估器要保的是"成败的序"，所以它必须先把成败这件事算对。</strong></p>
+
+  <h3>那条把整套方法钉住的消融：拒绝采样微调是 RL 的前置条件</h3>
+
+  <p>这是我认为全文最有价值的一个实验，比最后的成本曲线更有信息量。</p>
+
+  <p>在 sort-from-tote 上，只用 50 条真实遥操作微调 PI-0.5，训练到约 40k 步后任务进展不再上升——<strong>真实数据用完了，模型卡住了</strong>。此时分拣 6 个零件。</p>
+
+  <p>解法分两段：先用仿真在变化的光照/相机姿态/零件颜色下 rollout，<u>筛出成功抓取的帧</u>，和少量真实数据联合训练（sim-and-real co-training，即拒绝采样微调），额外 10k 步 → <b>+11 个百分点</b>。然后在这个基础上做仿真 RL（384 并行环境，reward 就是任务指标：进对槽 +1、碰出区域 −1，<b>不做 reward shaping</b>）→ 仿真 +38pp，真实 +39pp；实际分拣数量从 6 个 → 16 个（epoch 24）→ <b>23 个（epoch 56）</b>。</p>
+
+  <p>真正关键的是那个消融：<strong>跳过拒绝采样微调、直接在纯真实数据训练的 checkpoint 上做 RL，会失败</strong>。原文写得很直白——不做这一步，策略在随机化条件下能分拣的零件数会<b>减少 3–4 倍，且很少能拿到 reward</b>；直接在这个 checkpoint 上 RL 也带不来改善。</p>
+
+  <div class="box bad"><b>为什么这条消融比 +39pp 更重要：</b>它说明仿真 RL 的成败不取决于 RL 本身，而取决于<strong>策略有没有先在"被随机化过的观测"上活下来</strong>。RL 的探索需要偶发的成功作为梯度来源；如果策略在随机光照/姿态下几乎从不成功，探索就退化成随机游走，reward 恒为 0，梯度恒为 0。<br>换句话说：<b>拒绝采样微调的作用不是提升分数，是把策略推进"能拿到 reward 的区域"。</b>这是一个"先给梯子再让人爬"的结构，而不是"两个技巧叠加"。</div>
+
+  <h3>零样本迁移：用仿真的"上帝视角"造数据，再蒸馏掉上帝视角</h3>
+
+  <p>第二组方法更巧。仿真有一个真实世界永远没有的优势：<strong>你可以直接读到世界的真值状态</strong>——物体位置、朝向、速度、物理参数。于是可以先写一个"看得见答案"的策略（代码策略，code-as-policies，本质是脚本），让它在仿真里跑，记录轨迹（视觉观测 + 机器人状态 + 动作），<b>只留成功轨迹</b>，再用这些轨迹微调基座模型。</p>
+
+  <p>这条路径的漂亮之处在于它绕开了 RL 最难的部分：不需要设计 reward、不需要探索、不需要处理稀疏奖励。它把"学习"降级成了"模仿一个已经会做的脚本"，而脚本在仿真里写起来很容易。</p>
+
+  <p>然后是最硬的一句声明：这些策略<strong>没有接触任何真实数据</strong>，唯一用到真实的地方是"生成仿真环境时用了 1 条真实遥操作轨迹做校准"。结果：</p>
+
+  <table>
+    <tr><th>任务</th><th>数据来源</th><th>50 ep</th><th>100 ep</th><th>200 ep</th><th>400 ep</th></tr>
+    <tr><td rowspan="2">bottles-in-the-bin</td><td>真实遥操作</td><td>59.0%</td><td>77.5%</td><td>77.3%</td><td>74.9%</td></tr>
+    <tr><td>仿真（蒸馏）</td><td>25.7%</td><td>55.5%</td><td>—</td><td>59.5%</td></tr>
+  </table>
+
+  <p>这张表要横着看，也要竖着看。<strong>横着看</strong>：仿真数据随规模单调上升，说明"更多仿真数据确实有用"，零样本迁移成立。<strong>竖着看</strong>：仿真 400 条（59.5%）<b>仍然低于真实 50 条（59.0%）附近、远低于真实 200 条（77.3%）</b>。也就是说，在这两个任务上，<strong>1 条仿真轨迹的信息量大约只值 0.2~0.3 条真实轨迹</strong>。</p>
+
+  <p>这个换算很重要，因为它把"零样本迁移成功"和"仿真是划算的"分开了。前者是定性结论（能迁移），后者是定量结论（划不划算）——而后者在这张表里<u>并没有被证明</u>。作者写的是"仅使用仿真数据训练的 Policy，也成功迁移到了真实机器人上"，这句话完全正确；但如果读者把它读成"不用采真实数据了"，那就是误读。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">价值与局限</span>它证到了什么，没证到什么</h2>
+
+  <p>先把功劳记清楚：这篇博客是少见的、把"仿真加速"讲成<strong>成本结构问题</strong>而不是"仿真精度问题"的材料。它给出的迭代时间分解（5.5 天 vs 20 小时）是可以直接拿去说服老板的，而且它诚实地承认了"真实评估不可或缺"。</p>
+
+  <p>但它的证据强度，远低于它的结论强度。以下八条，按杀伤力从大到小排。</p>
+
+  <ol class="crit">
+    <li><b>相关性只在"同一个模型、不同数据量"内部被验证过，却被表述成通用规律。</b>15 个 Policy 全部由 <b>PI-0.5 微调</b>而来，区别只有训练 episode 数（50/100/200/400）和是否加 RL。也就是说，MMRV=0.094 证明的是"<u>同一族策略按数据量排序时，仿真能保住名次</u>"。而作者得出的结论是"如果仿真里好，真实里也会好；仿真里不好，真实里也不会好"——这是一个<b>跨架构、跨方法</b>的全称命题，实验完全没有覆盖。换个基座、换个动作头、换个模仿学习算法，相关性会不会塌，这篇博客一个字都没说。</li>
+
+    <li><b>真实评估的场景，是从仿真分布里"实例化"出来的——这让相关性带有循环论证的味道。</b>评估协议写得很清楚：先在仿真里按分层分布采样、用 Hash 固定配置集合，然后用<b>投影仪把物体布局投到真实桌面上，由人照着摆放</b>。也就是说，真实评估用的分布和仿真评估用的分布是<u>同一份配置清单</u>。<br>这当然提高了相关性——因为在"分布"这个最容易被 sim-to-real gap 撕裂的维度上，两者被强行对齐了。但它也意味着：<b>这个 0.094 不能外推到"我拿一个真实世界的自然场景去评估"</b>。真实部署里的物体摆放不会有人拿投影仪帮它对齐。<u>这是我认为全文最需要标注、而没有被标注的一条。</u></li>
+
+    <li><b>文中 policy 数量自相矛盾：先说 12 个，后说 15 个。</b>前文写"最终得到 12 个 Policy，并分别在仿真环境和真实机器人上进行评估"；后文图注写"15 个 Policy 在仿真和真实环境中的表现相关性"，指标也明确"基于 15 个 Policy 计算"。两个数字对不上，中间没有任何解释（可能是加了 3 个 RL checkpoint，但没有说明）。<b>而在 n=15 这个量级上，相关系数的 95% 置信区间宽得惊人</b>——更不用说 Pearson 的具体数值在正文里根本没有给出来（被图截断），只给了 MMRV。一个用"高相关性"当核心卖点的报告，不给相关系数，是硬伤。</li>
+
+    <li><b>"仅用仿真数据就够了"被它自己的表格否定了一半。</b>见上一节的换算：仿真 400 条只到 59.5%，真实 200 条是 77.3%。在 mug-flipping 上数字更乱（24.4 / 11.9 / 31.9 / 22.5 vs 19.4 / 44.4 / 38.8 / 38.1），非单调、来回跳，说明置信区间很宽。作者仍然下了"零样本迁移成功"的结论——技术上没错，但把"能迁移"当成"够用"，是这类工作最常见的过度推销。</li>
+
+    <li><b>mug-flipping 是这套论证里最弱的一环，却被当成三个支柱之一。</b>这个任务的失败原因写得很清楚：YAM 腕关节行程不够转半圈，必须双臂交接。这是一个<b>纯运动学约束</b>，用 IK + 轨迹规划就能解——事实上作者自己在方法选择里就写了"bottles 和 mug 可以通过 IK 和精心设计的轨迹规划来解决"。<br>那么用它来证明"仿真数据能替代真实数据训练策略"，逻辑上是滑的：<b>你证明的是"仿真能生成一条机械臂本来就规划得出来的轨迹"</b>，这几乎不涉及策略学习最难的泛化问题。</li>
+
+    <li><b>RL 的 39pp 建立在一个真实世界拿不到的信号上。</b>reward 是"进对槽 +1、碰出区域 −1、不做 shaping"，判定精确、环境可无限重置、384 个并行实例。<b>真实世界里你既不能瞬间重置场景，也无法自动判定"零件是否进了正确槽位"</b>——这恰恰是需要人来做的那部分工作。所以这 39pp 证明的是"仿真 RL 有效"，不是"这套闭环在真实世界里能跑"。作者没有把这个界限标出来。</li>
+
+    <li><b>成本对比图选择了对自己最有利的口径。</b>纵轴是真实性能、横轴是累计美元（<u>对数坐标</u>）、并且明确"两种流程训练成本相同，因此不计入训练成本"。问题在于：仿真流程的成本里包含 384 并行环境的 RL、环境生成、大量 rollout——这些是 GPU 小时，不是零。把它们排除在外，再在对数坐标上画差距，视觉上会被放大。<br>更要紧的是：<b>全文没有给出任何一个绝对美元数字</b>。一张"我们更便宜"的图，不给具体金额，只能用来看趋势，不能用来做预算。</li>
+
+    <li><b>单一平台、单一公司博客、自定义术语、无同行评审。</b>三个任务全在双臂 YAM 上，全部由 Moonlake 自己构建的环境（Environment Hub）里完成。文中反复出现的"L3 级别保证 / Policy-level Guarantees"是一个<b>自定义术语，全文没有给出形式化定义或可检验的判据</b>——什么算 L3？怎么验证一个环境达到了 L3？没有说。这让"我们的仿真提供了 L3 保证"这句话无法被外部复核。</li>
+  </ol>
+
+  <h3>还漏了一件事：诊断的可信度没有闭环</h3>
+
+  <div class="box bad">
+  <p>博客把"Agent 自动诊断失败模式"当成一个亮点（替掉 1 天人工）。但诊断是<strong>整条链上唯一没有 ground truth 的环节</strong>：Agent 说"瓶子密集时会碰落邻瓶"，你怎么知道它是真的找到了根因，还是找到了一个"看起来合理"的相关性？</p>
+  <p>文中给了一个例子，但没有给诊断的<b>准确率</b>——没有"Agent 诊断出的失败模式里，有多少被人确认是真的"。而这恰恰是最该测的：如果诊断错了，后续的引导式域随机化就会<b>朝着错误的方向加采样</b>，把算力全烧在一个假问题上。</p>
+  <p>这是"LLM 进闭环"类工作的通病：评估环节有指标（MMRV），改进环节有指标（+39pp），<b>唯独中间那个"理解为什么失败"的环节，只有故事，没有度量。</b>而它偏偏是唯一一个把"数据"翻译成"方向"的环节。</p>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">结论</span>什么时候该信它，什么时候不该</h2>
+
+  <p>如果只带走一句话：<strong>仿真在这里替代的不是"真实世界"，是"评估这个动作"。</strong></p>
+
+  <p>这个替换之所以成立，是因为评估只需要排名；它之所以会失效，是因为一旦你要的是<u>绝对值</u>（这个策略能不能上线？成功率够不够 95%？），排名就不够了，你必须回到真实世界去测那一次。</p>
+
+  <div class="box good">
+  <b>给三类读者的判断标准：</b><br><br>
+  <b>① 如果你的瓶颈是"改一版要等一周"</b>——这套方法直接可用，而且收益最大。因为你的 \(\eta_{\text{dev}}\) 一定很低，仿真抬的是那个占比最大的项。优先做的不是把仿真做真，而是把<u>评估和诊断</u>搬进去。<br><br>
+  <b>② 如果你的瓶颈是"策略精度不够"</b>——先别急着上仿真。这篇的所有收益都来自"比较得快"，不来自"学得更好"。仿真 RL 的 39pp 依赖精确 reward 和无限重置，真实世界给不了。<br><br>
+  <b>③ 如果你要判断"能不能不采真实数据"</b>——按它自己的表格，答案是<b>还不能</b>。仿真轨迹的信息密度大约是真实的 1/4 到 1/3，400 条仿真仍打不过 200 条真实。零样本迁移是"能跑通"，不是"能替代"。
+  </div>
+
+  <p>最后一个观察，关于这篇博客的诚实程度。它做了两件很克制的事：一是明确写了"真实世界评估不可或缺，但仿真能显著加快此前的迭代过程"——把仿真放在"加速"而不是"替代"的位置；二是主动承认了"物理因素比视觉因素更重要"，这等于承认了"把渲染做得更漂亮是低优先级"。</p>
+
+  <p>但它也做了两件不克制的事：把 15 个同族 checkpoint 的相关性说成了通用规律，以及把"真实场景由仿真分布投影生成"这个实验设计的关键细节，只写在了评估协议里而没有写进结论。前者是外推，后者是<b>让相关性显得比实际更强</b>。</p>
+
+  <p class="src">原文：<a href="https://mp.weixin.qq.com/s/YZyNC3dXI803qxbgWknFMA" target="_blank">机器人学习，为什么不能在仿真中完成？</a>（公众号 human five，2026-11-06）· 机构：Moonlake AI · 平台：双臂 YAM，sort-from-tote / bottles-in-the-bin / mug-flipping 三任务</p>
+</section>
+
+<footer>3W1H · 第一性原理拆解　|　本篇基于公众号原文与公开图表的批判性解读，未复现实验</footer>
+</div></body></html>
