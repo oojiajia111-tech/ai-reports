@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concertina：别把"手"和"脑"拆开养 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>Concertina：别把"手"和"脑"拆开养<span class="sub">eVLM · 连续 latent action token · blockwise 扩散 · EGC 25.14× · 梯度冲突 cosine −0.891</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-05 · arXiv 2611.07513</div>
+    <div><b>来源</b> arXiv 预印本 · cs.CV / cs.AI / cs.RO</div>
+    <div><b>关键词</b> 视觉-语言-动作 · 扩散 VLA · 连续动作表示 · 动作接口审计 · 梯度冲突</div>
+    <div><b>一句话</b> 主流 VLA 把"手"和"脑"分开养，这篇说这个拆分本身就是错的</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>主流 VLA 有两条路：把动作离散成 token（RT-2、OpenVLA），或者外挂一个独立 action expert（π0、π0.5、X-VLA）。两条路都在干同一件事——把"手"和"脑"拆开养。Concertina 说这个拆分本身是错的：离散化在符号空间丢掉了物理空间的度量结构，同样单位训练误差，离散方案的物理误差被拉长 <b>25.14 倍</b>；外挂 expert 占着 <b>16.5%~35.1%</b> 的参数却把梯度挡在 backbone 外，操作经验永远进不了认知。于是它把连续表示、blockwise 生成、物理坐标监督全部塞回共享扩散 backbone。学费也要付：两个目标共用 hidden space 时梯度方向可能几乎完全相反（cosine <b>−0.891</b>），参数量没变但更新方向崩掉，AvgLen 直落 <b>92%</b>。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 三个公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：被挑战的两派，和 Concertina 的重新定义</h2>
+
+  <h3>第一派：离散 token 化（RT-2、OpenVLA 这一路）</h3>
+  <p>做法很直接：把动作的每个维度<b>量化成一串离散符号</b>，塞进 LLM 已有的词表空间，跟文本 token 一起自回归或者扩散生成。好处很实在——现成的 VLM 解码器、现成的交叉熵损失、现成的词表，一个字都不用改。</p>
+  <p>代价藏在一个几乎没人明说的假设里：<b>"token 错了"和"动作偏了多少"被当成了一回事。</b>但在符号空间里，第 137 号 token 和第 138 号 token 之间的距离，与第 137 号和第 9000 号之间的距离，在交叉熵看来几乎一样；可它们在物理空间里，一个可能对应 1 毫米，另一个对应 10 厘米甚至更多。<b>离散化把物理空间的度量结构整个抹平了。</b></p>
+
+  <h3>第二派：外挂 action expert（π0、π0.5、GR00T N1、X-VLA 这一路）</h3>
+  <p>这条路的判断是"那就别离散，直接连续"。动作保持连续，由一个<b>独立于 VLM backbone 的动作头</b>来出（flow matching / diffusion head）。π0、π0.5 用的是外置 flow expert，X-VLA 甚至外接了一个 <b>24 层 Transformer</b>，GR00T N1 则是显式用 Knowledge Insulation 把动作梯度<b>阻断</b>在 backbone 之外。</p>
+  <p>结果就是：<b>"手"确实长在模型里了，但它是一个影子模型。</b>它占着 16.51%（π0）到 35.10%（X-VLA）的参数，却把梯度挡在门外——操作经验永远进不了认知，认知也永远约束不了操作。</p>
+
+  <h3>Concertina 的重新定义：把动作从"输出"改成"输入"</h3>
+  <p>它的做法只有一句话，但这句话改动了问题的形状：<b>每个控制时间步的完整动作向量，先编码成 backbone hidden space 里的一个连续 latent action token，然后跟视觉 token、语言 token 混在同一条序列里，送进同一个扩散 backbone。</b></p>
+  <div class="step"><div class="t">一句话概括方法</div><div class="d">动作不再是模型最后要"吐"出来的东西，而是模型一开始就"带着"的东西。表示、生成、监督三条路全部走在共享 backbone 的计算路径和参数路径上。</div></div>
+
+  <table>
+    <tr><th>维度</th><th>离散 token 化</th><th>外挂 action expert</th><th>Concertina eVLM</th></tr>
+    <tr><td><b>动作表示</b></td><td>每维量化成离散符号</td><td>连续，外置 head 生成</td><td>连续，编码成一个 latent token 直接进 backbone</td></tr>
+    <tr><td><b>序列长度</b></td><td>O(H·D)</td><td>O(H) + 外挂结构</td><td><b>O(H)</b>（每个时间步一个 token）</td></tr>
+    <tr><td><b>动作梯度能否更新 backbone</b></td><td>能，但目标是"符号对不对"</td><td>不能 / 被显式阻断</td><td>能，且目标是<b>物理坐标误差</b></td></tr>
+    <tr><td><b>额外参数占比</b></td><td>—（离散化本身是另一种代价）</td><td>π0 16.51% · π0.5 19.17% · SmolVLA 22.19% · X-VLA 35.10%</td><td><b>0.21%</b>（9.49M，独立 action generator 层数 = 0）</td></tr>
+    <tr><td><b>误差与物理位移的关系</b></td><td>无稳定对应</td><td>连续可控</td><td>连续可控</td></tr>
+  </table>
+  <p>最后一行是本文全部论证的起点，而第一行的 O(H·D) 对 O(H)、第四行的 0.21% 对 16.51%~35.10%，加起来是<b>参数上省下约 78×~167×</b>——但这只是顺带的红利。这篇论文真正想证明的，是<b>"动作和认知放在同一个计算图里"这件事本身带来了什么</b>。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：五条公理，把"解耦"逼到墙角</h2>
+
+  <h3>公理一：token 的"对错"不等于动作的"偏了多少"</h3>
+  <p>这是最容易被糊弄过去的一层。几乎所有离散化方案都在优化同一件事：<b>交叉熵</b>。而交叉熵有一个致命的性质——<b>它对"错了一个 bin"和"错了半个地球"的惩罚几乎相同</b>。物理空间是有度量的，符号空间没有。</p>
+  <p>论文用自创的 <b>EGC（Error-Geometry Consistency）</b>工具把这件事量出来了：制造单位训练误差，看物理误差的分布有多"胖"。在 512 个 CALVIN 窗口（H=30, D=7）上，<b>连续坐标监督的 EGC 恰好是 1</b>（误差分布形状不随幅度变化），而 OpenVLA 式 256-bin 均匀量化的 p05=0.0549、p95=1.3804，<b>EGC = 25.14×</b>；把样本扩到 8192 个窗口，是 <b>25.57×</b>。</p>
+  <p>FAST 那类压缩 token 更狠：<b>单 token 结构解码失败率 FAST+ 82.23%、修复后的 MolmoAct2-FAST 77.93%</b>，而且一次编辑中位会扰动整个窗口 <b>30/30</b> 个时间步——改一个符号，等于改了一整段轨迹。</p>
+  <div class="step"><div class="t">推论 1</div><div class="d">离散化不是"精度换泛化"的权衡，而是<b>换掉了被优化的那个量</b>：从"偏了多少米"换成"是哪个符号"。前者有物理意义、可微、可加权；后者只是一个可以被 CE 刷上去的分类任务。<b>EGC 把这个换算的代价第一次量化成了一个可比的数字。</b></div></div>
+
+  <h3>公理二：动作专家是一个"影子模型"——它占着参数，却挡着梯度</h3>
+  <p>看参数占比这一列：π0 16.51%、π0.5 19.17%、SmolVLA 22.19%、X-VLA 35.10%（外接 24 层 Transformer）。这些动作模块都是<b>实打实的容量</b>，不是摆设。但它们的存在方式有个共同特征：<b>它们不在 VLM 的梯度路径上</b>。</p>
+  <p>Concertina 的方案里，action encoder/decoder 的有效参数只有 <b>9.49M，占 0.21%</b>，<b>独立 action generator 层数 = 0</b>。它省下的不是"一点参数"，是<b>整整一个模型</b>。省下来的算力全部塞回 backbone：36 层 Transformer、hidden dim d=2560、总参数约 <b>4.46B</b>。</p>
+  <p>更重要的是省下来的东西的性质：<b>那条被切断的梯度</b>。知识插在认知里，认知改不了知识；操作经验再丰富，也只是喂给了一个看不见 VLM 表示的独立模块。</p>
+  <div class="step"><div class="t">推论 2</div><div class="d">如果"操作经验必须进到认知里"是对的，那么任何把动作梯度挡在 backbone 之外的架构，都<b>在结构上就不可能</b>满足它——不管它数据多、动作头多强。这不是效果问题，是<b>拓扑问题</b>。</div></div>
+
+  <h3>公理三：跨时间的轨迹耦合，必须发生在有全局注意力的地方</h3>
+  <p>机器人动作不是一堆独立的关键帧，是一条<b>有惯性、有相位、有连续性</b>的曲线。抓取这个原语，"手要靠近 → 对准 → 合拢 → 抬起"，这四步天然要互相看、互相约束。</p>
+  <p>Concertina 用 <b>TCA（Trajectory Coupling Attribution）</b>来量这件事：扰动单个输入坐标 \((t_0,d_0)\pm\varepsilon\)，用中心差分算出响应张量 \(R\in\mathbb{R}^{H\times D}\)，再看超出 6 步之外的响应能量占比 NLR。</p>
+  <p>答案非常干净：<b>action interface 本身 NLR = 0</b>——因为 E<sub>φ</sub> 和 D<sub>ψ</sub> 都是 position-wise MLP，物理上就不做时间混合，不产生跨时间耦合。而完整 backbone 的 NLR 是：Pretraining <b>4.058%</b>、CALVIN <b>4.103%</b>、LIBERO <b>1.217%</b>。逐层 hook 36 层的曲线更好看：浅层 0.19%~0.34%、第 9 层 0.29%~0.50%、<b>第 27 层 4.66%~9.93%</b>、第 35 层 3.03%~7.42%。</p>
+  <div class="step"><div class="t">推论 3</div><div class="d">跨时间耦合<b>不是被设计出来的，是在有全局注意力的地方自发出現的</b>——而且集中在中后层。这条公理直接否掉了"专门加一个时序模块来做耦合"的思路：那等于把 Transformer 已经会的事再用一个更笨的办法重做一遍。</div></div>
+
+  <h3>公理四：共享 hidden space 不是"谁都能挂上去的 feature buffer"</h3>
+  <p>这是全文最反直觉、也最重要的一条，也是我认为这篇论文真正的贡献。</p>
+  <p>主流直觉会这样说：共享 backbone 意味着"多任务共享特征，多好"。但如果两个任务的目标函数<b>不一致</b>呢？论文在 <b>8.35B checkpoint</b> 上做了一个 matched counterfactual intervention：主目标是 relative action，对照组额外挂一个 frozen auxiliary decoder，用 <b>0.5 的权重</b>监督 absolute action。</p>
+  <p>结果：</p>
+  <ul>
+    <li>主梯度与辅助梯度在共享 hidden state 上的 <b>cosine similarity = −0.891</b>；</li>
+    <li><b>99% 的 action token 上，两者的梯度方向相反</b>；</li>
+    <li>辅助权重只有 0.5，辅助梯度的 <b>norm 仍是主梯度的 0.88×</b>；</li>
+    <li>合并梯度与主目标的 alignment 掉到 <b>0.474</b>；</li>
+    <li>参数更新<b>量</b>几乎没变（<b>1.003×</b>），但跨层参数更新<b>方向</b>的 cosine 从 <b>0.604 崩到 0.138</b>；</li>
+    <li>最终 teacher action loss <b>+5.12×</b>、position error <b>+2.47×</b>、normalized MAE <b>+1.60×</b>；</li>
+    <li>CALVIN <b>AvgLen 从 2.970 掉到 0.237，下降 92.0%</b>。</li>
+  </ul>
+  <div class="step"><div class="t">推论 4</div><div class="d">这条实验拆掉了"合并不会更差"的常识。<b>参数量没变、步长没变、更新幅度没变，唯独方向变了，性能就崩了 92%。</b>因为优化器更新的是"方向 × 幅度"，幅度对了没用——<b>当两个目标的梯度近乎反平行时，合并出来的更新向量在两个方向上都是"半步错步"</b>。所以"塞进同一个 backbone"从来不是免费的午餐，它是<b>用梯度对齐的运气换来的</b>。这也意味着：Concertina 敢这么做，是因为它<b>只留了一个目标</b>（physical coordinate），没有第二个目标来打架。</div></div>
+
+  <h3>公理五：block 的边界必须落在"动作原语"的边界上</h3>
+  <p>blockwise 生成是这篇方法的引擎：horizon H 划成 M=⌈H/K⌉ 个 block，块间因果、块内双向。块内双向意味着<b>一个 block 里的时间步可以互相看、一起被去噪</b>——这就是"轨迹耦合"真正落地的地方。</p>
+  <p>那 K 该多大？论文给了一个不是超参玄学的答案：<b>动作增量方向的相似度</b>。Δt=5 时是 0.775，Δt=10 时是 0.663，<b>Δt=19 才首次跌破 0.5</b>，Δt=27 才首次跌破 1/e。也就是说，真实动作的"原语尺度"大约在 <b>19 个时间步</b>。K=10 大致卡在这个尺度的内侧，刚好能把一个原语的前半段完整装进一个 block。</p>
+  <p>数据完全对得上：K=10 时"同一个 bidirectional block 内 coherent action mass"从 <b>9.8% 提到 21.3%（2.17×）</b>。而 K 从 5 换成 10，LIBERO 从 <b>38.5% 涨到 73.0%（+34.5pp）</b>，CALVIN AvgLen 从 <b>0.055 涨到 1.945</b>，SR@1 从 <b>5.1% 涨到 78.2%</b>。</p>
+  <div class="step"><div class="t">推论 5</div><div class="d">block 太小，一个原语被切成两半，两半互相看不见，只能各自瞎猜；block 太大，块内的"双向"就退化成"更多步骤一起猜"，误差会互相传染。<b>K 不是调出来的，是从动作自身的时序相关结构里读出来的。</b>顺带一提，这也意味着这个方法的性能对 block 结构高度敏感（见文末局限 ⑥）。</div></div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：四层结构，从表示到审计</h2>
+
+  <h3>第 1 层｜表示层：一个时间步 = 一个连续 latent token</h3>
+  <table>
+    <tr><th>组件</th><th>规格</th></tr>
+    <tr><td><b>动作空间</b></td><td>统一 <b>20D canonical 坐标</b>：每臂 10 维 = 3 维平移 + 6 维连续旋转 + 1 维夹爪；单臂双臂<b>共用同一套槽位</b></td></tr>
+    <tr><td><b>有效性掩码</b></td><td>\(q_{n,d}\) 标记第 n 步第 d 维坐标是否有效；\(v_{n,i}\) 标记第 i 个时间步本身是否有效</td></tr>
+    <tr><td><b>action encoder E<sub>φ</sub> / decoder D<sub>ψ</sub></b></td><td>都是 <b>position-wise MLP</b>（4 层，hidden width 1024，SiLU，dropout 0），<b>不做时间混合</b>——所有跨时间依赖交给共享 Transformer</td></tr>
+    <tr><td><b>backbone</b></td><td>BARD-VL-B4 初始化，<b>36 层 Transformer</b>，hidden dim d=2560，总参数约 <b>4.46B</b></td></tr>
+    <tr><td><b>坐标权重 ω<sub>d</sub></b></td><td>translation <b>500</b>、6D rotation <b>10</b>、gripper <b>1</b>；完整 20D layout 每臂一组 = (500,500,500,10,10,10,10,10,10,1)</td></tr>
+    <tr><td><b>序列长度</b></td><td><b>O(H)</b>，而不是离散化的 O(H·D)</td></tr>
+  </table>
+
+  <h3>第 2 层｜生成层：block-stratified corruption（不是高斯噪声）</h3>
+  <p>这是全篇最容易被误解的地方。<b>Concertina 的扩散不是往轨迹上加高斯噪声，而是做"结构化的遮盖"。</b></p>
+  <ul>
+    <li><b>分块与因果性</b>：horizon H 切成 M=⌈H/K⌉ 个 block，块间因果、块内双向；训练用 packed teacher forcing，序列排成 [C, Ẑ, Z]，长度 P+2H。</li>
+    <li><b>block-stratified 采样</b>：把 [0,1] 划成 M 个 strata，抽 \(u\sim U(0,1)\)，算 \(\bar t=(j+u)/M\)，<b>随机排列</b>分配给各 block，再 clip 到 [\(\varepsilon\)=1e-3, 1]。每个时间步再<b>独立</b>以 Bernoulli(t) 决定是否 mask 成 zero sentinel。</li>
+    <li><b>三状态混合 corruption</b>（继承自 BARD）：\(p_{\text{clean}}=1-\sin(\pi t/2)\)、\(p_{\text{sub}}=\sin(\pi t/2)+\cos(\pi t/2)-1\)、\(p_{\text{mask}}=1-\cos(\pi t/2)\)，三者下限压到 1e-3 后<b>重新归一化</b>。<b>sub 与 mask 两种位置都接受监督</b>。</li>
+  </ul>
+  <p>直觉上很好懂：<b>噪声不是加在数值上，而是加在"哪几帧我不知道"上。</b>这天然对齐了机器人任务真正的不确定性来源——不是"这一帧位置抖了 0.1 毫米"，而是"这一帧我没看清"。</p>
+
+  <h3>第 3 层｜审计层：论文自创的三把尺子（本文最值钱的部分）</h3>
+  <p>前三层是方法，第四层才是这篇论文真正的贡献：<b>它不满足于"我的分数更高"，而是去造工具量清楚"我到底赢在哪、可能输在哪"。</b></p>
+
+  <h3 style="font-size:14.5px;color:#5b6472;">尺子 A｜EGC：误差几何一致性</h3>
+  <p>制造单位训练误差，看物理误差分布的胖瘦程度，EGC = p95/p05。连续坐标监督天然是 1（物理误差就是物理误差，不随符号远近变化）；OpenVLA 式 256-bin 均匀量化是 <b>25.14×</b>（512 windows）/ <b>25.57×</b>（8192 windows）。</p>
+  <p>原因一句话说清：<b>交叉熵对相邻 bin 和远距离 bin 的惩罚近似相同</b>。符号空间是等距的，物理空间不是。</p>
+
+  <h3 style="font-size:14.5px;color:#5b6472;">尺子 B｜连续 latent manifold 的稳定性</h3>
+  <p>一个合理的担心：如果把 20 维动作压成一个 2560 维 token，会不会塌成一个低维表示？论文查了 encoder 的局部 Jacobian \(\partial E_\phi(a)/\partial a\in\mathbb{R}^{2560\times20}\)，跟踪三个指标：</p>
+  <table>
+    <tr><th>训练进度</th><th>init</th><th>5k</th><th>10k</th><th>15k updates</th></tr>
+    <tr><td>entropy effective rank</td><td>19.78 / 20</td><td>19.30</td><td>18.90</td><td><b>18.63 / 20</b></td></tr>
+    <tr><td>median condition number</td><td><b>1.73</b></td><td colspan="3">→ <b>3.22</b>（末值）</td></tr>
+    <tr><td>action token 与原始坐标的 pairwise distance Spearman 相关</td><td colspan="4"><b>0.855 ~ 0.931</b>（全程保持）</td></tr>
+  </table>
+  <p>结论：<b>没有坍缩</b>。20 维结构基本被保留，距离结构的相关性全程稳在 0.855 以上。</p>
+
+  <h3 style="font-size:14.5px;color:#5b6472;">尺子 C｜TCA：轨迹耦合归因</h3>
+  <p>扰动单个输入坐标，用中心差分拿响应张量，算传播到 6 步之外的响应能量比例 NLR。结果已经在公理三里给过：<b>action interface = 0，backbone 中后层才出现峰值</b>。对照组同样有意思：π0 全路径 NLR <b>8.141%</b>（<b>全部来自外部 flow expert</b>），π0.5 <b>7.141%</b>（同），而 X-VLA <b>移除外部 24 层 action Transformer 后只剩 3.72%</b>。</p>
+  <div class="box good"><b>尺子 C 是全文最漂亮的一击：</b>它证明了 π0 / π0.5 的"轨迹能力"确实存在，但<b>它住在外挂的 flow expert 里，不在 VLM 里</b>；X-VLA 把外挂 Transformer 拆掉，耦合能力就随之掉到 3.72%。而 Concertina 的耦合虽然绝对值不高（1.217%~4.103%），却是<b>长在共享 backbone 里的</b>——这正是它要的。</div>
+
+  <h3>第 4 层｜训练配方与推理</h3>
+  <table>
+    <tr><th>阶段</th><th>配置</th></tr>
+    <tr><td><b>多 embodiment 预训练</b></td><td><b>80.2M frames</b>，<b>60000 updates</b> + <b>30000-update continuation</b>，<b>8 GPU</b>，global batch <b>1536</b></td></tr>
+    <tr><td><b>预训练数据成分</b></td><td><b>680 episodes</b>、<b>999830 AgiBot frames</b>、<b>全部 34 个 AgiBot tasks</b>、<b>30Hz</b></td></tr>
+    <tr><td><b>CALVIN finetune</b></td><td><b>5000 updates</b></td></tr>
+    <tr><td><b>LIBERO finetune</b></td><td>global batch <b>448</b></td></tr>
+    <tr><td><b>最终 block 配置</b></td><td>预训练 <b>H=50, M=5, K=10</b>；continued pretraining <b>H=20, M=2, K=10</b>；闭环执行 <b>H<sub>exec</sub>=10</b></td></tr>
+  </table>
+  <p>推理侧的流程很短但很实用：<b>prefix 只 prefill 一次进 persistent KV cache</b>，然后 block 按 b=0…M−1 顺序生成；再挂一个<b>轻量 token-risk head</b>，从 detached 的 hidden state 预测 \(\log(\ell+10^{-6})\)，把 proposal 按"负预测 log-risk"排序，<b>可选 refinement rounds</b> 重新 mask 掉低分位置再预测一遍。</p>
+  <p>翻译成人话：<b>模型先给出一批候选动作，然后自己给每个候选打一个"我有多不确定"的分，把不靠谱的重新洗牌再来一次。</b>这个 risk head 是个附属品，但体现了同一件事——<b>整个系统的每个部件都在共享 hidden state 上工作</b>。</p>
+
+  <h3>基准结果</h3>
+  <p><b>LIBERO regular</b>（4 suite，每任务 50 episodes，共 2000 episodes）：</p>
+  <table>
+    <tr><th>方法</th><th>Spatial</th><th>Object</th><th>Goal</th><th>LIBERO-10</th><th>平均</th></tr>
+    <tr><td>π0</td><td colspan="5">94.2</td></tr>
+    <tr><td>π0.5</td><td colspan="5">97.5</td></tr>
+    <tr><td>Discrete Diffusion VLA</td><td colspan="5">96.4</td></tr>
+    <tr><td>Dream-VLA</td><td colspan="5">97.2</td></tr>
+    <tr><td>X-VLA</td><td colspan="5">98.1</td></tr>
+    <tr><td><b>Concertina</b></td><td><b>99.0</b></td><td><b>100.0</b></td><td><b>98.8</b></td><td><b>94.8</b></td><td><b>98.15</b></td></tr>
+  </table>
+  <p><b>LIBERO-Plus</b>（完整 10030 条扰动任务，这才是难的那个）：</p>
+  <table>
+    <tr><th>方法</th><th>总体</th><th>相对差距</th></tr>
+    <tr><td>OpenVLA-OFT</td><td>69.6%</td><td>—</td></tr>
+    <tr><td>EFFVLA</td><td>79.8%</td><td>—</td></tr>
+    <tr><td><b>Concertina</b></td><td><b>85.9%</b>（8615/10030）</td><td><b>+6.1pp</b> vs EFFVLA · <b>+16.3pp</b> vs OpenVLA-OFT</td></tr>
+  </table>
+  <p>分 suite：Spatial 2106/2402 = 87.7%、Object 2216/2518 = 88.0%、Goal 2150/2591 = 83.0%、LIBERO-10 2143/2519 = 85.1%。</p>
+  <p><b>CALVIN ABC-D</b>（A/B/C 训练、D 零样本，1000 条官方五任务 chains）：</p>
+  <table>
+    <tr><th>方法</th><th>AvgLen</th><th>SR@1</th><th>SR@2</th><th>SR@3</th><th>SR@4</th><th>SR@5</th></tr>
+    <tr><td>LLaDA-VLA</td><td>4.01</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>UniVLA</td><td>4.41</td><td>—</td><td>—</td><td>—</td><td>—</td><td><b>75.1%</b></td></tr>
+    <tr><td>X-VLA</td><td>4.43</td><td>—</td><td>—</td><td>—</td><td>—</td><td><b>78.8%</b></td></tr>
+    <tr><td><b>Concertina</b></td><td>4.142</td><td><b>98.6%</b></td><td><b>93.8%</b></td><td><b>83.2%</b></td><td><b>73.7%</b></td><td>64.9%</td></tr>
+  </table>
+  <p>这里必须说清楚口径：<b>Concertina 的 AvgLen 4.142 低于 UniVLA 4.41 和 X-VLA 4.43，SR@5 64.9% 也低于 UniVLA 75.1% 和 X-VLA 78.8%</b>。论文自己的表述是"strong zero-shot transfer"——它在 SR@1（98.6%）和 SR@2（93.8%）上确实非常强，但<b>不是所有指标都第一</b>。这个数字表要看清口径，别当成全项 SOTA。</p>
+
+  <h3>关键消融：这篇论文的实验密度很高，每一条都在回答一个具体问题</h3>
+
+  <p><b>① block 大小 K（最关键的一组）</b>，H=50：</p>
+  <table>
+    <tr><th>配置</th><th>LIBERO 平均</th><th>Spatial</th><th>Object</th><th>Goal</th><th>LIBERO-10</th></tr>
+    <tr><td>K=5</td><td>38.5%</td><td>50</td><td>62</td><td>24</td><td>18</td></tr>
+    <tr><td><b>K=10</b></td><td><b>73.0%（+34.5pp）</b></td><td>82</td><td>100</td><td>54</td><td>56</td></tr>
+  </table>
+  <p>CALVIN 侧同步跳变：AvgLen 0.055 → <b>1.945</b>，SR@1 5.1% → <b>78.2%</b>，SR@5 0% → <b>11.7%</b>。原因前面讲过：动作增量方向相似度 Δt=5 时 0.775、Δt=10 时 0.663、<b>Δt=19 才首次低于 0.5</b>、Δt=27 才低于 1/e；同一 bidirectional block 内的 coherent action mass 从 <b>9.8% → 21.3%（2.17×）</b>。</p>
+
+  <p><b>② corruption schedule 与 inverse-t 权重</b>（固定 M=5, K=10）：</p>
+  <table>
+    <tr><th>变体</th><th>AvgLen</th></tr>
+    <tr><td>three-state mixed corruption</td><td>1.333</td></tr>
+    <tr><td>+ inverse-t weighting</td><td>1.701</td></tr>
+    <tr><td><b>mask-only inverse-t（最终）</b></td><td><b>2.087</b></td></tr>
+  </table>
+  <p>最终配置 SR@1 <b>81.9%</b>、SR@5 <b>12.5%</b>。</p>
+
+  <p><b>③ 物理坐标权重 + state masking</b>：权重从 uniform 1:1:11:1:1 换成 <b>500:10:1500:10:1</b>。</p>
+  <table>
+    <tr><th>设置</th><th>AvgLen 变化</th><th>SR@1</th></tr>
+    <tr><td>启用 state masking：uniform → 加权</td><td>0.406 → <b>1.837（+1.431）</b></td><td>31.0% → <b>73.1%</b></td></tr>
+    <tr><td>不启用 state masking：uniform → 加权</td><td>0.535 → 1.093（+0.558）</td><td>—</td></tr>
+    <tr><td>state masking 单独贡献</td><td>1.093 → 1.837（<b>+0.744</b>）</td><td><b>+11.2pp</b> · SR@5 <b>+9.1pp</b></td></tr>
+    <tr><td>Visual Random Resized Crop（全 36 层端到端训练）</td><td>0.607 → 1.589（<b>+0.982</b>）</td><td>—</td></tr>
+  </table>
+
+  <p><b>④ 对齐下游 horizon 与执行 block</b>：</p>
+  <table>
+    <tr><th>H（训练/预测 horizon）</th><th>H<sub>exec</sub>（闭环执行块）</th><th>CALVIN AvgLen</th></tr>
+    <tr><td>50</td><td>10</td><td>3.535</td></tr>
+    <tr><td>20</td><td>20</td><td>3.768</td></tr>
+    <tr><td>20</td><td>10</td><td>3.924</td></tr>
+    <tr><td><b>10</b></td><td><b>10</b></td><td><b>4.135</b></td></tr>
+  </table>
+  <p>结论：<b>训练/预测 horizon 与实际执行 block 最好对齐</b>，两者都取 10 最好——所以最终配置是预训练 H=50/M=5/K=10，continued pretraining H=20/M=2/K=10，闭环执行 H<sub>exec</sub>=10。</p>
+
+  <p><b>⑤ Multi-block continuation</b>：H=20, M=2, K=10 的 30k continued pretraining 打到 AvgLen <b>4.142</b>，比 H=10, M=1, K=10 的 40k continuation（<b>3.934</b>）提升 <b>+0.208</b>，95% paired bootstrap CI <b>[+0.119, +0.298]</b>，SR@5 <b>+6.6pp</b>。</p>
+
+  <p><b>⑥ 2×2×2 factorial ablation</b>（夹爪目标：BCE vs Smooth-L1；backbone：freeze 0–1 层 vs 全 36 层可训；interfaces：trainable vs frozen）。每 arm 5000 CALVIN updates、1000 条官方 chains，共 8000 条 chains。</p>
+  <table>
+    <tr><th>配置</th><th>AvgLen</th><th>SR@1</th><th>SR@5</th></tr>
+    <tr><td><b>Gripper BCE + Freeze layers 0–1 + Trainable interfaces</b></td><td><b>3.535</b></td><td>92.6%</td><td><b>48.9%</b></td></tr>
+    <tr><td>Gripper BCE + 全 36 层可训 + Trainable interfaces</td><td>3.525</td><td><b>92.7%</b></td><td>47.5%</td></tr>
+  </table>
+  <p>三条主效应：<b>Gripper BCE 比 Smooth-L1 平均 +0.427 AvgLen、+11.2pp SR@5</b>；<b>Trainable 比 Frozen interfaces +0.311 AvgLen、+6.5pp SR@5</b>；<b>Freeze layers 0–1 比 full backbone +0.160 AvgLen</b>。</p>
+
+  <div class="box good"><b>把共享 backbone 的收益摆在一起看：</b>前向——动作 token 在<b>每一层</b>都 attend 到视觉和语言表示，而不是只接收一次性的 conditioning summary；反向——物理坐标重建的梯度<b>端到端</b>更新共享 backbone，把 manipulation experience 变成 backbone 的空间认知。<b>这两条是同一件事的两面，也正是"解耦"架构永远拿不到的东西。</b></div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Math</span>三个公式：连续表示、带权重建、两个审计量</h2>
+
+  <div class="fml">
+    <div class="name">式 1｜连续 latent action token：一个时间步，一个 token（本解析对原文口径的形式化表达）</div>
+    \[ \mathbf{z}_n \;=\; E_\phi\!\left(\mathbf{a}_n \odot \mathbf{q}_n\right),\qquad
+       \hat{\mathbf{a}}_n \;=\; D_\psi\!\left(\mathbf{z}_n\right),\qquad
+       \mathbf{z}_n \in \mathbb{R}^{2560},\ \mathbf{a}_n \in \mathbb{R}^{20} \]
+    \[ \mathbf{a}_n=\Big[\underbrace{p_x,p_y,p_z,\; \mathbf{r}_n^{\,(6)},\; g_n}_{\text{单臂 10 维}}\;,\;\underbrace{\text{同构的 10 维}}_{\text{第二臂}}\Big],\qquad
+       \boldsymbol{\omega}=(500,500,500,10,10,10,10,10,10,1)\ \text{（每臂一组）} \]
+    <div class="exp">
+    <b>大白话：</b>\(\mathbf{a}_n\) 是<b>第 n 个时间步的完整动作向量</b>，20 维：一只手占 10 个位置（3 个平移 + 6 维连续旋转 + 1 个夹爪），两只手<b>用同一套槽位</b>，所以单臂双臂不需要换模型。<br>
+    \(\mathbf{q}_n\) 是一个 0/1 掩码，标出这 20 格里哪些是真有意义的（单臂时第二只手的格子就是 0）。它保证了<b>无效格子不会污染损失</b>——否则模型会花力气去拟合一个不存在的动作。<br>
+    \(\mathbf{z}_n = E_\phi(\dots)\) 是关键：<b>一个时间步的全部 20 维，被压成 backbone 隐空间里的"一个"向量</b>（2560 维，和 backbone hidden dim 对齐），可以直接当 token 扔进 Transformer。<b>序列长度因此是 O(H)，而不是离散化的 O(H·D)。</b>反过来 \(D_\psi\) 把这个向量还原成 20 维坐标。<br>
+    \(E_\phi\) 和 \(D_\psi\) 都是 <b>position-wise MLP</b>（4 层、hidden 1024、SiLU、dropout 0）——<b>它们只看当前这一帧，完全不做时间混合</b>。这不是偷懒，是刻意的：<b>时间耦合只允许发生在有全局注意力的 Transformer 里</b>，否则你没法保证那个耦合是"学出来的"而不是"塞进去的"（这正是 TCA 量出来的东西）。<br>
+    \(\boldsymbol{\omega}\) 是<b>每类坐标的权重</b>：平移 500、旋转 10、夹爪 1。为什么差这么多倍？因为<b>不同维度的误差在任务里根本不等价</b>——平移偏 1 厘米可能直接抓空，旋转偏 1 度可能无所谓。500:10:1 是把"物理重要性"直接写进损失里的粗糙但有效的办法。<br>
+    <b>本质在优化什么：</b>让"一帧 20 维物理量"和"backbone 隐空间里的一个向量"之间的映射<b>保持无损且可逆</b>，同时保证映射是<b>逐位置</b>的——把"跨时间的推理"全部逼给共享 backbone。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2｜坐标重建损失 + inverse-masking-probability 权重（本解析对原文口径的形式化表达）</div>
+    \[ \mathcal{L}(\theta)=\frac{1}{N}\sum_{n=1}^{N}\sum_{d=1}^{20}
+       q_{n,d}\,\cdot\,\omega_d\ \cdot\ \frac{m_{n,d}}{t_{n,\beta(n)}}\ \cdot\ \ell\!\left(\hat a_{n,d},\,a_{n,d}\right) \]
+    \[ \ell=\text{Smooth-L1}\ \ (\text{连续 pose}),\qquad
+       \ell=\text{BCE}\ \ (\text{夹爪})\qquad
+       \mathbb{E}\!\left[\frac{m}{t}\,\Big|\, t\right]=1 \]
+    <div class="exp">
+    <b>大白话：</b>先把符号拆开。\(n\) 是时间步，\(d\) 是 20 维坐标里的第几维，\(\beta(n)\) 是第 n 步落在哪个 block，\(t_{n,\beta(n)}\) 就是<b>给这个 block 抽到的那个 corruption 强度</b>（0 到 1，越大表示这一块被破坏得越狠）。\(m_{n,d}\) 是 0/1 指示量：这个位置<b>有没有被 mask 成 zero sentinel</b>（在 three-state 设定下，sub 位置同样接受监督，它的概率由 \(p_{\text{sub}}\) 给出）。\(q_{n,d}\) 是式 1 里的有效性掩码。\(\omega_d\) 是坐标权重。<br>
+    <b>\(\ell\) 这个符号其实藏着两个世界。</b>连续 pose 用 <b>Smooth-L1</b>——因为坐标是连续量，"偏了 1 厘米"和"偏了 10 厘米"应该罚得不一样；夹爪用 <b>probability-valued BCE</b>——因为夹爪本质是"开还是关"的一个概率事件，不是连续量。<b>这个区分后来被消融证明极其重要：换回 Smooth-L1，平均掉 0.427 AvgLen、11.2pp SR@5。</b><br>
+    <b>现在看最核心的一步：除以 \(t\)。</b>为什么？<b>因为不同 corruption level 下，"被 mask 的位置数量"天差地别</b>——t 接近 1 时几乎全被 mask，t 接近 0 时几乎没被 mask。如果只按"每个被 mask 的位置算个损失再求平均"，那么<b>t 小的时候（少量位置但每个都很关键）和 t 大的时候（大量位置但每个都不确定）拿到的总监督权重完全不同</b>，模型学到的其实是"哪种 t 的样本更常被看到"，不是"哪种 t 的样本更重要"。<br>
+    除以 t 之后，被 mask 的位置期望贡献变成 \(\mathbb{E}[m/t\mid t]=1\)：<b>不管这次 corruption 强度是多少，每一个被监督的位置都贡献恰好一份权重</b>。这就把"监督预算"从"有多少位置被 mask"里<b>解耦</b>出来了，只跟"位置本身的重要性"（\(q\cdot\omega\)）挂钩。<br>
+    <b>本质在优化什么：</b>一个<b>按物理重要性加权、且对 corruption 强度不敏感</b>的重建目标。翻译成工程语言：<b>不管你这次把画面遮得多难看，模型都该被公平地教会"物理坐标应该是多少"。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3｜两把审计尺子：EGC（误差几何一致性）与 NLR（轨迹耦合归因）</div>
+    \[ \mathrm{EGC}\;=\;\frac{p_{95}\!\left(\varepsilon_{\text{phys}}\right)}{p_{05}\!\left(\varepsilon_{\text{phys}}\right)} \]
+    \[ \mathrm{NLR}\;=\;\frac{\displaystyle\sum_{|t-t_0|\,\ge\,6}\left\|R_{t,:}\right\|_2^{2}}{\left\|R\right\|_{F}^{2}},\qquad
+       R\in\mathbb{R}^{H\times D}\ \text{由中心差分扰动 } (t_0,d_0)\pm\varepsilon \text{ 得到} \]
+    <div class="exp">
+    <b>先看 EGC。</b>\(\varepsilon_{\text{phys}}\) 是<b>物理误差</b>（比如位置差了多远），\(p_{95}\)、\(p_{05}\) 是这个误差分布的 95 和 5 分位。<b>EGC = "最差的那 5% 比最好的那 5% 差多少倍"。</b><br>
+    <b>怎么用：先人为制造"单位训练误差"，再看物理误差长什么样。</b>连续坐标监督下，训练误差和物理误差是一回事，分布形状稳定，<b>EGC = 1</b>。OpenVLA 式 256-bin 均匀量化下，p05=0.0549、p95=1.3804，<b>EGC = 25.14×</b>（8192 windows 上 25.57×）。<br>
+    <b>大白话：</b><b>EGC = 1 意味着"误差大小和方向无关"，误差是可预期的；EGC = 25 意味着"同一个单位的训练错误，可能对应 25 倍大的物理偏差"</b>——模型在某些样本上"错一点点"，在另一些样本上"错很多倍"，而训练过程完全看不出区别。<b>这是离散化最隐蔽的代价，也是它最该被量出来的地方。</b><br>
+    <b>再看 NLR。</b>\(R\) 是响应张量：扰动某一个输入坐标 \((t_0,d_0)\)，看输出轨迹各时间步怎么动。分子是<b>离扰动点 6 步以外</b>那些时间步的响应能量，分母是全部响应能量。<b>NLR = "这次扰动有多少能量传到了远处的时间步"。</b>它量的是<b>跨时间的耦合强度</b>。<br>
+    <b>大白话：</b>如果一个接口是 position-wise 的（只看自己那一帧），那改第 5 帧<b>不可能</b>影响第 20 帧，NLR 必然是 <b>0</b>——这不是它做得差，是<b>它物理上做不到</b>。而 Concertina 的完整 backbone 是 <b>4.058%（预训练）/ 4.103%（CALVIN）/ 1.217%（LIBERO）</b>，逐层看峰值在<b>第 27 层的 4.66%~9.93%</b>。<br>
+    <b>本质在做什么：</b>EGC 量的是<b>"误差空间的形状对不对"</b>，NLR 量的是<b>"耦合发生在哪一层"</b>。这两把尺子合起来，才能回答一句真正硬的问题：<b>你的方法是真的在物理空间里工作，还是只是把符号分类做得更好了？</b>——前者 EGC≈1 且耦合长在共享 backbone 里，后者两个都露馅。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：方法论比分数更值钱</h2>
+
+  <h3>最值得记住的一条消融</h3>
+  <p>不是 K=5→K=10 的 +34.5pp，也不是 EGC 的 25.14×——<b>是那个梯度冲突实验</b>。</p>
+  <table>
+    <tr><th>观测项</th><th>数值</th><th>说明</th></tr>
+    <tr><td>主梯度 vs 辅助梯度 cosine</td><td><b>−0.891</b></td><td>几乎完全反向</td></tr>
+    <tr><td>梯度方向相反的 action token 比例</td><td><b>99%</b></td><td>不是少数位置，是几乎全部</td></tr>
+    <tr><td>辅助梯度 norm / 主梯度 norm</td><td><b>0.88×</b></td><td>辅助权重只有 0.5，力度却接近</td></tr>
+    <tr><td>合并梯度与主目标的 alignment</td><td>0.474</td><td>合并后主目标被稀释一半</td></tr>
+    <tr><td>参数更新量之比</td><td><b>1.003×</b></td><td><b>步长几乎没变</b></td></tr>
+    <tr><td>跨层参数更新方向 cosine</td><td>0.604 → <b>0.138</b></td><td><b>方向崩了</b></td></tr>
+    <tr><td>teacher action loss</td><td><b>+5.12×</b></td><td>—</td></tr>
+    <tr><td>position error</td><td><b>+2.47×</b></td><td>—</td></tr>
+    <tr><td>normalized MAE</td><td><b>+1.60×</b></td><td>—</td></tr>
+    <tr><td>CALVIN AvgLen</td><td>2.970 → <b>0.237</b></td><td><b>下降 92.0%</b></td></tr>
+  </table>
+  <p>设置：在 <b>8.35B checkpoint</b> 上做 matched counterfactual intervention——主目标 relative action，对照组额外挂一个 frozen auxiliary decoder，用 <b>0.5 权重</b>监督 absolute action。</p>
+  <div class="box good"><b>为什么这条值得单独拎出来：</b>因为它把一个几乎没人认真对待的常识打碎了——<b>"两个任务塞进一个模型，多一个监督信号总不会更差"</b>。这个实验说：<b>会。</b>而且不会以"训练不稳定"或"loss 降不下去"的方式提醒你，它会安安静静地让你的模型学到一个<b>几乎相反的方向</b>。<br>
+  更狠的是它拆开了三个维度：<b>参数没多占（1.003×）、步长没变、幅度没变，只有方向变了</b>。这说明优化器更新向量的"内容"（方向）比"强度"（幅度）致命得多。<br>
+  <b>它对这篇论文自身也是一个警告</b>：Concertina 的整个架构就是"把所有东西放进一个共享 hidden space"。这篇论文能成立，靠的<b>不是共享空间本身，而是它只留了一个目标</b>。任何后续工作一旦想在同一个 backbone 上再挂一个目标（绝对位姿、深度、触觉、语言子目标），就会直接撞上这面墙——<b>而且是在参数和步长都不变的情况下悄悄撞上。</b></div>
+
+  <h3>它的真正价值</h3>
+  <div class="box good">
+    <p><b>1. 它给了"该往哪合并"一条硬标准：合并前先测梯度方向。</b>以前判断"两个任务能不能共享 backbone"靠的是直觉和试错；现在有一个 20 行代码就能算的指标——<b>cosine similarity</b>。这个指标本身可以立刻搬到任何多任务学习、VLA、甚至多模态微调的场合。</p>
+    <p><b>2. 它把"离散化好不好"从玄学变成了可测的量。</b>EGC 只需要 512 个窗口就能把"连续 vs 离散"的差距钉在 <b>1 vs 25.14×</b> 上。<b>这个尺子不依赖任何 benchmark 分数</b>，不需要跑完 LIBERO 才知道自己选错了表示——它在表示层就给出答案。这可能是全文最可迁移的工程产物。</p>
+    <p><b>3. 它把"能力在哪一层"从架构图变成了 hook 数。</b>TCA 的逐层曲线（浅层 0.19%~0.34% → 第 27 层 4.66%~9.93% → 第 35 层 3.03%~7.42%）不只证明"耦合长在共享 backbone 里"，还顺手把 π0 / π0.5 的外挂 flow expert 定罪了（<b>8.141% 全部来自外部</b>），并且演示了 X-VLA 拆掉 24 层外挂 Transformer 后耦合掉到 <b>3.72%</b>。<b>这是"你的能力到底在不在你的 VLM 里"的第一把手术刀。</b></p>
+    <p><b>4. 那个 K=10 不是超参玄学。</b>动作增量方向相似度 Δt=19 才跌破 0.5、Δt=27 才跌破 1/e——<b>block 边界是从动作自身时序结构里读出来的</b>，而不是网格搜索碰巧撞上的。这给了别人一个可迁移的思路：<b>先量你数据里的原语尺度，再定 block 大小。</b></p>
+    <p><b>5. 顺手证明了一件对行业有用的事：主效应里"Trainable 比 Frozen interfaces +0.311 AvgLen"，但"Freeze layers 0–1 比全 36 层训练 +0.160 AvgLen"。</b>也就是说，<b>物理坐标监督真正起效的地方，主要在 backbone 的中后层</b>——和 TCA 测到的耦合峰值在第 27 层左右<b>互相印证</b>。这是全文内部自洽性最好的一处：两个独立方法（一个看梯度方向，一个看响应能量）指向了同一层。</p>
+  </div>
+
+  <h3>要打问号的地方</h3>
+  <ol class="crit">
+    <li><b>CALVIN 上"平均最长"和"SR@5"都不是第一，"SOTA"的说法要收着读。</b>Concertina AvgLen <b>4.142</b> &lt; UniVLA <b>4.41</b> &lt; X-VLA <b>4.43</b>；SR@5 <b>64.9%</b> &lt; UniVLA <b>75.1%</b> &lt; X-VLA <b>78.8%</b>。它的强项在 <b>SR@1 98.6%、SR@2 93.8%</b>——即"一次做对"极强，"连做对 5 次"偏弱。论文自己把这一段表述为 <b>strong zero-shot transfer</b>，而不是 SOTA，这个措辞是准确的，读者不要自己加戏。</li>
+    <li><b>真正难的那个 benchmark 它确实赢了，但对手的可比性没交代。</b>LIBERO-Plus 总体 <b>85.9%</b> vs EFFVLA <b>79.8%</b>（+6.1pp）vs OpenVLA-OFT <b>69.6%</b>（+16.3pp）。但<b>两者的 backbone 规模、预训练数据规模、是否用同一套预训练权重，论文没有说明</b>。如果 EFFVLA 用的是更小的 backbone 或更少的预训练帧，这个差距里有多少来自方法、多少来自底子，说不清。</li>
+    <li><b>最关键的那个反直觉实验，是在 8.35B checkpoint 上做的，不是最终的 4.46B 模型。</b>尺度差了将近一倍，<b>这个消融的结论能不能外推到最终模型，是存疑的</b>。更重要的是：在一个更大的 checkpoint 上加入辅助目标，冲突更剧烈，可能是"模型容量越足、单目标拟合越彻底，加第二目标的机会成本就越高"——这本身就是一条需要验证的假设，而论文没验证。更要紧的是，论文<b>没有给出"在最终 4.46B 模型上做同样实验"的结果</b>，读者只能看到一个更大规模上的极端 case。</li>
+    <li><b>最优配置是"Freeze layers 0–1"，这跟"端到端更新共享 backbone"的核心叙事有张力。</b>2×2×2 factorial 里，最佳 arm 是 <b>Gripper BCE + Freeze layers 0–1 + Trainable interfaces</b>（AvgLen 3.535 / SR@1 92.6% / SR@5 48.9%），而 <b>全 36 层训练只低 0.160 AvgLen</b>。也就是说：<b>"到底需要多大的可训练范围"这个问题，论文并没有系统扫描过</b>——只比了"全冻"和"全开"两个极端，中间大片区域（freeze 2/4/8/16 层）没人看过。这恰恰是那条"共享双向收益"叙事最该被验证的地方。</li>
+    <li><b>effective rank 是<b>单调</b>往下掉的，condition number 是<b>单调</b>往上走的。</b>19.78/20 → 19.30 → 18.90 → <b>18.63/20</b>；median condition number <b>1.73 → 3.22</b>。论文的结论是"未坍缩"，这没错——离坍缩还远。但<b>趋势本身是单向的退化</b>，而论文没有解释这条曲线在 15k updates 之后会不会继续走、最终停在哪里。<b>"没坍缩"和"正在朝坍缩走"是两回事</b>，只报终值不报趋势走向，说服力打折。</li>
+    <li><b>EGC 只在 CALVIN windows 上测了 512 个和 8192 个窗口，对照组只有 OpenVLA 式的 uniform quantization。</b>这意味着它<b>没有覆盖所有离散方案</b>——VQ-VAE 类的码本量化、DTW/DCT 系数化、以及 FAST 那类压缩 token（单 token 结构解码失败率 82.23% / 77.93% 的数据另算，但没被放进 EGC 口径一起比）。<b>EGC 25.14× 这个数字目前是"对 uniform quantization 成立"，不能泛化成"对所有离散化成立"。</b>同样，512 个 CALVIN window（来自单一 benchmark、单一 embodiment）代表性能不能代表跨域的离散化损失。</li>
+    <li><b>K=10 vs K=5 差 34.5pp，说明方法对 block 结构高度敏感，而论文没给稳健性扫描。</b>K=2、3、7、15 会怎样？动作增量相似度在 Δt=19 跌破 0.5、Δt=27 跌破 1/e，这暗示 K≈19 也值得试——但论文只在 K=5 和 K=10 之间跳了 34.5pp，<b>却没有把 K 当成一个被扫描的维度</b>。同样地，M=⌈H/K⌉、H=50/20/10 三档也只在少数组合上试过。<b>一个对结构这么敏感的方法，不给结构扫描，等于把复现门槛留在空中。</b></li>
+    <li><b>全部数据是仿真基准，零真机实验。</b>LIBERO、LIBERO-Plus、CALVIN ABC-D——没有一个真机回合。而具身智能里最贵、最容易出问题的、也是论文核心叙事（"操作经验转化为 backbone 的空间认知"）最该被检验的那一段，恰恰是<b>真机</b>。仿真里"坐标监督 → backbone 学到空间认知"这条因果链，在真机上是否还成立，是完全未知的。</li>
+    <li><b>有些关键数字口径没交代清楚。</b>2×2×2 factorial 是"每 arm 5000 CALVIN updates、1000 条官方 chains、共 8000 条 chains"，<b>但没给每 arm 的方差或置信区间</b>——而 3.535 与 3.525 的差距（0.010）在 1000 条 chains 上是否显著、是否只是噪声？同样，multi-block continuation 的 <b>+0.208</b> 给了 95% paired bootstrap CI [+0.119, +0.298]，<b>说明作者知道该给置信区间</b>，但其他几组消融都没给。</li>
+    <li><b>"端到端"这个词有两层含义被混在一起了。</b>论文既说"物理坐标重建梯度端到端更新共享 backbone"，又说最优配置是 <b>Freeze layers 0–1</b>、Visual Random Resized Crop 也只是"全 36 层端到端训练"时 AvgLen 0.607→1.589。到底是哪几层在真的学？<b>TCA 说耦合峰值在第 27 层，factorial 说冻结前两层最好</b>——这两条放在一起其实指向一个有意思的猜测：<b>真正需要学的不是全部 36 层，而是中后层那一段</b>。论文没有把这两组结果放在一起讨论，这个交叉点白白浪费了。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>这篇论文真正的贡献不是"4.46B 打赢 8.35B"，而是<b>它第一次把"操作和认知该不该分开"这件事变成了可测的量</b>：EGC 说离散化在物理空间里是失真的（25.14×），TCA 说耦合只可能长在有全局注意力的地方（第 27 层 4.66%~9.93%），而那个 −0.891 的梯度 cosine 则给"共享"这两个字标上了一个精确的价码——<b>方向错了，参数量和步长都救不了你，AvgLen 直接掉 92%。</b>如果这条成立，那么下一代 VLA 的竞争焦点就不在"谁的动作头更大"，而在"<b>谁敢让动作和认知共用一个 hidden space，并且敢保证它们不打架。</b>"</p>
+  <p class="src">原文：Chengcheng Wang, Wei He, Wenhao Li, Hongguang Li, Kai Han, Jianyuan Guo, Chang Xu. <i>Concertina: Embodying Manipulation and Cognition in One Diffusion Vision-Language Model</i>. arXiv:2611.07513, 2026-11-05. 分类：cs.CV / cs.AI / cs.RO。代码：github.com/lose4578/Concertina。底座：BARD-VL-B4 初始化，36 层 Transformer，hidden dim 2560，总参数约 4.46B（action encoder/decoder 有效参数 9.49M，占 0.21%）。基准：LIBERO（regular / Plus）、CALVIN ABC-D 零样本。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ arXiv 2611.07513</footer>
+</div></body>
+</html>
