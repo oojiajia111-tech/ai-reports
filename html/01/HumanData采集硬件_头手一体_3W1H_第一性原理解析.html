@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ODE Policy：学动作的向量场，而不是动作本身 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+
+<div class="head">
+  <h1>Human Data：别用机器人的能力边界限制数据的想象<span class="sub">侧置仿生外骨骼 · 21 DoF 关节编码器 0.2° · 980 触点 1mm 0.1N · 340° 六摄 · 1ms 硬同步 · 从采集规模走向有效监督</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-10</div>
+    <div><b>关键词</b> Human Data · 侧置外骨骼 · 电子皮肤 · Ego 视觉 · 跨本体重定向</div>
+    <div><b>一句话</b> 人类能做的远多于机器人能做的，数据不该被机器人画地为牢</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>过去几年具身数据的采集<b>围绕机器人本体展开</b>：本体决定了数据怎么采、动作怎么表示、能用于哪些模型。于是形成<b>路径依赖</b>——我们只采集机器人<b>已经能执行</b>的动作，再用这些数据训练机器人做更多类似的事。而人类在真实世界积累的操作经验，<b>远远超出当前机器人能执行的任务范围</b>。<br>解法是"头手一体"：<b>DAS Ego 2.0</b> 六摄 340° 视野负责全局观察，<b>Dex 2.0</b> 侧置仿生外骨骼（21 DoF 关节编码器，精度 0.2°）+ 半柔性电子皮肤（980 触点，1mm 空间分辨率）负责精细运动与接触测量，<b>1ms 硬同步</b>建立时间对应。但文章最重要的判断在后半段：<b>规模不等于价值</b>——规模化至少要同时考虑<b>采集广度、监督密度、迁移价值</b>三个维度。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 关键公式与指标</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：两套设备，一个"观察→接触→反馈"的连续序列</h2>
+  <p>先看清被讨论的对象。GenRobot.AI 推出两套采集设备，组合起来构成"头手一体"采集系统：</p>
+  <table>
+    <tr><th>设备</th><th>管什么</th><th>关键规格</th></tr>
+    <tr><td><b>Dex 2.0</b></td><td>手部运动学 + 物理接触</td><td>侧置仿生外骨骼；21 DoF 关节编码器，精度 0.2°，关节厚约 3mm，外骨骼约 55g，整套手套约 150g；16 块半柔性压阻式触觉传感器，<b>980 感知触点</b>，空间分辨率 1mm，最小检测力 0.1N，采样率 100Hz</td></tr>
+    <tr><td><b>DAS Ego 2.0</b></td><td>全局视觉 + 场景上下文</td><td>六路同步摄像头（2×500万像素 + 4×200万像素），全部 30FPS + Global Shutter；水平视野 <b>340°</b>，垂直最高 120°；200Hz IMU；指尖追踪精度约 4mm；整机约 400g，单电池续航 2.5–3 小时，磁吸式电池支持不关机更换</td></tr>
+  </table>
+  <p>三种配置对应不同监督粒度，<b>不是简单的硬件升级关系</b>：</p>
+  <ul>
+    <li><b>Ego</b> —— 扩大人员、任务、环境分布（视觉为主）</li>
+    <li><b>Ego + Wrist Camera</b> —— 增加局部动作记录的深度（补手物交互盲区）</li>
+    <li><b>Ego + Dex</b> —— 提供<b>原生运动学与触觉监督</b></li>
+  </ul>
+  <p>作者强调："<b>可以根据任务复杂度和训练需求组合使用，而不必要求每一条数据都具备完全相同的传感器配置</b>。"</p>
+
+  <h3>学界同期在做什么（数据规模对照）</h3>
+  <table>
+    <tr><th>项目</th><th>机构</th><th>规模</th><th>解决什么</th></tr>
+    <tr><td><b>EgoDex</b></td><td>Apple</td><td>829 小时第一视角 + 3D 手部追踪，194 项桌面任务</td><td>大规模自然视频缺精细手部运动标签</td></tr>
+    <tr><td><b>EgoScale</b></td><td>NVIDIA</td><td><b>超 20,000 小时</b>带动作标签 Ego Video</td><td>人类视频规模与灵巧操作能力的关系</td></tr>
+    <tr><td><b>VITRA</b></td><td>Microsoft Research</td><td>超 <b>120 万条</b> Human Hand VLA Episodes</td><td>从<b>无动作标注</b>自然视频出发</td></tr>
+    <tr><td><b>TouchScale</b></td><td>—</td><td>约 500 小时人类视触觉</td><td>视觉与触觉联合学习</td></tr>
+    <tr><td><b>Gen-HumanEgo</b></td><td>GenRobot</td><td><b>1,847.7 小时</b>、44,632 Episodes、10,257 项任务</td><td>经 Data Foundation Model 处理出 3D 关键点、MANO 参数、深度图、分层任务标注</td></tr>
+  </table>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：本体中心的采集方式在画地为牢</h2>
+
+  <h3>路径依赖是怎么形成的</h3>
+  <p>原文的提问很直接：<b>我们是否正在用现有机器人的能力边界，限制对下一代具身数据的想象？</b></p>
+  <p>过去几年采集围绕机器人本体展开——机器人、机械臂、灵巧手决定了数据怎么采、动作怎么表示、能用于哪些模型。这有其合理性，但形成了<b>路径依赖</b>：</p>
+  <div class="step">
+    <div class="t">循环：只采机器人已经能执行的动作</div>
+    <div class="d">倾向采集机器人<b>已经能够执行</b>的动作，再用这些数据训练机器人完成<b>更多类似</b>的任务。数据定义能力边界，能力边界又定义数据。</div>
+  </div>
+
+  <h3>人类的经验远超机器人的能力</h3>
+  <p>作者用拧瓶盖举例：手伸向瓶身、手指调整位置并建立接触；一只手固定瓶身，另一只手改变抓握姿态直到瓶盖松开；<b>人还会根据物体移动、手指受到的阻力和视觉反馈不断调整</b>。而对机器人而言：</p>
+  <ul>
+    <li>视频<b>不一定能看清被物体遮挡的手指</b></li>
+    <li>视频<b>无法直接测量手与物体之间的接触</b></li>
+    <li>即使拿到人手轨迹，还面临<b>不同手部结构、运动范围和传感器</b>的差异</li>
+  </ul>
+
+  <h3>四种数据源的信息量不对等</h3>
+  <table>
+    <tr><th>数据源</th><th>能提供什么</th><th>短板</th></tr>
+    <tr><td>机器人本体采集</td><td>明确的动作与执行反馈</td><td>采集成本高，受本体、任务环境、部署条件限制</td></tr>
+    <tr><td>互联网图像/视频</td><td>丰富的场景与行为信息</td><td>很难直接提供精确运动学和接触标签</td></tr>
+    <tr><td>仿真</td><td>可无限扩展</td><td>与真实世界的 gap</td></tr>
+    <tr><td><b>人类第一视角示范</b></td><td>自然发生、覆盖广</td><td>需要把"人类经验"翻译成"机器人可用监督"</td></tr>
+  </table>
+
+  <div class="box bad">
+    <b>关键判断</b>：Human Data 正在解决的问题是——<b>如何从人类与真实世界的交互中，获得机器人能够使用的训练信号？</b>注意措辞：不是"如何采到更多人类视频"，而是"如何获得<b>机器人能用的</b>训练信号"。
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：三个技术难点与对应的工程选择</h2>
+
+  <h3>难点一：手部运动怎么测——四条路线与各自的代价</h3>
+  <table>
+    <tr><th>路线</th><th>优势</th><th>代价</th></tr>
+    <tr><td><b>视觉</b>（关键点估计）</td><td>不需复杂机械结构</td><td>受<b>遮挡、光照、视角、手物交互</b>影响；手指被遮挡时关节状态难恢复</td></tr>
+    <tr><td><b>柔性传感</b>（形变/电阻）</td><td>对手部结构限制少</td><td>材料本身<b>形变、滑移、迟滞</b>，读数与真实角度间需标定建模</td></tr>
+    <tr><td><b>外部磁场</b></td><td>可测位置姿态</td><td>受工作环境<b>其他磁性材料和电磁设备</b>干扰</td></tr>
+    <tr><td><b>外骨骼</b></td><td>明确关节状态</td><td>机械结构<b>扩大手部几何边界</b>，限制部分动作，并引入<b>人体关节轴与机械轴的偏差</b></td></tr>
+  </table>
+  <div class="step">
+    <div class="t">Dex 2.0 的选择：轻量化侧置仿生外骨骼</div>
+    <div class="d">机械关节结构布置在<b>手指侧面</b>，贴合人体关节运动轴线，减少对手背、指腹、掌面等关键操作区域的占用。<b>相比手背式设计，侧置方案为贴面拾取、掌内旋转、狭窄空间操作保留更多空间</b>——采集者佩戴时仍能完成自然交互。自研微型磁编码器集成在仿生关节内部，直接测关节旋转角。</div>
+  </div>
+  <div class="box good">
+    <b>文章特意做的一个区分</b>：<b>关节测量 ≠ 完整手部姿态重建</b>。编码器给的是<b>局部关节角度</b>，完整姿态和指尖空间位置仍需结合手部运动学模型计算。优势在于直接获得<b>具有明确运动学含义</b>的关节状态——这正是后续姿态重建、轨迹分析、跨本体重定向需要的基础数据。
+  </div>
+
+  <h3>难点二：接触怎么测——串扰才是真问题</h3>
+  <p>关节运动只能描述手<b>如何移动</b>，不能描述手与物体之间<b>发生了什么</b>。以旋转瓶盖为例：需要持续建立接触、调整抓握力度、根据瓶盖运动状态改变施力方式。仅有关节轨迹，很难判断接触何时发生、位置是否变化、是否出现滑移。</p>
+  <div class="step">
+    <div class="t">为什么"980 个触点"不是重点，串扰才是</div>
+    <div class="d">假设食指指腹只接触一个小物体，<b>相邻传感单元也产生响应</b>，模型收到的触觉分布就比真实接触范围更大；反过来，贴合不良或漂移导致漏检，模型会低估接触面积。<b>模型无法天然区分哪些响应来自真实接触、哪些来自设备自身的形变和干扰</b>——这不是传感器性能问题，而是<b>监督信号质量问题</b>。</div>
+  </div>
+  <p>所以全手触觉系统要同时关注三个指标：<b>空间覆盖、接触定位、信号稳定性</b>。半柔性结构的意义就在于此：在曲面贴合与形变稳定性之间取平衡，减少织物拉伸、滑移、褶皱带来的运动伪影，并通过传感单元与阵列结构设计<b>降低机械和电磁串扰</b>。</p>
+
+  <h3>难点三：多模态怎么对齐——同步 ≠ 标定</h3>
+  <p>如果视觉、关节、触觉只是分别录制、事后按文件时间戳匹配，就会受操作系统调度、通信传输、数据缓存、驱动队列影响。在<b>快速抓取、接触点切换、插拔操作</b>中，时序误差会让画面与动作标签无法准确对应。</p>
+  <p>Dex 2.0 与 Ego 组合采用<b>统一时基、硬件触发和相机快门曝光控制</b>，在采集源头规定采样时刻，实现 <b>1ms 级时间对齐</b>。</p>
+  <div class="box bad">
+    <b>文章再次做了一个重要区分</b>：<b>1ms 级同步 ≠ 1ms 视觉时间分辨率</b>。Ego 相机仍以 30FPS 工作，DEX 触觉 100Hz，IMU 200Hz。<b>硬同步解决的是不同传感器时间轴之间的对应问题，不是让所有模态拥有相同的采样频率。</b>而且——<b>时间同步也不等于空间标定</b>：若相机外参、手套与人体坐标关系没标准，不同模态仍无法在空间中正确对应。
+  </div>
+
+  <h3>最终想建立的数据结构</h3>
+  <div class="box good">
+    <b>观察 → 动作 → 接触 → 反馈 → 调整 → 结果</b><br>
+    视觉描述任务环境和物体状态，关节运动描述手部如何执行动作，触觉描述接触过程，后续视觉记录交互带来的环境变化。<br>
+    对 VLA、VTLA 和 World Model，这种结构提供了比孤立视频或动作轨迹<b>更丰富的监督信息</b>——让模型有机会学习"动作如何引发接触、接触如何改变物体、反馈如何影响后续动作"。
+  </div>
+
+  <h3>从 Human Skill 到 Robot Skill：跨本体的真问题</h3>
+  <p>人类能做的动作，<b>不天然等于</b>机器人能执行的。人手关节布局、运动范围、灵巧程度都与机器人灵巧手不同。即使有高精度人手关节轨迹，也不能直接作为任意机器人本体的控制指令。</p>
+  <p>TouchBridge 的 <b>Tac-Retarget</b> 提供了新的思路：传统运动学重定向主要匹配<b>关节姿态或指尖位置</b>，但<b>指尖位置接近并不代表接触关系相同</b>——机器人可能出现接触点偏移、接触面错位，甚至手指穿透物体。它改用<b>接触图和指尖接触区域对齐</b>，保留不同手型之间的接触关系。</p>
+  <ul>
+    <li>四项真实接触密集任务：人类转换数据微调 <b>72.5%</b>，等量遥操作数据 <b>77.5%</b></li>
+    <li>成功示范平均采集时间：<b>11.7 秒 vs 81.7 秒</b>（约快 <b>7 倍</b>）</li>
+    <li>DexWild：9,290 条人类示范 + 机器人数据联合训练，93 个真实环境，未见环境成功率 <b>68.5%</b>（约纯机器人数据的 4 倍），跨本体泛化提升 <b>5.8 倍</b></li>
+  </ul>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>关键指标与判据</h2>
+
+  <div class="fml">
+    <div class="name">① Dex 2.0 测量指标</div>
+    \[ \underbrace{21\ \text{DoF},\ \theta_{\text{err}} = 0.2^\circ}_{\text{关节编码器}} \qquad \underbrace{980\ \text{taxels},\ 1\text{mm},\ F_{\min} = 0.1\text{N},\ 100\text{Hz}}_{\text{电子皮肤}} \]
+    <div class="exp">
+      21 个独立关节编码器 / 单手；关节角度精度 0.2°；微型关节结构厚度约 3mm。<br>
+      16 块触觉传感器 / 单手，共 980 个感知触点；触觉空间分辨率 1mm；最小检测力 0.1N；采样率 100Hz。<br>
+      <b>文章明确的免责</b>：<b>0.1N 是"最小检测力"指标，不能直接等同于压力测量误差，也不能等同于所有材料接触条件下的检测精度。</b>980 触点和 1mm 主要描述<b>传感阵列规格</b>，不是端到端精度。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② DAS Ego 2.0 视野与同步</div>
+    \[ \text{HFOV} = 340^\circ,\ \ \text{VFOV}_{\max} = 120^\circ,\ \ \Delta t_{\text{align}} \leq 1\text{ms} \]
+    <div class="exp">
+      六摄：2×500 万像素（核心，从上代 200 万升级，为 SLAM 定位与精细手部追踪提供更高分辨率）+ 4×200 万像素；全部 30FPS + Global Shutter；200Hz IMU；指尖追踪精度约 4mm。<br>
+      <b>关键澄清</b>：<b>340° 视觉覆盖 ≠ 已完成全身三维动作重建</b>。多摄图像、IMU、指尖追踪只提供<b>空间感知与运动估计的基础观测</b>；获得稳定世界坐标系轨迹、全身骨骼、物体位姿，还需<b>空间标定、视觉重建和数据处理算法</b>。<br>
+      因此 Ego 设备<b>不应只按相机数量和像素评价</b>——还涉及外参标定、图像时间同步、视角几何关系、头部运动与环境坐标系转换。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 规模化三维度判据（本文的核心框架）</div>
+    \[ \text{DataValue} \neq f(\text{hours}),\quad \text{but } \text{DataValue} = f(\text{Breadth},\ \text{SupervisionDensity},\ \text{TransferValue}) \]
+    <div class="exp">
+      <b>① 采集广度</b>：能否覆盖更多人员、物体、任务和真实环境。<br>
+      <b>② 监督密度</b>：能否从视频进一步获得关节、接触、物体状态和交互反馈。<br>
+      <b>③ 迁移价值</b>：能否通过统一的数据表示和跨本体适配，让同一批人类技能被不同机器人平台使用。<br>
+      <b>反例</b>：设备干扰了人的自然动作 → 关节标签偏离真实技能；触觉信号含大量形变与串扰 → 模型学到错误接触模式；视觉/动作/触觉无法准确对齐 → 多模态数据失去物理对应关系。<b>这三种情况下，数据越多，模型越差。</b>
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限</h2>
+
+  <div class="box good">
+    <b>核心价值</b>：本文最有价值的不是某个硬件参数，而是<b>把"数据规模"和"数据价值"彻底分开</b>的判据框架——<b>采集广度 / 监督密度 / 迁移价值</b>三个维度必须同时成立。这是一把可以直接用来评估任何数据集的尺子。附带的技术贡献是<b>触觉作为跨本体约束</b>的思路：不复制每个关节角度，而是保留<b>接触点、接触区域及其相对关系</b>。
+  </div>
+
+  <h3>诚实的局限（文章自己列的）</h3>
+  <div class="step">
+    <div class="t">局限一：耐久性的真实表现缺长期数据</div>
+    <div class="d">产品资料披露单片传感器可承受超 100 万次法向按压、10 万次弯折拉伸，支持 IP67。但作者明确：<b>实际长期使用中的零点漂移、灵敏度变化、迟滞和重复性，仍需要更完整的测试数据来评价</b>。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限二：视觉覆盖 ≠ 动作重建</div>
+    <div class="d">340° 视野提供的是<b>观测条件</b>，不是<b>结构化数据</b>。从原始多视角视频到可用的手部关键点、MANO 参数、深度信息，中间还有标定、跨视角关联、几何重建、任务分段一整条流水线。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限三：跨本体仍是开放问题</div>
+    <div class="d">人手 21 DoF 不能直接映射为所有机器人灵巧手的控制维度；人类触觉与机器人触觉的<b>传感器布局、材料特性、受力结构并不相同</b>，如何转成机器人可用的接触表示<b>仍需要专门的映射和学习方法</b>。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限四：规模化本身有工程门槛</div>
+    <div class="d">头戴设备的佩戴位置、头发遮挡、长时间使用中的设备状态都会影响数据质量。作者的解法是把部分检查<b>前移到采集阶段</b>——这说明"Human Data 能规模化"这句话本身就依赖一整套配套流程，不是买个设备就有。</div>
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>商业产品介绍与研究综述混在一起，需要分清哪些是自研、哪些是引用</b>：Dex 2.0 / DAS Ego 2.0 是 GenRobot 自家产品（参数详尽到 0.2°、1mm、0.1N），而 EgoDex / EgoScale / VITRA / TouchScale / DexUMI / DexWild / TouchBridge 是<b>他人工作</b>（多数只给结论数字）。引用部分的实验细节（数据划分、基线选择）多数不可得，横向对比的可信度有限。</li>
+    <li><b>82% vs 77.5% 这个对比要读懂</b>：TouchBridge 的人类数据微调 72.5% <b>低于</b>等量遥操作数据的 77.5%——它的优势在<b>采集效率（快 7 倍）</b>而非最终性能。用它替换遥操作是"省时间"的选择，不是"更准"的选择。</li>
+    <li><b>DexViTac 85%、TouchScale 57.5% 这类数字缺少基线</b>：文章只给绝对成功率，没说"不用人类数据时是多少"。而后者才是判断人类数据价值的关键。</li>
+    <li><b>人类触觉当"世界模型先验"是文章最激进的主张，但证据最弱</b>：DexTouch-WM 只说"固定 5 小时机器人数据、人类数据从 0 增到 100 小时，预测持续改善"，没有给消融曲线，也没有说明"持续改善"是否收敛。</li>
+    <li><b>1ms 硬同步 + 340° 视野 ≠ 全局三维重建</b>——文章自己反复强调这点，但在传播中很容易被简化成"六摄 + 1ms 就能重建全身动作"，这是一个需要警惕的误读。</li>
+  </ul>
+
+  <p class="src">来源：公众号 human five《Human data，不要画地为牢》（2026-11-10）· GenRobot.AI（Dex 2.0 / DAS Ego 2.0）· 引用：Apple EgoDex、NVIDIA EgoScale、MSR VITRA、TouchScale、DexUMI、DexViTac、DexWild、TouchBridge</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div></body>
+</html>

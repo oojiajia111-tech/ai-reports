@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ODE Policy：学动作的向量场，而不是动作本身 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>ODE Policy：学动作的向量场，而不是动作本身<span class="sub">Neural ODE 动作头 · 路径损失 · 收缩扰动 · 无缝分块 · 1 epoch 达流匹配 5.9 倍 · 生成快 10.8 倍 · 15 项真机任务全胜</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-10</div>
+    <div><b>关键词</b> Neural ODE · 向量场 · 路径损失 · 动作平滑 · 跨本体</div>
+    <div><b>一句话</b> 动作不是一串独立数值，而是从意图展开的连续过程</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>主流机器人策略都在学<b>动作本身</b>：网络把观测映射到离散控制步上的动作值，块与块之间各自生成、衔接处跳变，机器人表现为犹豫抖动，还得靠 RTC 之类的额外机制去平滑。ODE Policy 换了个问法——<b>为什么一定要学动作本身，而不是学动作如何随时间演化？</b>于是网络输出的不再是动作值，而是<b>向量场</b>：在当前观测与动作下，动作该以怎样的速度变化。部署时每个动作都由上一个动作沿向量场积分得到，<b>轨迹天生连续</b>。结果是 1 个 epoch 成功率就是流匹配的 5.9 倍、生成快 10.8 倍、末端加加速度全方法最低，15 项真机任务全部最高。<b>把物理的连续性写进策略结构，而不是让网络从数据里学。</b></p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 关键公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：只换动作头的"即插即用"模块</h2>
+  <p>先看清被讨论的对象。新加坡南洋理工大学 MARS Lab（贾金豆、杨剑飞等）提出的是 <b>ODE Policy</b>——一个可以塞进现有机器人学习框架的<b>动作头</b>，而不是一套全新的端到端系统。</p>
+  <p>这个定位非常关键，也决定了它的说服力：它<b>不改骨干网络、不改数据管线、不改训练范式</b>，只把"网络最后一层输出什么"这件事换掉。因此它能同时作为四种角色被验证：</p>
+  <table>
+    <tr><th>角色</th><th>宿主系统</th><th>说明</th></tr>
+    <tr><td>视觉运动策略</td><td>LIBERO 等仿真基准</td><td>最基础的用法，替换动作头</td></tr>
+    <tr><td>VLA</td><td>π₀.₅、ImageWAM</td><td>在多模态大模型里，只占原动作专家约 3% 参数</td></tr>
+    <tr><td>世界动作模型 WAM</td><td>同上</td><td>预测连续动作流</td></tr>
+    <tr><td>强化学习 actor</td><td>SuperMimic</td><td>把 RL 的 actor 换成 ODE 头</td></tr>
+  </table>
+  <p>论文标题里的"四类真机"指 <b>Franka 单臂、Galaxea R1 Lite 双臂、Sharpa 灵巧手、Unitree G1 人形</b>——从单关节机械臂到 22 自由度灵巧手到全身人形，覆盖了动作空间复杂度差异极大的四种本体。</p>
+  <p>先记住三个数字，后面全靠它们判断真假：</p>
+  <ul>
+    <li><b>5.9 倍</b> —— LIBERO 上训练 1 个 epoch 的成功率，相对流匹配 FM-DiT</li>
+    <li><b>10.8 倍</b> —— 生成 8 个动作的推理速度（5.7 ms），比 DDPM 快约 100 倍</li>
+    <li><b>15 / 15</b> —— 真机任务全部高于最强基线（双侧符号检验 P=6×10⁻⁵）</li>
+  </ul>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：直接动作策略的三重结构性缺陷</h2>
+  <p>论文的立论从生物本能开始：伸手拿杯子时，我们不会每隔 20 毫秒重新决定一次手该在哪里，整个动作随时间连续演化；莱布尼茨 1704 年写"自然不做跳跃"，人的伸手轨迹接近"最小加加速度"的平滑曲线。</p>
+  <p>而主流机器人策略不是这样工作的。三重缺陷层层递进：</p>
+  <div class="step">
+    <div class="t">缺陷一：块与块之间各自生成 → 衔接处跳变</div>
+    <div class="d">常见做法是一次输出一段动作块让动作更连贯，但每块独立生成，块边界处容易跳变，机器人表现为犹豫、抖动，往往还要靠 RTC（Real-Time Chunking）之类的额外机制来平滑。这是在<b>结构上</b>承认动作本该连续，却不肯改结构。</div>
+  </div>
+  <div class="step">
+    <div class="t">缺陷二：扩散与流匹配需多步去噪 → 推理慢、收敛慢</div>
+    <div class="d">生成式动作头要迭代多步才能采样出一个动作块，既拖慢推理（真机上尤其致命），也拖慢训练收敛。论文实测：π₀.₅ 里随机初始化的流匹配专家 1 epoch 后 75.5%，而 ODE 头同样随机初始化就到 96.0%。</div>
+  </div>
+  <div class="step">
+    <div class="t">缺陷三：动作块边界的加速度尖峰 → 真机执行不稳</div>
+    <div class="d">在双臂与灵巧手上，基线方法在块边界处的指令加速度可达人类示教的<b>数倍</b>；ODE Policy 的这一项<b>不高于人类示教</b>，末端加加速度（jerk）在所有方法中最低。</div>
+  </div>
+  <div class="box bad">
+    <b>根本症结</b>：这三条缺陷其实是同一个病——<b>把连续的时间演化过程，强行离散成一串独立的数值预测任务</b>。网络被迫在每个控制步"重新发明"动作，而不是延续上一刻的动量。
+  </div>
+  <p>于是团队的提问变得非常自然：<b>为什么一定要让机器人学习动作本身，而不是学习动作如何随时间演化？</b></p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：向量场 + 三个关键设计 + 一个多样性头</h2>
+  <p>核心机制一句话：<b>网络输出的不是动作值，而是动作的向量场</b>——在当前观测与动作下，动作应以怎样的速度变化。部署时，每个动作都由上一个动作沿向量场积分得到。</p>
+  <p>围绕这个想法，有三个关键设计缺一不可：</p>
+
+  <h3>设计一：路径损失（Path Loss）</h3>
+  <p>在短动作块上做积分，让<b>积分路径</b>匹配示教——<b>无需速度标签</b>。这是最漂亮的一点：它绕开了"标注动作速度"这个几乎不可能规模化获取的监督需求。示教数据里本来就有位置和时间，路径对齐就够推出速度。</p>
+
+  <h3>设计二：收缩扰动（Contractive Perturbation）</h3>
+  <p>训练时<b>扰动积分起点</b>，让策略偏离示教之后能被"拉回"。这是在对抗积分误差累积——如果不加这一项，每一步的小误差会在积分中放大。这也是为什么它不需要额外的块间平滑机制。</p>
+
+  <h3>设计三：无缝分块（Seamless Chunking）</h3>
+  <p>每个动作块<b>从上一块的末端继续积分</b>，块间没有跳变，每个动作积分出来即可发给控制器。这一条直接消灭了 RTC 那类补丁机制。</p>
+
+  <h3>多样性头：避免"多模态被平均掉"</h3>
+  <p>一个自然的疑问：单个向量场会不会把不同行为模态"平均"掉？团队的解法很轻——在每个动作块开始时<b>采样一个方向叠加到速度上</b>，让积分路径进入不同模态，<b>无需多步生成式采样</b>。</p>
+  <div class="box good">
+    <b>效果验证</b>：在有四条路线的 2D 导航任务中，ODE Policy 从第 1 个 epoch 起就走遍四条路线，<b>模态平衡度是 FM-DiT 的 3.9 倍</b>——说明它不是靠牺牲多样性换来的平滑。
+  </div>
+
+  <h3>四个维度的实测结果</h3>
+  <table>
+    <tr><th>维度</th><th>关键数字</th></tr>
+    <tr><td><b>学得快</b></td><td>LIBERO：1 epoch 79.2%（FM-DiT 的 5.9 倍），第 2 epoch 超 85%；20 条示教超 FM-DiT 的 50 条；1.5M 参数超 FM-DiT 的 48M 参数</td></tr>
+    <tr><td><b>跑得快</b></td><td>Euler 积分生成 8 个动作仅 5.7 ms，比 FM-DiT 快 10.8 倍、比 DDPM 快约 100 倍；π₀.₅ 中提速约 14 倍、ImageWAM 约 4 倍</td></tr>
+    <tr><td><b>动得稳</b></td><td>末端 jerk 全方法最低；块边界加速度在双臂/灵巧手上不高于人类示教（基线可达数倍）</td></tr>
+    <tr><td><b>泛化</b></td><td>LIBERO-plus 零样本扰动测试，1 epoch 成功率是流匹配的 5.4 倍</td></tr>
+  </table>
+
+  <h3>真机结果（15 个任务全胜）</h3>
+  <ul>
+    <li><b>Franka 单臂</b>（均只训 50 epoch）：叠袜子进抽屉 <b>15/20</b>（基线最高 8/20），插积木 <b>14/20</b>（基线最高 4/20）</li>
+    <li><b>Galaxea R1 Lite 双臂</b>：放碗关微波炉 <b>75%</b>（FM-DiT 20%），叠毛巾 <b>45%</b>（15%）；多模态抽屉任务左右手都会放苹果、成功率 <b>60%</b>，而 FM-DiT <b>从未成功</b></li>
+    <li><b>Sharpa 灵巧手</b>：抓罐放盘 <b>18/20</b>；跨实验室迁移（只用对方公开数据训练、换杯子颜色背景）扶正杯子 <b>17/20</b>、双手倒药片 <b>17/20</b>（FM-DiT 10/20）、叠方块 <b>13/20</b>，基线在这两项上全部失败</li>
+    <li><b>Unitree G1 人形</b>：作为 GR00T N1.7 的动作头，把玩具放进沙发盒子 <b>60%</b>（原始动作头 35%），饭团放进微波炉并关门 <b>70%</b>（30%）</li>
+  </ul>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>关键公式：三个数学对象</h2>
+
+  <div class="fml">
+    <div class="name">① 向量场与动作积分</div>
+    \[ \mathbf{a}_{t+1} = \mathbf{a}_t + \Delta t \cdot f_\theta(\mathbf{o}_t, \mathbf{a}_t) \]
+    <div class="exp">
+      \(f_\theta(\mathbf{o}_t, \mathbf{a}_t)\) 是网络学到的<b>向量场</b>：给定观测 \(\mathbf{o}_t\) 与当前动作 \(\mathbf{a}_t\)，输出动作的<b>变化速度</b>。<br>
+      部署时用最简单的 Euler 积分从上一动作推出下一动作，动作块首尾自然衔接。<br>
+      <b>关键</b>：\(\Delta t\) 是部署时的自由变量——同一个模型无需重训即可跑 20/40/80 Hz。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 路径损失（无需速度标签）</div>
+    \[ \mathcal{L}_{\text{path}} = \sum_{k=1}^{K} \big\| \mathbf{a}^{\text{rollout}}_{t+k} - \mathbf{a}^{\text{demo}}_{t+k} \big\|_2^2 \]
+    <div class="exp">
+      \(\mathbf{a}^{\text{rollout}}_{t+k}\)：从扰动后的起点出发，沿向量场积分 \(k\) 步得到的动作；<br>
+      \(\mathbf{a}^{\text{demo}}_{t+k}\)：示教中的对应动作。<br>
+      <b>为什么不需要速度标签</b>：路径对齐隐含了速度对齐——只要积分出的轨迹穿过示教点，导数就必然匹配。因此路径损失同时监督了动作值和向量场本身。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 收缩扰动（抗误差累积）</div>
+    \[ \mathbf{a}_0' = \mathbf{a}_0 + \boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \mathcal{N}(0, \sigma^2 I) \]
+    <div class="exp">
+      训练时给积分起点加高斯扰动，迫使策略学会<b>把偏离的轨迹拉回</b>示教附近。<br>
+      这在数学上要求向量场局部收缩——即 \(f_\theta\) 的特征值实部为负，保证扰动不放大。<br>
+      <b>收益</b>：不再需要 RTC 之类的块间平滑补丁，且真机上动作抖动显著降低。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：一条新路线，三个待解问题</h2>
+
+  <div class="box good">
+    <b>核心价值</b>：把物理运动的连续性<b>写进策略结构</b>，而不是让网络从数据中学。这带来四重收益同时成立——学得快（少数据、少参数、少 epoch）、跑得快（少步采样）、动得稳（jerk 最低）、泛化好（扰动测试 5.4 倍）。而且它<b>可插拔</b>：从小模型延续到大模型、从模仿学习延续到强化学习，从单臂延续到人形。
+  </div>
+
+  <h3>三个诚实的局限</h3>
+  <div class="step">
+    <div class="t">局限一：离散动作不适用</div>
+    <div class="d">二值的夹爪指令若直接作为向量场状态积分，成功率会下降，目前用<b>独立的分类头</b>预测。作者指出，面向不连续动力学的神经 ODE（如可学习的事件函数与跳变项）可能进一步增强——这是明显的下一步。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限二：无模型 RL 场景收益有限</div>
+    <div class="d">早期无模型 RL 实验中学到的动作常在控制步之间跳变，ODE Policy 收益很小——可能因为<b>它的连续性也平滑了探索</b>。它最适合指令本身应当平滑的场景：模仿示教、部署到真实硬件。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限三：约束场景仍需额外机制</div>
+    <div class="d">真正需要"硬约束"时（如安全动作集），仍要引入 constrained RL 之类的外部方法。这说明连续性是<b>结构先验</b>，不是万灵约束。</div>
+  </div>
+
+  <h3>一个被低估的衍生用途</h3>
+  <p>把策略看作物理时间上的向量场，还打开了新用法：<b>每个动作的速度可直接获得</b>，因此可以从<b>没有动作标签</b>的手持设备或人类视频数据中学习。这直接连上了"人类数据 → 机器人动作"这条当前最热的链路——不需要标注动作，只要能积分出轨迹。</p>
+
+  <h3>那句话值得单独拎出来</h3>
+  <div class="box good">
+    过去几年具身智能越来越强调 Scaling：更多数据、更大模型、更多算力。这些当然重要，但除了 Scaling，也值得沉下心来重新思考一些最基础的问题。ODE Policy 给出的答案是：<b>动作不是一串独立的数值，而是从意图中展开的连续过程。策略或许只需在任务的少数关键点上做出选择，其余交给学到的动力学去展开。</b>
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>"5.9 倍"的口径要问清楚</b>：是 1 epoch 对 1 epoch 的对比，还是充分训练后的最终对比？论文给的是"早一个数量级"的收敛速度优势，最终性能差距通常会收窄——这是学习效率优势，不必然是性能上限优势。</li>
+    <li><b>多样性头的采样方式未展开</b>：只说"在动作块开始时采样一个方向叠加到速度上"，但采样分布怎么设计、是否需要额外训练，这些细节会显著影响实际可用性。</li>
+    <li><b>积分步长 Δt 的敏感性未充分讨论</b>：文中强调可跑 20/40/80 Hz，但不同频率下的性能差异、稳定性边界，是部署时最关心的参数。</li>
+    <li><b>二值夹爪走分类头，等于承认"连续性"不是全局成立的</b>：真实机器人大量使用夹爪，这块走了另一条路，说明该方法的普适性尚有边界。</li>
+  </ul>
+
+  <p class="src">来源：公众号 human five《机器人 Policy 新范式：让机器人学习动作ODE，而不是动作本身，四类真机 15 项任务全面领先》（2026-11-10）· 论文 arXiv:2611.01729 · NTUMARS MARS Lab</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div></body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SuperMimic：用世界模型替代仿真器，训练成本降三个数量级 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>SuperMimic：用世界模型替代仿真器，训练成本降三个数量级<span class="sub">UC Berkeley · 可微世界模型 · SHAC 策略更新 · 想象 rollout 快 10 倍 · 单卡 3 小时 vs SONIC 百卡一周 · 可迁移到真实 G1</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-11</div>
+    <div><b>关键词</b> 世界模型 · 动作跟踪 · Humanoid · 想象 rollout · SHAC</div>
+    <div><b>一句话</b> 不做更好的仿真器，做一个能反向传播的"轻量仿真器"</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>人形机器人动作跟踪要上规模，卡在算力上：要么为每个动作训专家策略再蒸馏，要么用上百张 GPU 直接训通用策略。作者的洞察是——<b>所有人类动作共享同一套身体动力学</b>，那就用一个模型学这套共享动力学，让策略在这套动力学里"想象"着训练。于是前向和反向传播都发生在<b>学到的世界模型</b>里（而不是仿真器里），策略用 SHAC 更新。<b>单卡 3 小时，对比 SONIC 的百卡一周</b>。而且这个在"想象"里训练出来的策略，能直接迁移到真实的 Unitree G1 上。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 关键公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：把仿真器换成"学出来的仿真器"</h2>
+  <p>先看清被讨论的对象。UC Berkeley 的 Qiayuan Liao 在 CoRL 2026 介绍了 <b>SuperMimic</b>。它的目标很具体：用<b>动作跟踪</b>训练通用的 Humanoid 底层控制器，让一个策略能跟住大量不同的人类动作——"单独训练一支舞蹈，其实没有那么大的意义"，只有规模上去了才有价值。</p>
+  <p>而规模化的路上有三个问题，作者自己列的：</p>
+  <table>
+    <tr><th>问题</th><th>状态</th><th>SuperMimic 的处理</th></tr>
+    <tr><td><b>数据</b></td><td>计算机视觉社区已经解决了</td><td>沿用视频/动作捕捉数据</td></tr>
+    <tr><td><b>适用于各种动作的训练方法</b></td><td>去年的 BeyondMimic 解决了</td><td>沿用</td></tr>
+    <tr><td><b>算力</b></td><td>❌ <b>瓶颈</b></td><td>✅ <b>本文要解决的</b></td></tr>
+  </table>
+  <p>SuperMimic 的具体做法是：<b>前向计算和反向传播都在学习得到的世界模型中进行</b>，用 <b>SHAC</b>（Short-Horizon Actor-Critic）更新策略，并且可以在真实的 Unitree G1 上运行。</p>
+  <p>有一个细节值得单独说：演示视频里"在浏览器中运行的世界模型"，观众可以拖动机器人身体的一部分，通用动作跟踪策略会尝试让它重新保持平衡。这不是渲染动画——是策略在模型里实时反应。</p>
+  <p>作者立刻自问了一个关键问题：<b>这个世界模型是不是仅仅记住了策略的行为？</b>证据是：关掉策略，世界模型会预测机器人摔倒在地——<b>即使它从未用零动作的数据训练过</b>。这说明模型学到的是有物理意义的动力学，而不是策略轨迹的复读机。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：算力为什么成了瓶颈</h2>
+  <p>规模化的两条常规路线，各自有明确的代价：</p>
+  <div class="step">
+    <div class="t">路线 A：专家策略 + 蒸馏</div>
+    <div class="d">为不同动作分别训练专家策略，再蒸馏成一个策略。<b>成本随动作数量线性增长</b>——动作越多，要训的专家越多，蒸馏负担越重。</div>
+  </div>
+  <div class="step">
+    <div class="t">路线 B：大型 GPU 集群直接训通用策略</div>
+    <div class="d">用上百张 GPU 一次训一个通用策略。SONIC 就是这条路——<b>超过一百张 GPU 训了一周</b>。</div>
+  </div>
+  <p>而人类的动作数据有几个特殊性质，让这件事特别难：</p>
+  <ul>
+    <li>Humanoid 是<b>复杂系统</b>，动作数据<b>规模大、分布不均衡</b></li>
+    <li>希望策略<b>尽可能不失败</b>（99.9% 成功率在大数据集上仍意味着上百次失败）</li>
+    <li>最终还要<b>部署到真实机器人</b>上，涉及自身的不确定性和部分可观测性</li>
+  </ul>
+  <p>但作者指出一个被忽视的事实：<b>这些动作差异很大，执行它们的身体却没有改变——它们共享同一套动力学。</b></p>
+  <div class="box good">
+    <b>核心洞察</b>：既然共享，那就<b>用一个模型学这套共享的动力学</b>，并希望这个模型的某些良好性质（可微、快、跨动作复用）反过来帮助扩大训练规模。这不是全新的想法——此前很多基于模型的方法都探索过这个方向，但它们需要回答三个工程问题：<b>前向计算在哪里做？反向传播在哪里做？怎么更新策略？</b>
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：一个交替循环，三个高效原因</h2>
+
+  <h3>训练循环：四步交替</h3>
+  <div class="step">
+    <div class="t">① 收集数据</div>
+    <div class="d">让策略先在<b>仿真器</b>中运行，收集交互数据。</div>
+  </div>
+  <div class="step">
+    <div class="t">② 拟合世界模型</div>
+    <div class="d">用这些数据训练一个<b>可微</b>的世界模型，学到状态转移规律。</div>
+  </div>
+  <div class="step">
+    <div class="t">③ 在模型里"想象"并改进策略</div>
+    <div class="d">让策略在<b>世界模型</b>中做 rollout，通过<b>反向传播穿过世界模型</b>来改进策略。</div>
+  </div>
+  <div class="step">
+    <div class="t">④ Critic 估计后续回报</div>
+    <div class="d">Critic 负责估值，策略按 SHAC（短时域 Actor-Critic）更新。<b>整个循环反复进行。</b></div>
+  </div>
+  <p>作者自己说"整个想法很简单，但效率非常高"。原因有三条：</p>
+
+  <table>
+    <tr><th>高效原因</th><th>机制</th><th>效果</th></tr>
+    <tr><td><b>世界模型跨所有动作复用</b></td><td>动作数据增加时，模型的预测误差<b>基本保持稳定</b></td><td>数据越多，模型越好用，不会越训越难</td></tr>
+    <tr><td><b>想象 rollout 更快</b></td><td>世界模型里的 rollout 比仿真器里的快 <b>10 倍以上</b></td><td>同样的墙钟时间能跑更多梯度步</td></tr>
+    <tr><td><b>一阶梯度非常有效</b></td><td>即使使用同一个世界模型，PPO 也需要更多步才能达到相同回报</td><td>省掉了 PPO 类方法的大量样本</td></tr>
+  </table>
+
+  <h3>对比结果</h3>
+  <ul>
+    <li><b>SuperMimic：一张 GPU、3 小时</b>；<b>SONIC：超过 100 张 GPU、一周</b></li>
+    <li>作者也做了公允声明：<b>用的数据集更小、GPU 也更快</b>，但"这不足以解释一千倍的差距"</li>
+  </ul>
+
+  <h3>为什么值得关心（即使你很有钱）</h3>
+  <p>作者被反复问到："假设我来自一家不缺算力的公司，为什么还要关心？"三个理由：</p>
+  <ol>
+    <li><b>回报更高</b>：SuperMimic 不到 3 小时就超过了 SONIC 的回报。</li>
+    <li><b>失败更少</b>：99.9% 成功率在大数据集上仍意味上百次失败；SuperMimic 训练 3 小时后<b>失败动作少于 30 个</b>，继续训练可在超过 10 万个动作上实现零失败。</li>
+    <li><b>迭代更快</b>：训练速度直接转化为研究迭代速度。</li>
+  </ol>
+
+  <h3>社区把它推得更远（有意思的连锁反应）</h3>
+  <ul>
+    <li>论文未发代码时就有人复现——<b>一位学生用 2.5 小时完成复现</b></li>
+    <li>有人把它当"速通挑战"（类比 Karpathy 的 nanochat）：在 PH 1 数据集上<b>训练不到 3 分钟</b></li>
+    <li>有人接入其他方法做参数网格搜索，<b>甚至省去 teacher-student 训练</b></li>
+    <li>因为算力太便宜，被用到<b>700 块肌肉的类人模型</b>上</li>
+    <li><b>最惊人的一条</b>：有人<b>去掉了参考动作</b>，发现它仍可用于<b>稀疏奖励</b>下的操作任务</li>
+  </ul>
+
+  <h3>实验室里的延伸用法</h3>
+  <ul>
+    <li>全尺寸 Humanoid 配灵巧手搬运物体</li>
+    <li>一个策略 + 一个模型处理 100 种物体</li>
+    <li>容易更换策略——<b>这里不需要计算策略的 likelihood</b></li>
+    <li>把安全问题写成 constrained RL，用高层优化方法处理</li>
+    <li>对没有视觉输入的机器人，模型可用于估计自身状态和地形，作为<b>快速、可微的动力学先验</b></li>
+  </ul>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>关键公式：交替优化的两半</h2>
+
+  <div class="fml">
+    <div class="name">① 世界模型的学习目标（学状态转移）</div>
+    \[ s_{t+1} = g_\phi(s_t, a_t) + \epsilon, \qquad \epsilon \sim \mathcal{N}(0, \Sigma) \]
+    <div class="exp">
+      \(g_\phi\) 是可微世界模型，\(s\) 是状态，\(a\) 是动作。<br>
+      <b>为什么必须可微</b>：策略梯度必须<b>穿过</b>这个模型回传，所以 \(\partial g_\phi/\partial s\) 必须存在且计算便宜。<br>
+      <b>与可微仿真器的对比</b>（作者原话）：可微仿真器需要付出很高的计算成本，<b>尤其是在反向传播时</b>；而世界模型只是一个简单的 MLP，更容易反向传播。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 想象中的策略梯度</div>
+    \[ \nabla_\theta J(\theta) \approx \mathbb{E}_{\hat{s}, \hat{a} \sim \pi_\theta,\, g_\phi} \big[ \nabla_\theta \log \pi_\theta(\hat{a}\,|\,\hat{s}) \cdot A^{\pi_\phi}(\hat{s}, \hat{a}) \big] \]
+    <div class="exp">
+      期望的采样域是<b>世界模型生成的想象轨迹</b> \(\hat{s}, \hat{a}\)，而不是真实仿真器里的轨迹。<br>
+      \(A^{\pi_\phi}\) 是用世界模型 rollout 估计的 advantages。<br>
+      <b>SHAC（Short-Horizon Actor-Critic）</b>的关键：只用<b>短时域</b>的 advantage——这降低了在世界模型误差下"想象太远"的偏差风险（模型在长时域会漂移，优势估计不可信）。<br>
+      <b>反向传播路径</b>：\(\partial \hat{s}_{t+1}/\partial \theta\) 经由 \(\partial g_\phi/\partial s\) 链式传到动作头，这是整个方法高效的技术根源。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ "想象"的三个效率来源（对照表）</div>
+    <table>
+      <tr><th>维度</th><th>仿真器方案</th><th>世界模型方案</th></tr>
+      <tr><td>单次 rollout 成本</td><td>高</td><td><b>低 10 倍以上</b></td></tr>
+      <tr><td>反向传播</td><td>昂贵，可微仿真器尤甚</td><td><b>简单 MLP，廉价</b></td></tr>
+      <tr><td>跨动作复用</td><td>否，每个动作一套物理</td><td><b>是，一套模型服务所有动作</b></td></tr>
+      <tr><td>误差随数据量</td><td>不适用</td><td><b>基本保持稳定</b></td></tr>
+    </table>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限</h2>
+
+  <div class="box good">
+    <b>核心价值</b>：这是一次<b>成本结构的重新设计</b>——不是把模型做得更大，而是把"每次梯度要付出多少算力"从 O(仿真器成本) 降到 O(MLP 成本)。当训练可以在浏览器里跑，研究的迭代速度、试错成本、探索广度全都跟着变。这比"又提升了多少个百分点"重要得多。
+  </div>
+
+  <h3>诚实的局限</h3>
+  <div class="step">
+    <div class="t">局限一：真实世界直接建模需要苛刻的前提</div>
+    <div class="d">被问到"如果你有一千台真实 Humanoid 和一千套动作捕捉系统"时，作者才回答"可以尝试把这个方法应用到真实世界中"。<b>言下之意是：当前路线仍依赖仿真器起步。</b></div>
+  </div>
+  <div class="step">
+    <div class="t">局限二：分布外状态的鲁棒性另需他法</div>
+    <div class="d">新部署场景中机器人可能进入未见过的身体配置而失去平衡。作者的回应是：<b>鲁棒性和泛化来自 actor 的设计与网络架构</b>，SuperMimic 与这些方法不冲突，可以叠加。但这也意味着——SuperMimic 本身不解决泛化。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限三：世界模型会漂移，长时域不可信</div>
+    <div class="d">这正是 SHAC 用短时域 advantage 的原因——回避而非解决模型误差累积。作者在"想象"里训练时用<b>未见过零动作数据仍能预测摔倒</b>来证明模型有物理意义，但这是单点验证，不等于长时域可靠。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限四：一千倍的口径要打折</div>
+    <div class="d">作者自己承认<b>数据集更小、GPU 更快</b>，且对比对象 SONIC 训了一周、SuperMimic 3 小时——"回报更高/失败更少"的结论建立在<b>训练时长差异巨大</b>的前提上，同等 wall-clock 下的横向对比才是公平比较。</div>
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>"失败动作少于 30 个"的分母没说清</b>：是在多少动作上测的？如果是 3 小时的想象训练轨迹，"少于 30 个失败"与真实机器人上的失败率之间还隔着 sim-to-real 的Gap。</li>
+    <li><b>世界模型的容量与数据效率是循环依赖</b>：模型要覆盖所有人类动作的共享动力学，参数规模、训练数据需求都没披露，而这恰恰是"数据规模大、分布不均衡"下最棘手的部分。</li>
+    <li><b>社区在 2.5 小时内复现</b>，这个信息很值得注意——它说明<b>方法的门槛确实低</b>（只需一个 MLP 世界模型），但也意味着<b>novelty 有限</b>："学一个世界模型替代仿真器"是经典思路（MBPO、Dreamer 系列），SuperMimic 的贡献更像是<b>工程组合与效率工程</b>，而非新范式。</li>
+    <li><b>"去掉参考动作仍可做稀疏奖励任务"</b>这条社区发现没有被论文充分讨论——如果成立，它的含义比论文主线更大，值得单独跟进。</li>
+  </ul>
+
+  <p class="src">来源：公众号 human five《CoRL2026 SuperMimic：用世界模型加速人形机器人控制》（2026-11-11）· 演讲者 Qiayuan Liao, UC Berkeley · 项目页 supermimic.github.io</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div></body>
+</html>
