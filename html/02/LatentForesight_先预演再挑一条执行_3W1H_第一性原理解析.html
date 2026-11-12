@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coordinating Humanoid Loco-Manipulation through Action-Conditioned Latent Foresight</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:24px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>人形机器人走与抓的协调：先在心里预演一遍，再挑一条执行<span class="sub">Action-Conditioned Latent Foresight · Unitree G1 · 候选序列的视觉进度分 − 时序一致性罚 · SIMPLE 十任务 89.7% · 真机 85.7% / 未见配置 65.7%</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-03 · arXiv 2611.04839</div>
+    <div><b>关键词</b> 潜在世界-动作模型 · 端点预测 · 联合时序先验 · 动作一致性正则</div>
+    <div><b>一句话</b> 不动手先动脑：让模型给每条候选动作序列"预演打分"，只执行最高分的前缀</div>
+    <div><b>机构</b> 慕尼黑工业大学 / 港大 / TUM 等 15 人合作</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>人形机器人走路和抓东西必须同时协调，而<b>看起来合理的动作序列照样会把东西掉在地上</b>。这篇的做法很直白：先让模型把候选序列在心里预演一遍，再挑一条执行。每条候选打两个分——<b>按它走下去能离子目标画面多近</b>（视觉进度），再<b>减掉动作之间不连贯的惩罚</b>（时序一致性）。得分最高的只执行前 10 步，然后重新看、重新想。为避免预测器只顾画面不管动作，训练时加了一条逆向正则：<b>从特征变化里反推动作</b>，逼它保留与动作有关的信息。SIMPLE 十任务 89.7%，真机七任务 85.7%，未见物体 65.7%。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：一个"执行前先评估"的潜在世界-动作模型</h2>
+  <p>先看它到底在解决什么。人形机器人的 <b>loco-manipulation</b>（边走边操作）要求<b>身体移动</b>和<b>手部交互</b>在时间上咬合。难点不在单帧动作对不对，而在<b>一段动作整体走下去会不会出问题</b>——手是不是在走的过程中松了、目标物是不是在到达前就掉了。</p>
+  <p>论文的判断：<b>一条"看起来合理"的命令序列，仍然可以把东西掉在地上</b>。所以问题不在"生成得不够好"，而在<b>"生成完就直接执行"这个流程本身缺了一道关卡</b>。</p>
+  <div class="box good">
+    <b>它的核心结构（一句话）</b>：生成 <b>N 条</b>候选命令序列 → 每条都<b>在潜在空间里预演</b>其前缀会到达什么视觉状态 → 用"离目标画面多近"减去"动作多不连贯"打分 → <b>只执行最高分序列的前 K 步</b> → 从新观测重新规划。
+  </div>
+  <p>三个组件各司其职：</p>
+  <table>
+    <tr><th>组件</th><th>干什么</th><th>实现</th></tr>
+    <tr><td><b>动作生成器</b> π</td><td>看图、读指令、读本体状态，生成候选命令序列</td><td>Qwen3-VL-2B 编码 + Action DiT + flow-matching 速度头</td></tr>
+    <tr><td><b>动作条件端点预测器</b> P</td><td>预演"这串动作走完，画面会变成什么样"</td><td>V-JEPA 2.1 ViT-L/16（384px），在 HIW-500 上微调后冻结</td></tr>
+    <tr><td><b>联合时序先验</b> E</td><td>判断动作之间是否连贯（会不会突然抖一下）</td><td>2 层 GRU，隐宽 512，运动与手部共享</td></tr>
+  </table>
+  <p>本体是 <b>Unitree G1</b>（带灵巧手）。动作空间仿真 36 维（14 手部关节 + 22 手臂/躯干/移动通道），真机 64 维（<b>SONIC 运动潜变量</b> + 14 手部关节目标）。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：为什么"生成完直接执行"必然出问题</h2>
+  <p>把这个问题剥到最底层，它其实是<b>一个没有验证环节的开环系统</b>。</p>
+  <div class="step">
+    <div class="t">矛盾一：动作是"整段"的，但错误是"中途"发生的</div>
+    <div class="d">现有 VLA 一般一次吐出一整块动作就去执行。可 loco-manipulation 的失败常常发生在<b>序列中段</b>——走到一半手松了、转身时物体碰掉了。整段执行 = <b>要等错完了才知道错了</b>。</div>
+  </div>
+  <div class="step">
+    <div class="t">矛盾二：动作空间是多峰的，采一条就等于赌一把</div>
+    <div class="d">同一个任务有很多种走法。生成器每次采样只给一条，<b>而"能完成任务"和"这条能完成任务"是两件事</b>。多采几条再挑，是<b>用算力换成功率</b>的最直接办法。</div>
+  </div>
+  <div class="step">
+    <div class="t">矛盾三：判断好坏需要一个"后果模型"，而后果在像素空间太贵</div>
+    <div class="d">如果能预演每条候选的后果，就能挑。但<b>逐条生成完整视频再判断，代价高到没法实时</b>。所以必须在<b>压缩的潜在空间</b>里预演——这就是"latent foresight"里 latent 的由来。</div>
+  </div>
+  <div class="box bad">
+    <b>因此整套设计是被三个约束同时逼出来的</b>：① 必须<b>在执行前</b>评估（所以要预演）；② 必须<b>评估多条</b>（所以要采样 N 条）；③ 必须<b>便宜</b>（所以在潜在空间用一个前向就出结果，而不是生成视频）。<br>
+    这也解释了它为什么<u>不是</u>"生成更好的动作"，而是<b>"给已有动作加一道评分关卡"</b>——它是流程改造，不是模型改造。
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：预演 → 打分 → 只走一小步</h2>
+
+  <h3>第一步：采一堆候选，而不是采一条</h3>
+  <p>给定自我中心图像 o、指令 l、本体状态 s，生成器采样 <b>N = 8</b> 条归一化命令块。每条命令同时含<b>身体运动分量</b> m 与<b>手部分量</b> u——这个"双分量"结构是全文的关键：<b>走路和抓取被显式拆成两路，但又必须一起评分</b>。</p>
+  <p>提案长度 H：仿真 30、真机 40；评估视界 h = 20；<b>只执行前 K = 10 步</b>（命令频率 30 Hz）。h > K 的意思是：<b>我看得比走得远</b>——用 20 步的视界判断，但只走 10 步就重新规划。</p>
+
+  <h3>第二步：在潜在空间预演端点</h3>
+  <p>当前画面、目标画面、未来画面都过同一个视觉编码器（V-JEPA 2.1，<b>微调后冻结</b>），池化成向量 z_t / z_g / z_(t+h)。候选命令块先过命令编码器，再把"预测 token 的均值"加到每个命令 token 上作为条件，然后预测<b>这串动作走完之后的视觉特征</b> 预测特征向量 f̂。</p>
+  <div class="box good">
+    <b>为什么要加"预测 token 均值"这个条件</b>：它把<b>指令语义</b>注入到动作编码里。否则同一个动作在不同任务下应该预演出不同未来，模型无从区分。这是很轻的一个设计，但决定了"条件化"是否真的成立。
+  </div>
+
+  <h3>第三步：两个分数，一个减法</h3>
+  <p><b>视觉进度分</b>：预演终点离目标有多近，减去起点离目标有多近。也就是<b>"这串动作让我前进了多少"</b>，而不是"我现在离目标多近"——后者对候选间比较毫无区分度。</p>
+  <p><b>时序一致性罚</b>：用 GRU 从"本体状态 + 前一条命令"预测"下一条命令应该是什么"，然后看候选命令与预测差多远。差得远 = 不连贯 = 罚分。</p>
+  <div class="box bad">
+    <b>为什么要罚，而不是直接要求平滑</b>：一阶/二阶平滑只看"变化量大小"，会把<b>合理的快速动作也罚掉</b>。而"用前一条命令预测下一条"衡量的是<b>是否符合这个本体的运动规律</b>——快但不违反动力学的不罚，慢但突然跳变的重罚。<b>消融数据支持这一点：仅视觉 65.8% → 一阶平滑 67.5% → 二阶平滑 70.0% → 分解先验 71.7% → 联合先验 80.8%。</b>
+  </div>
+
+  <h3>第四步：动作一致性正则（本文最巧的一笔）</h3>
+  <p>风险很明确：端点预测器只被要求"预测对画面"，那它完全可以<b>忽略动作</b>——只学"从当前画面猜未来画面"，动作输入变成摆设。<b>这样预演就没意义了，因为不同候选会预演出几乎一样的未来。</b></p>
+  <p>解法：训练时加一个<b>逆向动作解码器</b> D（只在训练用，部署时丢掉），要求它<b>从特征变化里反推出第一步动作</b>。</p>
+  <div class="box good">
+    <b>人话版</b>：如果"预测出的特征变化"里真的含有动作信息，那么"从变化反推动作"就应该成功。<b>反推得准 → 证明特征记住了动作；反推不准 → 说明它把动作扔了。</b>这一条正则等于给预测器加了一个"你必须记住动作"的强制约束。<br>
+    <b>实测价值</b>：在只用视觉评分的设定下，去掉 ACR 是 55.0%，加上是 <b>65.8%（+10.8 个百分点）</b>——只加一条训练期正则，提了两位数的点。
+  </div>
+
+  <h3>第五步：滚动执行</h3>
+  <p>执行最高分序列的前 K 步 → 拿新观测 → 重新采样 8 条 → 重新打分。子目标由演示里切出 <b>J = 5</b> 个，当前特征与子目标特征距离小于 ε = 0.15 时推进到下一个。<b>子目标是从演示里"抠"出来的，不是人工标的</b>——这是它对演示数据的唯一依赖，也是后面局限的来源。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式</h2>
+
+  <div class="fml">
+    <div class="name">① 候选选择：视觉进度 减 时序罚（式 2）</div>
+    \[ V_i = \operatorname{dist}(z_t, z_g) - \operatorname{dist}(\hat{z}^{(i)}, z_g), \qquad i^{*} = \arg\max_i \big\{ V_i - \beta E_i \big\} \]
+    <div class="exp">
+      \(\operatorname{dist}\) 是<b>余弦距离</b>；\(z_t\) 当前特征、\(z_g\) 目标特征、\(\hat{z}^{(i)}\) 是第 \(i\) 条候选预演出的终点特征（由预测特征池化而来）。<br>
+      <b>第一项在算什么</b>：不是"终点离目标多近"，而是<b>"相对起点前进了多少"</b>。写成 \(\text{起点距离} - \text{终点距离}\)，正值代表靠近了目标。<br>
+      <b>为什么必须这么写</b>：如果直接用 \(\operatorname{dist}(\hat z, z_g)\) 排序，那么在"已经离目标很近"的时刻，所有候选的分数都很小、彼此分不开；而用"位移"排序，<b>任何时刻都有区分度</b>。<br>
+      \(E_i\) 是时序一致性能量，\(\beta = 0.1\)——<b>罚项权重压得很低</b>，说明作者把"方向对不对"看得比"走得顺不顺"更重。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 联合时序先验：预测下一条命令，能量即偏差（式 5、6）</div>
+    \[ r_k = \operatorname{GRU}_\phi\big(r_{k-1},\, e_\phi([s_t; m_{k-1}; u_{k-1}])\big), \qquad [\tilde{m}_k; \tilde{u}_k] = \operatorname{MLP}_\phi(r_k) \]
+    \[ E_m = \frac{\sum_{k=1}^{h-1}\lVert m_k-\tilde{m}_k\rVert_2^2}{(h-1)\,d_m}, \qquad E_u = \frac{\sum_{k=1}^{h-1}\lVert u_k-\tilde{u}_k\rVert_2^2}{(h-1)\,d_u}, \qquad E_\phi = w_m E_m + w_u E_u \]
+    <div class="exp">
+      s <b>每一步都重复输入</b>（这是关键：让预测始终锚定在当前本体状态上，否则 GRU 会漂）。<br>
+      \(m\) 是<b>运动分量</b>、\(u\) 是<b>手部分量</b>，两者<b>分开算能量再加权</b>，权重取 \(w_m = d_m/d_a\)、\(w_u = d_u/d_a\)——即<b>按维度占比分配</b>，让两路在归一化后贡献相当。<br>
+      <b>为什么不合成一个能量</b>：因为两路的物理尺度完全不同（运动是潜变量、手是关节角）。合成一个会让维度多的那一路主导，<b>消融里"分解先验 71.7% vs 联合先验 80.8%"就是这个设计在起作用</b>。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 世界模型损失：绝对误差 + 位移对齐（式 7）</div>
+    \[ \mathcal{L}_{\mathrm{wm}} = \frac{\lVert \hat{\mathbf{f}}_{t+h} - \operatorname{sg}(\mathbf{f}_{t+h})\rVert_1}{|\mathbf{f}_{t+h}|}, \qquad \mathcal{L}_{\Delta} = \operatorname{MSE}\big(\Delta\hat{z},\, \operatorname{sg}(\Delta z)\big) \]
+    <div class="exp">
+      \(\operatorname{sg}(\cdot)\) = <b>停止梯度</b>，保证目标端不被更新。<b>归一化的 L1</b>（除以特征维度）让损失不随特征尺度漂移。<br>
+      \(\Delta z\) 是<b>真实特征位移</b>、\(\Delta\hat z\) 是<b>预测位移</b>。<b>为什么在已有绝对误差之外还要加位移项</b>：因为 <b>ACR 解码器要吃的是"位移"而不是"绝对特征"</b>——如果位移算不准，反推动作就无从谈起。这两项是配套的。<br>
+      一个细节：当前特征在两处都被停止梯度，<b>于是它在 \(\mathcal{L}_\Delta\) 中相互抵消</b>，等价于"只对齐池化后的端点"。也就是说这一项<b>只约束终点、不约束起点</b>，是纯增量的监督。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 动作一致性正则与总目标（式 8、9）</div>
+    \[ \mathcal{L}_{\mathrm{acr}} = \operatorname{MSE}\big(D_\psi(\operatorname{sg}(\Delta z), s_t),\, a_{t,0}\big) + \operatorname{MSE}\big(D_\psi(\Delta\hat{z}, s_t),\, a_{t,0}\big) \]
+    \[ \mathcal{L} = \mathcal{L}_{\mathrm{act}} + \lambda_{\mathrm{wm}}\mathcal{L}_{\mathrm{wm}} + \lambda_\Delta \mathcal{L}_\Delta + \lambda_{\mathrm{acr}}\mathcal{L}_{\mathrm{acr}} + \lambda_{\mathrm{prior}}\mathcal{L}_{\mathrm{prior}} \]
+    <div class="exp">
+      <b>两项分工明确</b>：第一项用<u>真实</u>位移训练解码器（告诉它"位移→动作"这个映射本身是什么）；第二项用<u>预测</u>位移，<b>梯度回传到预测器及其条件模块</b>（告诉预测器"你的位移必须能反推动作"）。<br>
+      <b>这是本文最要紧的技巧</b>：如果只留第一项，解码器学得再好也约束不到预测器；<b>正是第二项把"必须保留动作信息"这个要求传导进去了</b>。<br>
+      <b>权重极不平衡</b>：\(\lambda_{\mathrm{wm}} = 0.1\)、\(\lambda_\Delta = 0.05\)、\(\lambda_{\mathrm{acr}} = 0.02\)、\(\lambda_{\mathrm{prior}} = 0.01\)，动作主损失 <b>不带系数</b>。所有可训练组件<b>联合优化</b>，不是分阶段训。<br>
+      <b>这个权重结构说明定位</b>：动作生成是主角（系数 1），世界模型与正则都是<b>辅助信号</b>（0.01~0.1）。<b>它不是"世界模型主导"的架构</b>，而是"策略主导 + 世界模型当裁判"。
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限</h2>
+
+  <h3>结果有多硬</h3>
+  <table>
+    <tr><th>设定</th><th>本方法</th><th>最强对比</th><th>差距</th></tr>
+    <tr><td>SIMPLE 十个任务（总体）</td><td><b>89.7%</b></td><td>DiT4DiT 82.0% / Ψ₀ 73.7%</td><td>+7.7 / +16.0</td></tr>
+    <tr><td>真机七任务（标准条件）</td><td><b>85.7%</b></td><td>GR00T N1.7 70.0%</td><td>+15.7</td></tr>
+    <tr><td>真机七任务（未见物体配置）</td><td><b>65.7%</b></td><td>GR00T N1.7 48.6%</td><td>+17.1</td></tr>
+  </table>
+  <div class="box good">
+    <b>提升最集中的地方，恰好是本文论证的地方</b>：真机"Load Washer"任务从 GR00T N1.7 的 <b>2/10 提到 10/10</b>。基线失败模式是<b>运输途中掉了 T 恤、没进滚筒就撒手、洗衣门没打开</b>——全是"抓握没保持到目标位置"这类<b>跨时间段的一致性失败</b>。<b>这正是"预演+时序罚"要对治的病。</b>
+  </div>
+  <p>另外，未见配置下<b>七个任务全部最高或并列最高</b>，其中四项 ≥7/10；某些任务它能<b>用左手</b>完成，而演示里没出现过这种抓法——说明它学到的是任务结构，不是模仿轨迹。</p>
+
+  <h3>消融：每个组件都在干活</h3>
+  <table>
+    <tr><th>消融项</th><th>去掉</th><th>保留</th><th>收益</th></tr>
+    <tr><td>动作一致性正则（4 任务）</td><td>55.0%</td><td><b>65.8%</b></td><td>+10.8</td></tr>
+    <tr><td>时序评分（4 任务）</td><td>仅视觉 65.8%</td><td><b>联合先验 80.8%</b></td><td>+15.0</td></tr>
+    <tr><td>预测形式（10 任务）</td><td>特征位移 84.3%</td><td><b>端点模型 89.7%</b></td><td>+5.4</td></tr>
+  </table>
+  <p>第三条值得单说：<b>"预测终点"比"预测位移"更好（89.7% vs 84.3%）</b>。方向是对的——终点是绝对锚点，误差不累积；而位移会累积。</p>
+
+  <h3>论文自己列的局限</h3>
+  <div class="step">
+    <div class="t">铰接机构开启不充分</div>
+    <div class="d">开洗衣机门、开抽屉这类"要开到位"的动作做得不够。<b>这正是"仅靠视觉进度"的软肋</b>——门开了 60% 和 100% 在特征空间里可能差不多接近，但任务要求是 100%。</div>
+  </div>
+  <div class="step">
+    <div class="t">软物体抓握丢失</div>
+    <div class="d">T 恤、袋子这类形变物体，抓握状态在视觉上难判定，预演也看不出"其实已经滑了"。<b>视觉是这个方法的唯一感官，触觉缺席就是结构性缺失。</b></div>
+  </div>
+  <div class="step">
+    <div class="t">评分依赖任务特定的演示子目标</div>
+    <div class="d">每个任务要从演示里抠 5 个子目标图像。<b>换任务就得重新抠</b>，这限制了"零样本上新任务"的能力——也是它和真正通用 VLA 的差距所在。</div>
+  </div>
+  <div class="step">
+    <div class="t">板载推理只有 0.73 Hz</div>
+    <div class="d">在 RTX 4090D 上 9.1 Hz（显存 7.2 GB，可训练参数 3.0B），但<b>上 Jetson Orin NX 后掉到 0.73 Hz、占用 12.84 GB</b>。0.73 Hz 意味着<b>每 1.4 秒才出一次决策</b>——离真正的人形实时控制还有距离。</div>
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>"预演"这个词有夸大成分，本质是"学一个特征空间的端点预测器"</b>：它不生成视频、不看中间过程，只预测<b>终点的池化特征</b>。所以它<b>无法发现"中途会掉"这类过程性失败</b>——而论文自己的动机故事恰恰讲的是"中途掉东西"。<b>动机与机制之间有缝</b>：真正防"中途掉"要靠时序先验那条罚项，而不是端点预演。</li>
+    <li><b>8 条候选 × 20 步视界的成本没被充分讨论</b>：采样 N=8 意味着每次决策要多跑 8 次端点预测。9.1 Hz 是在 4090D 上测的，但<b>论文没给"关闭候选评估"的延迟基线</b>，所以读者无法判断这 8 倍开销换来的 +7~17 个点是否划算。对于一个板上只有 0.73 Hz 的系统，这个账很关键。</li>
+    <li><b>真机每格只是 10 次试验</b>：7 任务 × 10 次 = 70 次。<b>85.7% vs 70.0% 看着大，但单任务粒度上就是 10 次里的几次差别</b>。而且 <b>Dispose of Trash 是唯一输给 GR00T N1.7 的任务（6/10 vs 9/10）</b>，论文对此的解释是"盖板只部分打开"——这其实指向前面说的视觉进度软肋，<b>却没有进一步分析</b>。</li>
+    <li><b>子目标来自演示，等于把"任务理解"外包给了数据</b>：J=5 个子目标是人工从演示里切的。<b>这意味着它在"学会了这个任务"和"理解了这个任务"之间，站在前者</b>。零样本迁移到结构不同的新任务时，这个设计会立刻成为瓶颈。</li>
+    <li><b>SIMPLE 是自家也参与建设的基准吗，需注意对比基线是否被公平调优</b>：表里 GR00T N1.6 在 Mobile P&amp;P 上拿到 <b>0/0/0</b>，这个结果异常差——通常意味着基线在该任务上<b>没做适配</b>，而不是模型真的完全不行。<b>这类"基线被打到 0"的表格，需要看原论文的基线配置才敢采信</b>。</li>
+    <li><b>最诚实的部分是它把"世界模型"降格成了"裁判"</b>：总损失里动作项系数 1、世界模型项 0.1、ACR 0.02。这套权重说明作者并不相信"世界模型能自己长出策略"，只相信"世界模型能给策略打分"。<b>这个定位比很多"世界模型即一切"的叙事清醒得多</b>，也是我认为它最可复用的部分。</li>
+  </ul>
+
+  <p class="src">来源：arXiv:2611.04839v1 [cs.RO]，2026-11-03 · Ju Dong 等 15 人（TUM / 港大 / 慕尼黑机器人与机器智能研究所等）· 项目页 ju6276.github.io/Action-Grounded-Foresight · 硬件 Unitree G1，训练 8×A100</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 前沿论文拆解 · 说人话讲明白</footer>
+</div></body>
+</html>

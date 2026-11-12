@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机器人数据不是多与少，是"对齐"问题 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>机器人数据不是"多与少"，是"对齐"问题<span class="sub">GI labs 联合创始人 Shumo Chu · 拆掉"哪种数据会胜出"的伪命题 · 物理对齐 physical alignment · 五个场景证明：动作做对了，人还不满意</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-12</div>
+    <div><b>关键词</b> 物理对齐 · 人类数据 · 第一视角/UMI/遥操作 · 数据基础设施</div>
+    <div><b>一句话</b> 机器人能从自身经验学会怎么动，但学不会"人希望它怎么动"</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>关于机器人数据的争论一直在问"哪种数据会赢"，但这个问题问错了方向。机器人数据其实在干两件不同的事：<b>教它怎么动</b>，和<b>教它怎么在人身边动</b>。前一件事，机器人自己的经验会越攒越多、越攒越便宜——十亿台机器人天天在记；后一件事不行，因为"人希望怎样"这个标签<b>只存在于人脑子里</b>，机器人群再大也反推不出来。所以即便机器人数据无限，人类数据也不会过时。由此得出一个可执行的判据：衡量数据好坏的标准不该是<b>采集小时数</b>，而是<b>它有没有改善机器人在人身边的行为</b>。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 公理链与判据</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：把"数据之争"重新定义成"对齐问题"</h2>
+  <p>这是一篇<b>立场文章</b>，不是论文。作者 <b>Shumo Chu</b> 是 General Intelligence Labs（GI）的联合创始人，华盛顿大学计算机博士，做过 UC Santa Barbara 助理教授、也在 Google 干过工程，早期研究数据库系统、形式化验证、密码学，现在转向具身智能的<b>数据基础设施</b>。</p>
+  <p>他开篇就把行业的吵架现场复述了一遍——四种押注：</p>
+  <table>
+    <tr><th>押注</th><th>说法</th></tr>
+    <tr><td><b>第一视角视频</b></td><td>人干活时戴摄像头，自然记录</td></tr>
+    <tr><td><b>UMI 式示范</b></td><td>人拿一个形状像夹爪的手持设备做任务</td></tr>
+    <tr><td><b>遥操作</b></td><td>人直接操控机器人</td></tr>
+    <tr><td><b>"都会过时"派</b></td><td>真机部署多了，机器人自己产生的经验会超过任何人类采集</td></tr>
+  </table>
+  <p>然后他抛出那个真正的分歧点：<b>当有足够多的机器人在真实环境里工作时，人类数据是否就过时了？</b></p>
+  <div class="box bad">
+    <b>他的回答：不会。</b>理由是那个问题偷偷塞了一个假设——<b>机器人数据只有一个用途：教机器人怎么运动</b>。但它还有第二个用途，而且这个用途不会消失：<b>教机器人怎么在人身边行动</b>。第二个用途就是对齐问题。所以争论"哪种数据胜出"根本没问到点子上。
+  </div>
+  <p>他给这种现象起了个名字：<b>物理对齐（physical alignment）</b>——机器人的行为符合周围人的意愿，而不只是完成交给它的狭义任务。落地成动作清单，就是它得学会<b>何时行动、等待、调整、询问、让步、停止</b>，并且<b>把选择权和控制权留给人</b>。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：两个经典类比，各自只对了一半</h2>
+  <p>支持两派的论证都用类比，而作者的处理方式是：<b>两个类比都对，因为它们说的不是同一件事</b>。</p>
+
+  <h3>机器人派用 Tesla</h3>
+  <p>一家拥有庞大道路车队的公司，能从自己实际交付的车、以及这些车实际跑的地方学习。<b>没有任何数据能比它更贴合最终部署场景。</b>核心一句话：<b>机器人能从自身经验中，学到关于自身本体的最多知识。</b></p>
+  <div class="box good">
+    <b>作者对类比边界很克制</b>：他明确说"这里只是把它当类比"，这个观点<b>不依赖</b> Tesla 是否纯粹从自动驾驶学习、也<b>不依赖</b>自动驾驶是否已被解决。这种自觉在具身智能的公众号文章里非常少见。
+  </div>
+
+  <h3>人类数据派用 LLM</h3>
+  <p>语言模型建立在人类写作之上，<b>而且变强之后并没有停止需要人</b>。InstructGPT 是最清晰的例子：基础模型已经有知识了，真正让它<b>有用</b>的是加进去的人类示范 + 人类对输出的排序。<b>随着模型变强，人类输入的颗粒度变细，但输入本身没消失。</b></p>
+
+  <h3>关键判断：两种数据教的东西不同</h3>
+  <div class="step">
+    <div class="t">机器人经验教什么</div>
+    <div class="d">本体能力、物理约束、行动后果——<b>这个身体能做什么，尝试做时会发生什么</b>。这类知识的特点是可自证：做一次就知道成没成。</div>
+  </div>
+  <div class="step">
+    <div class="t">人类数据教什么</div>
+    <div class="d">工作是怎么完成的、人怎么协作、意图是什么、<b>偏好什么</b>。这类知识的特点是不可自证：机器人把事做成了，也不能反推"人是否满意"。</div>
+  </div>
+  <div class="step">
+    <div class="t">遥操作两边各占一半</div>
+    <div class="d">人的判断通过机器人的身体表达出来——所以它既是运动数据，也是偏好数据，<b>但两者都被稀释了</b>。</div>
+  </div>
+
+  <h3>"十亿台机器人"这个思想实验，是全文最锋利的一刀</h3>
+  <p>假设有十亿台机器人，每天记录经验。<b>运动数据不再稀缺</b>。但它们仍然在人身边工作——厨房、医院、仓库、家里。它们给人递东西、等人、被人打断。</p>
+  <div class="box bad">
+    <b>机器人机群能记录机器人做过的一切，但仅靠这些记录，无法知道它身边的人是否希望它那样做。</b><br>
+    这个缺口<b>不会随规模扩大而消失</b>——因为它是<b>信息论层面的缺失</b>，不是<b>样本量不足</b>。你收集再多"机器人自己怎么做的"，也推不出"人想要什么"。只有当人向机器人展示、告诉它什么是好的行为时，这个缺口才能被填补。
+  </div>
+  <p>作者还补了一刀反向证据：Physical Intelligence 与 Georgia Tech 的研究（Kareer 等，2025-12）发现，<b>用多样化机器人数据做预训练，反而能提高模型从人类示范中迁移的效果</b>——机器人数据越多，人类数据越有用。<b>两者不是替代关系，是互补关系。</b></p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：五个场景，把"对齐"从口号变成可检查的失败</h2>
+  <p>这一节是全文最有说服力的部分。<b>他不谈哲学，只举五个真实研究</b>——每个都是"任务做成了，但人依然不满意"。</p>
+
+  <div class="step">
+    <div class="t">① 薯片袋：抓起来了，但可能捏碎了</div>
+    <div class="d">UC Berkeley 与 CMU 的实验：机器人能稳定拿起薯片袋，<b>但常常抓袋子的正中间</b>，会压碎里面的薯片。<b>从机械操作看，抓取成功；从人的意愿看，彻底失败。</b><br>解法：用<b>人类偏好排序</b>引导它抓边缘。注意这里的分工——<b>机器人本来就会抓，人提供的是"怎样才算做得好"的定义</b>。</div>
+  </div>
+  <div class="step">
+    <div class="t">② 辅助进食：还得知道人这一刻想吃什么</div>
+    <div class="d">喂食本身已经够难（餐具 + 食物），机器人还要判断<b>对方接下来想吃什么、是否准备好吃下一口、到底希望被帮多少</b>。<br>FLAIR（Cornell / Stanford / UBC）在规划进食顺序时，既考虑用户要求，也考虑食物好不好夹。<br>而华盛顿大学早前对行动不便人群的研究给了个反直觉结论：<b>机器人拥有更多自主权，并不总是参与者偏好的</b>。</div>
+  </div>
+  <div class="step">
+    <div class="t">③ 调酒师：端稳是容易的部分</div>
+    <div class="d">端一杯饮料不洒，是工作中相对容易的环节。好的调酒师要<b>注意到谁想点单、按公平顺序服务、需求不明确时确认</b>。<br>JAMES 项目（Edinburgh / Heriot-Watt / Bielefeld / fortiss / FORTH）认为：面向公众的服务机器人<b>不仅要完成任务，还要满足社会交往预期</b>，并处理多人同时抢注意力的情况。</div>
+  </div>
+  <div class="step">
+    <div class="t">④ 导航引导：带到地方只是一半</div>
+    <div class="d">另一半是<b>配合你的步速</b>，以及<b>在你更想自己找路时退到一边</b>。<br>CMU、Miraikan（日本国立科学博物馆）、IBM Research Tokyo 用三周跟踪六位盲人或低视力访客使用博物馆导航机器人。结论：<b>访客始终在决定何时跟随、何时自己处理，且这个选择随情况变化</b>（拥挤或嘈杂时更依赖机器人）。研究者的结论是：辅助系统应优先保证<b>灵活性和用户控制权</b>，而不是追求最大自动化。</div>
+  </div>
+  <div class="step">
+    <div class="t">⑤ 共同组装：扶面板的人要会"跟着动"</div>
+    <div class="d">两个人装面板：一个扶、一个对孔。<b>扶的人会随同伴动作不断微调</b>。<br>所以机器人不能只是"把面板举到正确高度"，它必须<b>配合同伴的时机，也不能过早松手</b>。TU Bergakademie Freiberg 与 Arizona State 通过记录两个人共同完成任务，教会机器人这种协调。</div>
+  </div>
+
+  <div class="box good">
+    <b>五个例子的共同结构</b>：运动都是<b>必要</b>的，但<b>不充分</b>。缺的那部分信息有一个共同点——<b>它不在环境里，只在人身上</b>。这就是为什么它无法被机器人机群自动收集。
+  </div>
+
+  <h3>由此推出的数据采集准则</h3>
+  <p>如果机器人数据是个对齐问题，那么<b>"采集了多少小时"就是错的 KPI</b>。更好的提问方式是：</p>
+  <div class="box bad">
+    <b>这批数据，有没有改善机器人的行为——包括它在人身边时的行为？</b>
+  </div>
+  <p>GI 自己的做法是按这个准则配置的：提供第一视角数据、UMI 数据、<b>触觉数据</b>，以及采集这些数据的设备（EGO2 系列头戴、腕部相机、UMI、触觉手套），<b>硬件全部自研自产</b>——逻辑是"能控制采什么、也能控制采得怎么样"。</p>
+  <p>作者的收尾立场很清晰：<b>不认为会有某一种模态胜出</b>。机器人经验、遥操作、示范、第一视角视频、人类反馈，各提供不同信号。<b>做得最好的团队，是知道自己缺哪一种信号、然后去采它。</b></p>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>公理链与判据</h2>
+
+  <div class="fml">
+    <div class="name">① 公理链：为什么人类数据不会随规模消失</div>
+    \[ \underbrace{\text{技能}}_{\text{可自证}} \;=\; f(\text{本体经验}), \qquad \underbrace{\text{偏好}}_{\text{不可自证}} \;=\; g(\text{人的表达}) \]
+    <div class="exp">
+      <b>第 1 步</b>：机器人的任务分为两层——<b>把事做完</b>（技能层）与<b>做得符合人的意愿</b>（偏好层）。<br>
+      <b>第 2 步</b>：技能层可以闭环自证——做一次，成没成环境会给反馈（东西掉了/没掉）。因此它可以靠机器人自身经验不断优化，<b>数据成本随规模下降</b>。<br>
+      <b>第 3 步</b>：偏好层无法自证——做成了，环境不会告诉你"人满不满意"。<b>这个信号只存在于人脑中</b>。<br>
+      <b>第 4 步</b>：因此收集再多 \(f\) 也推不出 \(g\)。<b>样本量增加改变的是估计精度，不改变可辨识性</b>——这是信息缺失，不是统计不足。<br>
+      <b>结论</b>：人类数据不是过渡方案，而是一类<b>结构上不可替代</b>的信号源。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 失败模式的形式化：任务成功 ≠ 对齐成功</div>
+    \[ \text{对齐} \;=\; \mathbb{1}\big[\text{task\_success}\big] \;\wedge\; \mathbb{1}\big[\text{preference\_satisfied}\big] \]
+    <div class="exp">
+      薯片袋的例子正好落在这个真值表的<b>"成功且不满意"</b>格：抓取判定为真，偏好判定为假。<br>
+      <b>工程含义</b>：如果评测只看 task_success，<b>这类失败在指标上完全不可见</b>——模型会一路优化到"抓得越来越稳、越来越会捏碎"。<br>
+      这也解释了为什么作者强调 KPI 要换成"行为是否改善"，因为小时数、成功率两个指标都<b>对这一格完全盲</b>。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 三类人类信号的差异（同一批人，三种标签）</div>
+    \[ \text{FPV}:\ \text{过程}, \qquad \text{Demo}:\ \text{一条好路径}, \qquad \text{Feedback}:\ \text{偏好序} \]
+    <div class="exp">
+      <b>第一视角记录</b>：展示工作<b>自然展开</b>的过程，包括没人会想到写进脚本的停顿、目光、交接——<b>信息最丰富但最脏</b>。<br>
+      <b>一次示范</b>：展示完成特定任务的<b>一种</b>好方法——<b>干净但只有一条路径</b>。<br>
+      <b>显式反馈</b>（如对两种行为排序）：直接说明人更偏好哪个——<b>最贵但最直接对齐偏好层</b>。<br>
+      三者可以同时用，且能相互增强：多样化机器人预训练会让人类示范的迁移效果更好。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 可执行判据（替换掉"采集小时数"）</div>
+    \[ \Delta_{\text{align}} \;=\; \text{行为改善}\big|_{\text{有人在场}} \;-\; \text{行为改善}\big|_{\text{无人评估}} \;>\; 0 \]
+    <div class="exp">
+      这是把文章立场翻译成可操作的验收条件：<b>一批数据的价值，看它是否让机器人在"有人在场"的场景里表现更好</b>，而不看它有多少小时。<br>
+      <b>实操提示</b>：如果一个数据集只能提升"无人干扰下的抓取成功率"，却对"被人打断 / 需要等待 / 需要确认"这几类场景毫无改善，那它买到的是技能，不是对齐。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限</h2>
+
+  <div class="box good">
+    <b>核心价值：它把一场情绪化的站队，换成了一个可以讨论的坐标系</b>。<br>
+    ① <b>拆掉了伪命题</b>：不必再争"哪种数据赢"，只需问"我缺的是技能信号还是偏好信号"。这是能直接指导采集决策的转向。<br>
+    ② <b>给出了不可替代性的严格论证</b>：不是"人类数据很重要"这种软话，而是<b>"它是信息缺失、不是样本不足"</b>——规模救不了。<br>
+    ③ <b>KPI 的替换是最实用的产出</b>：从"采集小时数"改成"行为是否改善（含有人在场时）"，这一条能立刻改变一个数据团队的排期。
+  </div>
+
+  <h3>作者自己划的边界（这一段很值得学）</h3>
+  <div class="box bad">
+    <b>他主动把结论降级为"观点"</b>：五个例子"说明了我们的观点，但它们<b>并不能证明</b>人类数据会永远不可或缺"；"其中<b>大多数是受控实验</b>，也<b>没有任何一项研究对大规模机器人机群进行测量</b>"。"人类数据将持续发挥作用，是我们提出的一个判断。我希望明确将它表述为一个观点。"<br>
+    在具身智能的宣传语境里，<b>这种自我限定几乎是稀缺品</b>。
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>这是利益相关方的论证，需要标注</b>：作者是 GI 联合创始人，而 GI 卖的就是第一视角数据、UMI 数据、触觉数据和采集硬件。他的结论（"人类数据不可替代、多种模态并存、按需采缺的信号"）<b>与他的商业定位完全一致</b>。这不代表论证错了，但读者必须知道<b>谁在说话</b>。文章没有披露这层利益关系。</li>
+    <li><b>"不可辨识性"这个论证比作者自己说的更强，也更弱</b>：强在它确实是信息论层面的——但弱在<b>偏好并非完全不可从行为推断</b>。人会用行为表达偏好（躲开、伸手、皱眉），这些信号机器人是能观测的。真正不可推断的是<b>未被表达的偏好</b>。所以严格说法应是"<b>仅靠机器人自身经验，无法覆盖全部偏好</b>"，而不是"完全无法获得"。</li>
+    <li><b>五个例子都来自受控实验，且场景高度受限</b>：薯片袋是单一物体、辅助进食是特定人群、博物馆导览只有六位访客。这些例子证明的是<b>"对齐问题真实存在"</b>，不是<b>"对齐问题是大规模部署的主要瓶颈"</b>。两者之间还差一个量级的证据。</li>
+    <li><b>"物理对齐"与已有的 HRI / 偏好学习文献关系没交代</b>：偏好学习（如文中引用的 Tian 等 2024 的奖励学习）、可解释性、共享控制，都已有大量工作。作者把它重新命名为 physical alignment 并作为新框架提出，<b>但没说明它与 RLHF / 偏好学习在方法上的差异</b>——读起来更像一次<b>好的重新表述</b>，而不是新方法。</li>
+    <li><b>"十亿台机器人"的思想实验有一个可以反驳的漏洞</b>：如果机器人机群能观测到人的反应（被推开、被纠正、被表扬），那么偏好信号其实是<b>可以间接采集</b>的。作者用"仅靠记录机器人做过的一切"来界定，<b>把观测人类反应排除在外了</b>——这个界定让论证更干净，但也让结论比实际更强。</li>
+    <li><b>最实用的一句反而没展开</b>：Physical Intelligence 与 Georgia Tech 那个发现——<b>机器人预训练数据越多样，人类数据带来的收益越大</b>。这是"两种数据互补"的定量证据，比五个定性例子都硬。但原文只用了一张图带过，并自己注明"结果仅适用于该研究中的任务，并非普遍适用的 Scaling Laws"。</li>
+  </ul>
+
+  <p class="src">来源：公众号 human five《GI labs:机器人数据是一个对齐问题》（2026-11-12）· 作者 Shumo Chu，General Intelligence Labs 联合创始人 · 原帖 Adam Patni（@adam_patni）2026-11-08 于 X</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div></body>
+</html>

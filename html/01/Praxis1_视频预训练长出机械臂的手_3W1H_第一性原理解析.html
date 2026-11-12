@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Praxis-1：让视频模型直接长出控制机器人的手 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>Praxis-1：让视频模型直接长出控制机器人的手<span class="sub">Runway · 270 亿参数视频基座 + 3.14 亿 Action Expert · RoboLab-120 46.2% 居世界动作模型第一 · 真机 100 次 88 次成功 · 比 GPT-6 Astra 快 15.6 倍、便宜 51 倍</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-12</div>
+    <div><b>关键词</b> 世界动作模型 WAM · 视频预训练 · Action Expert · 实时分块 RTC</div>
+    <div><b>一句话</b> 把"预测下一帧"的能力，直接接到机械臂上，视频模型负责想象、小网络负责翻译</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>机器人缺的从来不是聪明，而是数据——真机示范又贵又慢。<b>但人类早就把"物体怎么滚、手怎么动、任务做到一半长什么样"拍成了海量视频</b>。Praxis-1 的判断是：视频预测学到的是一套<b>与本体无关的物理直觉</b>，不必重新发明，只要在后面挂一个很小的翻译层。270 亿参数的主干只干一件事——想象未来 1.6 秒的画面；3.14 亿参数的 Action Expert 读它的内部特征，把"想象"反推成动作。RoboLab-120 上 46.2% 位列世界动作模型与开源基座第一，真机 100 次抓放成功 88 次。最有信息量的还是离线诊断：<b>误差主要来自"未来想错了"，不是"动作读错了"</b>。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 关键公式与判据</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个"会想象"的世界动作模型</h2>
+  <p>先把名词拆干净。<b>Praxis-1</b> 是 Runway 开源发布的<b>世界动作模型（World-Action Model，WAM）</b>。它由三块拼成：</p>
+  <table>
+    <tr><th>部件</th><th>规模</th><th>职责（人话）</th></tr>
+    <tr><td><b>视频主干</b></td><td>26.9B 参数，每 token 只激活约 2.8B</td><td>想象"接下来 1.6 秒画面会变成什么样"</td></tr>
+    <tr><td><b>Action Expert</b></td><td>314M 参数，16 层</td><td>读主干想象的内部特征，反推出"要达到这个画面，手该怎么动"</td></tr>
+    <tr><td><b>本体投影层</b></td><td>每种机器人各一套，很轻</td><td>把不同机器人的位姿/动作翻译成统一格式，让一个模型能开多种车</td></tr>
+  </table>
+  <p>一次调用的完整闭环：给它<b>一句指令 + 最新相机画面 + 机器人当前位姿</b> → 它同时吐出<b>一小段未来视频</b>和<b>24 行动作</b>（15 Hz 下正好 1.6 秒）→ 机器人把这段动作整块执行完 → 新画面回来 → 再调一次。</p>
+  <div class="box good">
+    <b>它和"普通 VLA"最本质的差别</b>：普通 VLA 是"看一眼 → 直接蹦动作"，中间是黑箱。Praxis-1 是"看一眼 → 先把未来画出来 → 再从画里读动作"。<b>中间多了一道可检查的产物</b>——你能看它想象得对不对。后面第 10 节的诊断就是靠这道产物做的。
+  </div>
+  <p>它对本体是<b>真通用</b>的：单臂 Franka、双臂 YAM、移动操作 RT-1、甚至社区低成本 SO-101，都能用同一套主干 + 各自的薄投影层跑起来。RT-1 这种<b>中期训练数据里从没出现过的本体</b>，微调也能到 80%。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：机器人数据的死结，视频里早就解开了</h2>
+  <p>先把问题的物理本质摆出来。训练一个通用策略，需要"动作 + 后果"的配对数据。但从哪来？</p>
+  <div class="step">
+    <div class="t">路线一：加遥操作</div>
+    <div class="d">人戴着设备操控机器人。质量高，但<b>一小时一小时地攒</b>，成本随规模线性上涨，且只有少数实验室玩得起。</div>
+  </div>
+  <div class="step">
+    <div class="t">路线二：加第一视角视频</div>
+    <div class="d">人戴摄像头干活。比遥操作便宜，但<b>仍然要"为采集而采集"</b>——你得专门组织人去拍。</div>
+  </div>
+  <div class="step">
+    <div class="t">路线三（本文选择）：直接用人类已经拍好的通用视频</div>
+    <div class="d">人们日常就在拍。这些视频里天然包含"物体如何运动、手如何移动、任务中途是什么样子"。<b>这是唯一已经规模化、且不需要为采集额外付钱的行为记录</b>。</div>
+  </div>
+  <p>为什么视频知识能迁移到机械臂？论文给的推理很朴素：<b>视频预测模型要预测得准，就必须自己学会物理</b>——杯子倒了会滚、抽屉拉开有阻力、袋子被抓住中间会皱。这些规律<b>不区分"人手"还是"机械手"</b>。所以视频预训练给出的，是一份<b>与本体无关的物理常识底座</b>。</p>
+  <div class="box bad">
+    <b>但这里有个硬矛盾，也是全文技术难点的来源</b>：视频模型天生是"上帝视角"的——训练时每一帧都能看到其他所有帧，<b>包括未来帧</b>。而机器人<b>看不到未来</b>，它只能顺着时间往前走。所以视频模型不能原样拿来用，必须先把"全知"改成"因果"。
+  </div>
+  <p>Praxis-1 的解法是把注意力改成<b>块级因果</b>：按每块 1.6 秒（6 个潜在帧）沿时间推进，<b>每个块只能看到之前的块</b>，看不到后面。这一步叫"具身视频中期训练"，是把一个会做梦的模型改造成一个会按顺序做事的模型的关键手术。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：四阶段训练 + 一个"翻译层"</h2>
+
+  <h3>阶段一：视频预训练（学会世界长什么样）</h3>
+  <p>起点是 Runway 的视频基础模型，一个在 12 种生成任务上预训练过的统一模型（文生图/视频/音频、以参考图或参考片段为条件生成等），用全序列注意力在通用视频上训练，片段最长 20 秒。</p>
+  <p>主干是<b>扩散 Transformer</b>，采用 DDT 结构——拆成"条件编码器 + 速度解码器"。它跑在<b>冻结的 Wan2.2 VAE 潜空间</b>里，指令由一个<b>冻结的 Qwen3.5-2B</b> 读取。20 个前馈层里 17 个是 MoE：每层有 1 个共享专家 + 128 个路由专家，每个 token 选 8 个。</p>
+  <div class="box good">
+    <b>MoE 的账要算清</b>：一层里装着相当于 129 个专家的参数，但每个 token 只走 9 个，宽度之和约等于一个稠密层。<b>所以参数总量 26.9B、单 token 计算量却只相当于 2.8B 的稠密模型</b>。这就是它能在一张 80GB GPU 上跑起来的原因（bf16 占 54.4 GB）。
+  </div>
+
+  <h3>阶段二：具身视频中期训练（把"全知"改成"因果"）</h3>
+  <p>注意力切成块级因果后，在 15 fps 的具身视频上继续训。数据以<b>人类第一视角视频为主</b>（烹饪、清洁、组装、打包），另外混入机器人视频、通用视频、少量游戏画面。</p>
+  <p>训练用 teacher forcing：<b>前面的块给真实视频，不让模型吃自己的预测</b>。好处是一次并行前向就能同时训练 4 个块，效率高。推理时规则一致——默认从机器人读<b>上一个块的真实画面</b>，保证它看到的上下文和训练时同类型。</p>
+
+  <h3>阶段三：视频与动作联合中期训练（挂上 Action Expert）</h3>
+  <p>这一步接入 Action Expert，并给机器人数据窗口加动作目标。数据覆盖单臂、双臂、低成本双臂，每种本体走各自的投影层。</p>
+  <div class="box good">
+    <b>一个很讲究的工程细节</b>：为了不把好不容易练出来的视频能力冲垮，前 1,500 次参数更新里，<b>Action Expert 的学习率倍数</b>和<b>从动作损失流回主干的梯度缩放系数</b>都从 0 慢慢升到 1。相当于先让新来的小学徒站边上看，再慢慢给它发言权。
+  </div>
+  <p>损失函数是<b>视频速度损失与动作速度损失的等权之和</b>，不是用动作去替换视频目标——<b>引入动作后，视频预测仍然是训练目标的一部分</b>。这一点是整套设计的立场：动作是叠加在世界上的一层，不是替代世界。此外这一阶段仍保留约 30% 纯视频任务，让视频能力继续被喂养。</p>
+
+  <h3>阶段四：特定本体微调</h3>
+  <p>主干和 Action Expert 原样加载，<b>只有该机器人专属的输入/输出投影层从零训练</b>，同时保留视频损失。所以在 DROID（公开的真机 Franka 数据集）上微调，成本很低。</p>
+
+  <h3>推理：分块执行 vs 实时分块（RTC）</h3>
+  <p>默认是<b>分块执行</b>：一次算 1.6 秒动作，机器人执行完再问下一次。在单张 H100 上一次往返约 0.55~0.6 秒，约为动作时长的三分之一——听起来够快，<b>但每块结束时机器人还是会停一下</b>。</p>
+  <p>所以论文做了 <b>RTC（real-time chunking）</b>：执行到一半就请求下一块，让动作接得上。真正的难点在<b>两块之间怎么接</b>——直接把新旧计划混合，机械臂会抖；正确做法是让新计划<b>从机械臂实际将要到达的位置</b>接着往下走。</p>
+  <div class="box good">
+    <b>RTC 的实测收益</b>：双臂工作站上"静止等待"占比降低约 5 倍——每次调用 0.8~0.9 秒时从 <b>32% 降到 5%</b>；用更快的服务器（约 0.3 秒）时从 16% 降到 3%。<br>
+    抓 5 个物体入袋的任务：RTC 24/30，分块 28/30（成功率略低），但<b>成功任务中位耗时 9.1 秒 vs 15.2 秒</b>——用一点成功率换了快 40% 的速度。
+  </div>
+
+  <h3>引导与量化：两个"能不能落地"的问题</h3>
+  <p><b>引导设置</b>：视频的 CFG 系数和 flow shift 是共享的，论文用网格搜索调，起点（关引导、shift=8）→ 最终（CFG=4、shift=12.5、2 步去噪），<b>净提升 4.0 个百分点</b>，再大就掉分。且这组参数是<b>为 DROID Franka 调的，别的本体要各自重调</b>。</p>
+  <p><b>量化</b>：路由专家压到 <b>4-bit NVFP4</b>，做 5,000 步量化感知微调。RoboLab-120 抽 600 个 episode：<b>NVFP4 46.5% vs bf16 47.8%</b>；真机 YAM 上 87% vs 93%（30 次 rollout，差异不显著）。<b>权重从 54.4 GB 缩到 17.5 GB</b>。</p>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>关键公式与判据</h2>
+
+  <div class="fml">
+    <div class="name">① 视频与动作的联合流匹配目标</div>
+    \[ \mathcal{L} = \underbrace{\big\| v_\theta(x_t^{\text{vid}}, t) - u^{\text{vid}} \big\|^2}_{\text{视频速度损失}} \;+\; \underbrace{\big\| a_\phi(x_t^{\text{vid}}, \tau) - u^{\text{act}} \big\|^2}_{\text{动作速度损失}} \]
+    <div class="exp">
+      两路都用 <b>Rectified Flow（直线流）</b>：把"从噪声到数据"的路径拉成一条直线，所以两三步就能走到终点。<br>
+      \(x_t^{\text{vid}}\) 是加噪的视频潜变量，\(\tau\) 是<b>动作自己的噪声水平</b>——注意它<b>独立均匀采样</b>，不受视频干净程度限制。<br>
+      这条独立性很重要：如果动作噪声被迫跟视频同步，那么"视频已经很清楚"时动作就学不到"从很脏的起点恢复"的能力。<br>
+      <b>等权相加而非加权</b>，说明作者认为两个目标不需要互相让步——这本身就是"动作不替代视频"的量化表达。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 动作块的时空换算（为什么是 24 行 / 1.6 秒）</div>
+    \[ 24\ \text{行} \div 15\ \text{Hz} = 1.6\ \text{s}, \qquad 6\ \text{潜在帧} \times 1.6\ \text{s} = \text{一块} \]
+    <div class="exp">
+      <b>24 行</b> = 动作块的长度（每行一个控制步）。<b>6 个潜在帧</b> = 这一块在视频侧对应的画面帧数（VAE 压缩后的"浓缩帧"）。<br>
+      首块只有 21 行，因为 6 个潜在帧里的第一帧只覆盖当前帧、不覆盖 4 帧，所以少 3 行——<b>这是"上下文窗口第一次调用"的边界效应，不是 bug</b>。<br>
+      动作维度按本体走：单臂 Franka（DROID）<b>10 维</b>（3 维位置 + 6 维旋转 + 1 维夹爪）；双臂 YAM <b>20 维</b>；第一视角人手用 <b>21 个关节的三维位姿</b>。<br>
+      <b>关键设计</b>：位置与旋转都<b>相对块起始位姿</b>表示，位置和夹爪按第 1~99 百分位边界归一化后裁剪——这样不同机器人的"1 米"才可比。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ MoE 的算力账</div>
+    \[ \text{参数} = 26.9\text{B},\qquad \text{每 token 激活} \approx 2.8\text{B},\qquad \text{每层} = 1\ \text{共享} + 128\ \text{路由，选}\ 8 \]
+    <div class="exp">
+      每 token 走 <b>1 + 8 = 9</b> 个专家，这 9 个专家宽度之和 ≈ 一个稠密层，所以<b>算力仍是稠密级别，容量却是 129 专家的级别</b>。<br>
+      负载均衡沿用 DeepSeek-V3 的做法：<b>不依赖辅助损失的路由偏置</b>（直接调偏置让各专家负载均衡），再加一个很小的序列级辅助损失兜底。<br>
+      这是"用参数换知识、不用参数换算力"的典型手法——对机器人这种<b>延迟敏感</b>的场景，算力账比参数账重要得多。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 误差归因实验：误差到底出在"想"还是"读"</div>
+    \[ \text{err}_{\text{deploy}} \approx 5 \times \text{err}_{\text{oracle}} \]
+    <div class="exp">
+      <b>部署模式</b>：模型自己采样视频 + 动作，跟真机上跑一样。<br>
+      <b>Oracle 模式</b>：把<b>真实的未来视频</b>加噪到对应噪声水平喂给它，<b>只采样动作</b>。<br>
+      两种模式的差 = "想象错了未来"带来的误差。实测<b>给真实未来后误差约为原来的五分之一</b>——也就是说，<b>八成以上的误差来自视频想象，不足两成来自 Action Expert</b>。<br>
+      <b>这条结论的工程含义很直接</b>：继续堆 Action Expert 是低效的，<b>该投的是视频预测</b>。它也解释了失败模式——真机最常见的错是"伸手去拿一个长得像的物体"，而这个错误选择<b>在它想象的视频里就已经出现了</b>。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑤ 自我评分：用自己想象的未来预测成败</div>
+    \[ \text{AUROC} = 0.77\ \ (95\%\ \text{CI}: 0.70\text{–}0.83) \quad\text{vs}\quad \text{仅用已耗时间} = 0.64 \]
+    <div class="exp">
+      做法：冻结模型权重，在其"对下一个预测块的表征"上训一个小输出头，<b>唯一监督信号是整个 episode 的最终成败</b>，没有人工标注。<br>
+      在 272 个未见过的真机 Franka episode 上，执行 4 个动作块（约 6 秒）后即可区分成败。<br>
+      <b>局限必须说清</b>：这个头<b>还不读指令</b>——只要动作干净利落地完成了一次抓放，不管做的是不是对的任务，都会给同样的分数。所以它现在只能当"做得顺不顺"的评分器，不能当"做得对不对"的评分器。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限</h2>
+
+  <div class="box good">
+    <b>核心价值有三条，一条比一条硬</b>：<br>
+    ① <b>把"视频预训练"从口号变成了可复现的配方</b>：四阶段、每阶段保留视频损失、前 1,500 步梯度渐进放开——这些不是玄学，是可以照抄的工艺参数。<br>
+    ② <b>算力—收益关系被真实验证过</b>：中期训练算力加大，DROID 上 5 个 checkpoint 成功率 <b>25.5% → 35.2% → 39.2% → 41.2% → 41.2%</b>（第 5 个持平，说明<b>已进入平台期</b>）；没见过的 RT-1 上 <b>56.3% → 80.0%</b>（非单调）。<b>加算力有用，但边际递减已经开始出现</b>。<br>
+    ③ <b>给出了"该往哪投"的明确答案</b>：误差八成来自想象，那瓶颈就在世界模型，不在动作头。这一条比 RoboLab-120 的排名更有指导价值。
+  </div>
+
+  <h3>论文自己列的局限</h3>
+  <div class="step">
+    <div class="t">局限一：外观相似的物体</div>
+    <div class="d">真机最常见的失败是<b>伸手拿错一个长得像的物体</b>，而这个错<b>在它想象的视频里就已经发生了</b>。指令说清颜色/大小时表现明显更好，模糊指令明显更差——<b>它没有"再确认一下"的能力</b>。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限二：长任务</div>
+    <div class="d">每一步都有各自指令时能做完；<b>只给一条 prompt 串联多步就吃力</b>——它要自己记住哪步做完了、下一步是什么。论文的解法是"外挂一个 LLM/VLM 做任务拆解"，也就是<b>把长程规划从策略里剥出去</b>。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限三：引导参数不能跨本体复用</div>
+    <div class="d">CFG=4、shift=12.5 是<b>为 DROID Franka 专门调的</b>，换机器人要重搜。这让"一个模型开多种车"在部署时打了折扣——<b>权重通用，超参不通用</b>。</div>
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>"世界动作模型第一"要看清分母</b>：RoboLab-120 榜首其实是<b>两个前沿 LLM Agent</b>（AMP1 86.0%、SenseNova-RoboRSI 57.1%），Praxis-1 的 46.2% 排在其后。它拿的是<b>"世界动作模型第一"和"开源机器人基座第一"</b>两个限定赛道的冠军，不是总榜第一。这个区别在传播中极容易被合并成"第一"。</li>
+    <li><b>但它和 Agent 的比较是公平且致命的</b>：同为桌面任务，Praxis-1 一块 1.6 秒动作耗时 0.55~0.6 秒；Astra 在 AA-Robotics 上<b>每个任务平均 30 分钟、16.36 美元，人类只要 20 秒</b>。同台对比三个任务，<b>Astra 耗时是它的 15.6 倍、单位成功成本是 51 倍</b>。"拔笔帽"这一个任务：Praxis-1 13 秒，Astra 7 分 54 秒。</li>
+    <li><b>真机对比的样本量必须点明</b>：10 个任务 × 每任务 10 次 = 100 次，Praxis-1 88 次 vs FLUX 3 Action 80 次。<b>8 次的差距，在 100 样本上还不足以说"显著领先"</b>，论文也没有给置信区间。</li>
+    <li><b>算力 scaling 那张图是"同数据、多训几遍"</b>：论文明确说晚的 checkpoint 复用相同中期训练数据，所以衡量的是<b>算力</b>而非<b>数据</b>。第 5 个 checkpoint 持平，某种意义上是在提示<b>"这条路的天花板已经到了"</b>——真正缺的可能又回到了数据多样性。</li>
+    <li><b>SO-101 那部分的数据清洗值得单独表扬</b>：社区数据集相机名字不可靠（叫 "phone" 的常装在手腕上），所以用<b>运动检查</b>（连续 64 帧里固定相机的像素应静止）+ <b>zero-shot CLIP 外观检查</b>双重判定，两者一致才算腕部相机。3,956 个数据集里只留 102 个做验证。<b>这是把"脏数据"当一等公民处理的少见做法。</b></li>
+    <li><b>自我评分头 AUROC 0.77 不该被读成"能自我改进"</b>：Spearman 0.79 的区间是 <b>0.19~1.00</b>——宽到几乎无法下结论。且它不读指令，无法判断"做对了没"。论文自己也说"这仍是早期证据"。</li>
+  </ul>
+
+  <p class="src">来源：公众号 human five《Praxis-1：视频模型如何学会控制机器人？》（2026-11-12）· Runway Research · 27.2B 总参数 · Apache 2.0 开源（DROID / 双臂 YAM / 中期训练基座三个 checkpoint）</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div></body>
+</html>
