@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoRL 2026 的 101 篇清单，其实是一张产线图 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>CoRL 2026 的 101 篇清单，其实是一张产线图<span class="sub">687 篇接收 → 101 篇入选 · 26 必读 / 45 应读 / 30 有余力 · 五个标签拼起来是一条完整的改进闭环 · 世界模型当试错场，进度奖励当裁判</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-12</div>
+    <div><b>关键词</b> CoRL 2026 · RL 微调 · 世界动作模型 · 人类视频 · 进度奖励</div>
+    <div><b>一句话</b> 清单的价值不在"哪篇好"，而在它把研究分成了五道工序</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>这是一份按个人兴趣排的阅读清单，不是质量榜；但它无意中画出的是当前具身智能的产线图。五个标签——策略的强化学习微调、世界模型与世界动作模型、VLA 与通用策略、大规模人类视频、模仿学习与数据质量——拼起来是同一个闭环的五道工序：先用人类视频把世界的常识灌进去，再把常识接到动作上，然后用世界模型当廉价试错场，用进度奖励当不靠人写规则的裁判，最后用强化学习把成功率推过部署线。判断一篇论文的分量，看它替换的是这五道工序里的哪一道，而不是看它刷了哪个榜。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 公理链与判据</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一份"用模型筛出来的"会议阅读清单</h2>
+  <p>CoRL 2026 在 Austin 接收了 <b>687 篇</b>论文。作者所在的课题组一个人都读不完，于是他做了一件事：<b>用自己的研究兴趣当先验，把论文排序，保留前 101 篇</b>，并分成三档——<b>P0 必读 26 篇、P1 应读 45 篇、P2 有余力可读 30 篇</b>。全部 101 篇里有 <b>11 篇 Oral、13 篇 Spotlight</b>。</p>
+
+  <h3>它是怎么做出来的（这一步比清单本身更像方法）</h3>
+  <div class="step">
+    <div class="t">① 起点是全量元数据，不是熟人推荐</div>
+    <div class="d">从 <b>687 篇接收论文的标题 + 摘要</b>出发，配上会议官方日程（Oral / Spotlight / 海报场次与编号）、社区维护的论文清单（作者 + 摘要，用 OpenReview ID 对齐）。</div>
+  </div>
+  <div class="step">
+    <div class="t">② 排序模型只用作者自己的语料训练</div>
+    <div class="d">训练数据 = <b>他发表过的论文 + 过去六个月加进个人文献库的论文</b>。把它们与近期 arXiv 论文、CoRL 论文作背景对比，让每篇候选都能和"一篇典型 CoRL 论文"比较。<b>模型结构是组合拳</b>：arXiv Sanity 风格的线性支持向量机 + TPMS 风格的相关性，也就是<b>经典的审稿人匹配分数</b>。</div>
+  </div>
+  <div class="step">
+    <div class="t">③ 人工只做后处理</div>
+    <div class="d">前 101 篇按排名分 P0/P1/P2 → 按主题归类 → <b>用 LLM 按摘要起草每篇的一句话概述</b>。作者明确交代："这份清单基于我个人的研究兴趣，而非对论文质量的评判。"</div>
+  </div>
+
+  <h3>五个主题，各自的门面论文</h3>
+  <table>
+    <tr><th>主题</th><th>P0 里最能代表的一句</th></tr>
+    <tr><td><b>策略的 RL 微调</b></td><td>RL Token：从 VLA 里提出紧凑的"RL token"，以 VLA 为锚点在上面训一个小 Actor-Critic，做到<b>小时级的真机 RL</b></td></tr>
+    <tr><td><b>RL 算法与探索</b></td><td>Learning Object Manipulation from Scratch：交互引起的模式变化会让对比式 RL 失效，用<b>交互加权重采样</b>解决</td></tr>
+    <tr><td><b>世界模型 / 世界动作模型</b></td><td>DreamZero（World Action Models are Zero-shot Policies）：视频扩散骨干<b>联合预测视频和动作</b>，新任务泛化是 VLA 的两倍</td></tr>
+    <tr><td><b>VLA 与通用策略</b></td><td>Flow Reversal Steering：把次优动作<b>反演成潜在噪声</b>，再映射到通用策略的其他模式</td></tr>
+    <tr><td><b>模仿学习与数据质量</b></td><td>大规模人类视频：EgoScale 发现第一视角人类数据的<b>对数线性 Scaling Law</b>；Ego2Robot / Being-H0.5 把数万小时人类数据用于 VLA 预训练</td></tr>
+  </table>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：五个主题不是五个热点，是一个闭环的五道工序</h2>
+  <p>如果只看清单，会觉得 2026 年的 CoRL 在同时追五个方向。但把它们的<b>输入输出</b>摆在一起，会发现它们首尾相接——这不是从众，是同一个约束在五个位置上逼出来的解。</p>
+
+  <div class="box bad">
+    <b>那个约束只有一句话</b>：机器人策略要变强，必须有<b>大量、可评估、便宜的试错</b>。而现实世界里，这三样一样都没有——真机试错贵、慢、危险；奖励靠人写；场景靠人搭。
+  </div>
+
+  <h3>工序一：人类视频 → 先验（解决"见过的东西太少"）</h3>
+  <p>机器人数据的量与语言数据差好几个数量级。于是转向人类视频：EgoScale 发现第一视角人类数据存在<b>对数线性的 Scaling Law</b>，Ego2Robot 与 Being-H0.5 直接把<b>数万小时</b>人类数据喂给 VLA 预训练；LAPT-Scale 与 ELA 更进一步，<b>从视频里学潜在动作</b>——不用动作标签，只学"画面这样变，意味着做了一个什么样的动作"。</p>
+
+  <h3>工序二：世界模型 → 试错场（解决"试错太贵"）</h3>
+  <p>有了先验还不够，策略需要"做错了会怎样"的廉价反馈。所以这一批工作把世界模型分成两种用法，对应两篇标志性论文：</p>
+  <div class="step">
+    <div class="t">当作仿真器：SafeDojo / WoVR / MERL</div>
+    <div class="d">在<b>想象出来的 rollout</b> 里做 RL。SafeDojo 更具体：在交互式视频世界模型中对 VLA 做基于模型的安全 RL，用<b>想象得到的进度奖励</b>加一个<b>学出来的安全预测头</b>。它们共同的努力方向，是让"在想象中学习"变得可信。</div>
+  </div>
+  <div class="step">
+    <div class="t">当作策略本身：DreamZero / TAPESTRY / W2A / FACT</div>
+    <div class="d">不预测动作再执行，而是<b>连未来画面一起预测</b>，动作是世界演化的副产品。FACT 特别值得注意：它让模型学<b>错误动作会造成什么后果</b>——这等于给"试错场"补上了负样本。</div>
+  </div>
+
+  <h3>工序三：进度奖励 → 裁判（解决"奖励要人写"）</h3>
+  <p>RL 最贵的一环从来不是算力，是<b>奖励函数</b>。稀疏的成功/失败信号在长程任务里几乎无法学习，稠密奖励又得靠人手工设计。这一批工作（<b>WARP-RM、TOPReward、RARM</b>）的共同目标是：<b>不依赖手工设计，直接产生稠密的任务进度信号</b>。这相当于把"裁判"自动化了——它输出的是"你比刚才更接近目标了"，而不是"你对/错"。</p>
+
+  <h3>工序四：RL 微调 → 把先验推过部署线（解决"预训练不等于能用"）</h3>
+  <p>这一组是今年最密集的，因为它直接决定"能不能用"。四条不同的技术路线：</p>
+  <table>
+    <tr><th>论文</th><th>关键手法</th><th>它换掉了什么</th></tr>
+    <tr><td><b>EXPO-FT</b></td><td>对预训练 VLA 做稳定、样本高效的真机 RL 微调</td><td>换掉"微调必然崩"这个经验</td></tr>
+    <tr><td><b>RL Token</b></td><td>提出紧凑 token，在上面训小 Actor-Critic，VLA 当锚点</td><td>换掉"RL 必须更新整个大模型"</td></tr>
+    <tr><td><b>Flow Policy Gradients</b></td><td>让 Flow Matching 的策略梯度真正可用，支持从头训与微调，两个 Humanoid 上 sim-to-real</td><td>换掉"生成式策略不能直接做策略梯度"</td></tr>
+    <tr><td><b>RoboFFT</b></td><td>用前向加噪过程 + 策略比率加权的 Flow Matching 代理目标做在线 RL</td><td>换掉"扩散/Flow 策略只能靠模仿"</td></tr>
+  </table>
+  <p>还有两条是"换环境"而不是"换算法"：<b>Scaling Sim-to-Real VLA RL with Generative 3D Worlds</b> 用<b>生成的多样化 3D 场景</b>做 RL 微调，避免真机 RL 里的场景过拟合；<b>Learning While Deploying</b> 直接把机群规模当成 RL 的并行度。而 <b>HARBOR</b> 想换掉的是<b>人</b>——一个面向 Agent 的 harness 框架，自动完成环境搭建、奖励设计、调参和 sim-to-real 训练。</p>
+
+  <h3>工序五：数据质量与探索 → 决定这条线能重复几次</h3>
+  <p>剩下那一批看起来最"不性感"的工作，恰恰决定前四道工序有没有意义。Play2Perfect 问的是<b>多指手的任务无关探索预训练里，到底什么因素对精密装配重要</b>；FlashRFCL 用反向—正向课程 + 高吞吐 GPU 仿真，做到<b>只用一条示范</b>就完成稀疏奖励 RL；Learning Loco-Manipulation from SMPC Demonstrations 用仿真里的采样 MPC 生成离线数据，让 off-policy RL <b>不靠奖励塑形</b>也能学移动操作。</p>
+
+  <div class="box good">
+    <b>五道工序的因果顺序</b>：<b>人类视频</b>给先验 → <b>世界模型</b>给廉价后果 → <b>进度奖励</b>给自动裁判 → <b>RL 微调</b>把成功率推过线 → <b>数据与探索</b>决定这套流程能不能在自己的任务上复现一次。缺任何一道，闭环就断在那一环，而断在哪一环，看论文的"输入"就知道。
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：把清单当工具用的三种读法</h2>
+
+  <h3>读法一：按"工序"读，不按"排名"读</h3>
+  <p>P0 / P1 / P2 是<b>作者兴趣的排序</b>，不是价值的排序。真正可迁移的信息是<b>主题分布</b>：五个方向里，RL 微调与 RL 算法探索合起来占了最大的两块，世界模型与 VLA 各占一块——这说明今年社区的重心是<b>"怎么让已有策略变强"</b>，而不是"再造一个更大的策略"。</p>
+
+  <h3>读法二：盯"它换掉了哪个假设"</h3>
+  <p>把上面那张表的方法反过来用：每篇论文真正贡献的往往不是新模块，而是<b>推翻了一条大家默认的假设</b>。举例——</p>
+  <ul>
+    <li>RL 必须更新整个大模型 → <b>RL Token</b> 说只需要一个小头；</li>
+    <li>Flow / 扩散策略不能做策略梯度 → <b>Flow Policy Gradients、RoboFFT</b> 说可以；</li>
+    <li>奖励必须人写 → <b>WARP-RM / TOPReward / RARM</b> 说可以让模型给稠密进度；</li>
+    <li>世界模型必须用成功数据训练 → <b>Training Controllable World Models</b> 反过来指出：<b>只用成功数据训练的世界模型会忽略动作</b>——这条负面结论比很多正面成果更值钱。</li>
+  </ul>
+
+  <h3>读法三：把"清单方法"本身当成可复用的工具</h3>
+  <p>作者的做法其实是一个可复制的小系统：<b>你的发表 + 你的文献库 → 训一个轻量排序器（线性 SVM + 审稿人匹配分数）→ 对全量候选打分 → LLM 按摘要写一句话</b>。它的成本极低（687 篇全量元数据），产出是"一个和你兴趣对齐的漏斗"。任何一个课题组都可以用同样的方式，把自己领域的会议变成一份 50 篇以内的可读清单。</p>
+
+  <div class="box bad">
+    <b>但它有一个必须承认的代价</b>：排序器是用"你过去读过的"训练的，所以它<b>只会放大你已有的兴趣</b>。作者自己也说得很清楚——许多优秀工作没进清单，<b>仅仅因为它们不属于他所在研究组的领域</b>。这意味着这份清单适合"跟进自己赛道"，不适合"发现赛道之外的意外"。
+  </div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>公理链与判据</h2>
+
+  <div class="fml">
+    <div class="name">① 公理链：为什么这五道工序必然同时存在</div>
+    <div class="exp">
+      <b>第 1 步（目标是可控性）</b>：我们要的不是"能生成动作"，而是"在没见过的场景里，按指令把事做成"。这是一个<b>泛化 + 可靠</b>的联合要求，不是单点能力。<br>
+      <b>第 2 步（泛化需要覆盖）</b>：覆盖只能来自数据。真机数据受"机器人数 × 时间"封顶，<b>人类视频是唯一数量级对得上的替代源</b> → 工序一不可避免。<br>
+      <b>第 3 步（可靠需要试错）</b>：可靠性要靠大量失败来磨，而真机试错<b>贵、慢、危险</b>，所以必须有更便宜的后果模型 → 工序二不可避免。<br>
+      <b>第 4 步（试错需要信号）</b>：没有奖励，试错只是随机游走；稀疏奖励在长程任务里学不动，稠密奖励要人写 → 自动稠密奖励（工序三）不可避免。<br>
+      <b>第 5 步（信号需要落到策略上）</b>：预训练策略的分布与"高成功率"之间有一段距离，把这段距离走完就是 RL 微调（工序四）；而这段距离<b>每换一个任务就要重走一次</b>，所以数据与探索效率（工序五）决定复现成本。<br>
+      <b>结论</b>：五个主题不是五个热点，是<b>一个联合要求被拆成五段后，每段的工程化</b>。这也解释了为什么它们在同一年一起爆发。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 世界模型当仿真器的前提：动作必须"能被听见"</div>
+    \[ \hat{s}_{t+1} \sim p_\theta\big(s_{t+1} \mid s_t, a_t\big) \quad\text{可用，当且仅当}\quad I\big(a_t;\, \hat{s}_{t+1} \mid s_t\big) > 0 \]
+    <div class="exp">
+      \(s_t\) 状态（或它的潜在表示）、\(a_t\) 动作、\(I(\cdot;\cdot\mid\cdot)\) 条件互信息。<br>
+      <b>式子在说什么</b>：一个世界模型能不能拿来当试错场，<b>不取决于它预测得准不准，而取决于它有没有"对动作敏感"</b>。如果 \(I=0\)，意思是——不管你做什么，它都预测同一个未来。<br>
+      <b>这正好是 <u>Training Controllable World Models</u> 那条负面结论的严格版本</b>：只用成功数据训练时，动作与未来几乎统计独立（成功轨迹都长一个样），模型于是学会"忽略动作"，RL 在里面的梯度是<b>零信息</b>。<br>
+      <b>工程判据</b>：接一个世界模型做 RL 之前，先做一次"反过来测"——固定状态，喂不同动作，看预测的未来有没有分开。<b>不分开就别用</b>，再准也没用。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 为什么需要稠密进度奖励（稀疏奖励的信息量问题）</div>
+    \[ \mathbb{E}\big[\nabla_\theta \log \pi_\theta(a_t|s_t)\,\hat{A}_t\big] \;\;\text{在稀疏奖励下}\; \hat{A}_t \approx 0 \;\;\text{于绝大多数 } t \]
+    <div class="exp">
+      \(\hat{A}_t\) 是优势估计，\(\pi_\theta\) 是策略。<br>
+      <b>式子在说什么</b>：策略梯度是"用优势给动作加权"。任务只有最后成功/失败一个信号时，<b>除了最后一步，所有中间步的优势都是 0</b>，梯度也就是 0——不是学得慢，是<b>根本没有梯度</b>。<br>
+      <b>这正是 WARP-RM / TOPReward / RARM 的动机</b>：把"离目标更近了多少"变成每一步都能拿到的分数，让 \(\hat{A}_t\) 处处非零。代价是引入了一个会错的裁判——<b>奖励黑客（reward hacking）的风险随稠密度上升</b>，这也是"进度奖励"这条线真正的难点所在。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 人类视频的对数线性律：为什么它值得投</div>
+    \[ \text{Perf} \;\approx\; \alpha \log H + \beta \qquad \big(\text{斜率恒定} \Rightarrow \text{边际收益递减，但永不为零}\big) \]
+    <div class="exp">
+      \(H\) 是人类数据的规模（小时数），\(\alpha,\beta\) 是拟合常数。EgoScale 报告的是这种<b>对数线性</b>关系。<br>
+      <b>读法</b>：对数线性意味着<b>每翻一倍数据带来的提升是固定的一个小量</b>，而不是幂律那种"投入越多越猛"。它的战略含义是：<b>这条路不会突然起飞，但也永远不会饱和</b>——所以值得长期投入，只是不能指望它单独解决问题。<br>
+      <b>与工序二的关系</b>：正因为人类视频的收益是对数的，剩下的差距必须靠"试错场 + RL 微调"去补——<b>两条曲线的斜率差，就是今年这批 RL 论文存在的理由</b>。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑤ 泛化差距：为什么"新任务两倍于 VLA"是个强信号</div>
+    \[ \text{Gap} \;=\; \mathbb{E}_{\text{新任务}}\big[R\big] \;-\; \mathbb{E}_{\text{训练分布}}\big[R\big] \]
+    <div class="exp">
+      DreamZero 声称在新任务上的泛化达到 VLA 的两倍，<b>比的正是这个 Gap</b>，而不是训练分布内的成功率。<br>
+      <b>为什么重要</b>：在训练分布内刷分，靠的是记忆；只有跨分布的差距缩小，才说明模型学到了"世界怎么运作"而不是"数据长什么样"。<b>读任何 VLA / 世界模型论文，先找它报的是哪一个数</b>——只报同分布成功率的，泛化能力无法判断。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限</h2>
+
+  <div class="box good">
+    <b>核心价值：一份清单，三种用法</b>。<br>
+    ① <b>当索引</b>：101 篇带一句话概述、OpenReview 链接、Oral/Spotlight 场次与海报编号，还导出 BibTeX 可导入 Zotero / Paperpile。<b>作为工程效率工具，它已经完成使命</b>。<br>
+    ② <b>当雷达</b>：五个主题的分布，比任何单篇论文都更能说明社区在往哪挤。今年很明显——<b>重心在"让已有策略变强"，不在"造更大的模型"</b>。<br>
+    ③ <b>当方法论模板</b>：轻量排序器 + LLM 摘要这套流程，任何课题组都能在一周内复制到自己的领域。
+  </div>
+
+  <h3>它明确不适合被当成什么</h3>
+  <div class="box bad">
+    <b>不是质量榜</b>：作者原话——"基于我个人的研究兴趣，而非对论文质量的评判"，"许多出色的工作没有出现在这里，仅仅是因为它们不属于我所在研究组的研究领域"。<b>101 / 687 ≈ 15%</b>，剩下 85% 里有大量同等质量的工作。
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>排序器＝兴趣的自我复制，存在系统性盲区</b>：训练语料是"自己的论文 + 过去六个月自己加的文献"。这类模型的输出<b>必然向已有兴趣收敛</b>，因此它擅长"跟进"，完全不擅长"发现"。用它当唯一的会议导航，会<b>持续加深既有偏见</b>——而作者的诚实说明，恰恰暴露了这个设计缺陷。</li>
+    <li><b>一句话概述由 LLM 按摘要生成，摘要与正文的落差被继承</b>：摘要里的"达到 SOTA"、"两倍泛化"经常在正文里有更弱的限定条件。<b>用一句话概述当决策依据，是这份清单最容易被误用的地方</b>——它适合筛选"要不要下载 PDF"，不适合判断"这个结论成不成立"。</li>
+    <li><b>五个主题的划分是作者视角，不是会议的客观结构</b>：注意 P0 里的分节其实是"RL 微调 / RL 算法与探索 / 世界模型与世界动作模型 / VLA 与通用策略 / 模仿学习与数据质量"。<b>"大规模人类视频"和"进度奖励"在文章开头被列为独立方向，但在清单里被并进了其他分节</b>——说明这套分类是<b>事后整理</b>的，不是会议的官方 track。把它当"领域地图"时要留这个折扣。</li>
+    <li><b>缺少跨方向的横向对比</b>：清单把 RL 微调的四条路线（EXPO-FT / RL Token / Flow Policy Gradients / RoboFFT）并列，却<b>没有给它们的实验条件是否可比</b>。而这四条路线在样本效率、真机时长、本体上的口径很可能完全不同，<b>并列容易被误读为"任选一条都行"</b>。</li>
+    <li><b>"两倍泛化"这类数字缺少口径</b>：DreamZero 的"新任务泛化是 VLA 的两倍"是一句话概述里最亮的数字，但两倍是成功率之比、还是 Gap 之比、在什么任务集上——清单没有交代。<b>这正是第②条批判的实例</b>。</li>
+    <li><b>对"世界模型当仿真器"这条线的困难描述不足</b>：清单把 SafeDojo / WoVR / MERL 归为"让想象 rollout 更可信"，但<b>没有指出这条线最硬的负面结果</b>——在成功数据上训练的世界模型会忽略动作。读者容易高估"用想象做 RL"的成熟度。</li>
+  </ul>
+
+  <p class="src">来源：公众号 human five《CoRL 2026 阅读清单》（2026-11-12）· 原清单 <a href="https://www.fracturedplane.com/blog/2026/11/10/CoRL2026-Reading-List.html">fracturedplane.com</a>（2026-11-10）· CoRL 2026 于 Austin 共接收 687 篇，本清单覆盖前 101 篇</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div></body>
+</html>

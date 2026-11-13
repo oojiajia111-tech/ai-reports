@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From Pixels to Actions: NEO-VLA 把视觉编码器扔了</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:24px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>动作真正需要的东西，在视觉成型的半路上<span class="sub">NEO-VLA · 结构性免编码器 · 冻结骨干读第 28 层 90.9% vs 读末层 86.7% · 给编码器式模型硬塞中间特征反而从 79.5% 掉到 64.9% · LIBERO 97.4 / LIBERO-plus 89.7（开源最好）· 223 万 episode / 9,927 小时 · 3090 上 282.5 ms</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-04 · arXiv 2611.06918</div>
+    <div><b>关键词</b> 免视觉编码器 · 逐层探针 · 三维位置编码 · 流匹配动作专家 · 中间层 KV 缓存</div>
+    <div><b>一句话</b> 别把动作专家锁死在视觉的终点站——它该在中途任何一站上车</div>
+    <div><b>机构</b> EvolvingLMMs-Lab / 商汤 / 港中文·NTU 等 17 人合作（v3，2026-11-09 修订）</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>常规视觉语言动作模型的剧本是：先把画面压成一个视觉向量，再在这个向量上做动作决策。这篇论文先做了一次探针，然后才动架构——它逐层测"读到第几层最好办事"，结果发现对动作最关键的信息在视觉表征彻底成型之前就到峰值：冻结骨干时读第 28 层往外跳，比读最后一层高出四个多点，全量微调只能缩小、消不掉，单纯加规模也补不回来。于是它干脆不要视觉编码器，像素用轻量卷积直接进骨干，和语言一起演化，动作专家通过可配置的层映射去读中间层的缓存。真正刺眼的是反向实验：给编码器式模型硬接中间特征，冻结性能反而从 79.5 掉到 64.9。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：一个"结构上就没有编码器"的 VLA</h2>
+  <p>先说清楚它反对的是什么。现有 VLA 几乎都建立在一个前提上：<b>感知先被视觉编码器压缩，动作推理才开始</b>。这个前提很自然——大模型时代所有多模态系统都这么搭。但论文指出，机器人操作依赖的恰恰是<b>最容易被这种抽象弄丢的信号</b>：<b>局部几何、边界、深度、细微的状态变化</b>。</p>
+  <div class="box good">
+    <b>它做的事（一句话）</b>：把图像用<b>轻量 patch 卷积</b>切成 token，直接扔进骨干的语言 token 空间，<b>与语言一起演化</b>；旁边挂一个窄型的<b>流匹配动作专家</b>，通过<b>可配置的层映射</b>去读骨干<b>中间层</b>的 KV 缓存，预测连续动作块（双臂 + 机身）。
+  </div>
+
+  <h3>三个组件</h3>
+  <table>
+    <tr><th>组件</th><th>干什么</th><th>实现</th></tr>
+    <tr><td><b>patch embedder</b></td><td>把像素变成 token，不做语义压缩</td><td>轻量两级卷积，<b>总步长 32</b>；<b>不用</b>预训练视觉编码器、<b>不用</b>图像码本、<b>不用</b>自编码器</td></tr>
+    <tr><td><b>骨干</b></td><td>视觉与语言在同一个序列里联合演化</td><td><b>40 层、2B 参数</b>的视觉语言模型；旋转位置编码按<b>时间、高、宽三维分解</b></td></tr>
+    <tr><td><b>动作专家</b></td><td>把"第几层的视觉计算"翻译成动作块</td><td>窄型流匹配头，<b>层映射可配置</b>，直接读中间层 KV 缓存；推理用 <b>10 步欧拉采样</b></td></tr>
+  </table>
+
+  <h3>训练与数据</h3>
+  <p>预训练语料来自 <b>9 个公开数据集家族</b>（AgiBot-World、Open X-Embodiment、DROID、RH20T、RoboMIND 等），合计 <b>223 万条 episode、9,927 小时</b>。训练分三段：<b>① 冻结骨干、只训动作专家 → ② 全参数训练 → ③ 后训练微调</b>。这个顺序不是随便排的，后面第 ④ 个公式会解释它为什么必须这样。</p>
+
+  <h3>成绩单</h3>
+  <table>
+    <tr><th>基准</th><th>结果</th><th>备注</th></tr>
+    <tr><td>LIBERO 平均成功率</td><td><b>97.4</b></td><td>—</td></tr>
+    <tr><td>LIBERO-plus 总分</td><td><b>89.7</b></td><td>开源（代码 + 权重）模型里最好</td></tr>
+    <tr><td>LIBERO-plus 相机扰动</td><td>94.5</td><td>对视觉外观变化很稳</td></tr>
+    <tr><td>LIBERO-plus 语言扰动</td><td>91.7</td><td>指令改写不掉分</td></tr>
+    <tr><td>RoboTwin 2.0 Clean2Rand</td><td><b>69.4</b></td><td>开源方法最强</td></tr>
+    <tr><td>真机（3 任务 × 50 条演示微调）</td><td>12/20、17/20、13/20</td><td>参数更小，匹敌或超过 π0.5</td></tr>
+    <tr><td>单次查询延迟（RTX 3090）</td><td><b>282.5 ms</b></td><td>作者自认离高频控制还有距离</td></tr>
+  </table>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：编码器是信息瓶颈，而且瓶颈的位置选错了</h2>
+  <p>这篇论文最值得学的不是它的架构，而是它<b>先做证据、再做设计</b>的顺序。三段证据，一段比一段狠。</p>
+
+  <div class="step">
+    <div class="t">证据一：冻结骨干时，读早期层明显优于读最后一层</div>
+    <div class="d">同一个模型，只改"动作专家读第几层"：读第 28 层（skip-28）拿到 <b>90.9%</b>，读最后一层（end-28）只有 <b>86.7%</b>。<b>差四个多点，而且这四点不是靠换模型、加数据拿到的，只是换了一个"取货口"。</b></div>
+  </div>
+  <div class="step">
+    <div class="t">证据二：全量微调能缩小差距，但消不掉</div>
+    <div class="d">这条最关键。如果差距只是"训练不充分"，全参微调后应该消失；如果只是"模型不够大"，加规模应该补回来。但它<b>只是缩小，没有消除，而且单纯扩大规模也补不回来</b>——说明这是<b>结构性的</b>：末层表征为了服务"理解/描述"，已经把那部分信息<b>主动丢掉了</b>。</div>
+  </div>
+  <div class="step">
+    <div class="t">证据三（反向实验，最狠）：给编码器式模型硬塞中间层特征，性能反而崩</div>
+    <div class="d">把中间视觉塔的特征接到编码器式的 Qwen3-VL 上，<b>冻结性能从 79.5% 掉到 64.9%</b>。<br>
+    这条说明<b>关键不在"有没有中间层"，而在"表征怎么形成、怎么被暴露"</b>。特征拼上去，但接口的训练方式没变，模型不知道怎么用它。</div>
+  </div>
+
+  <div class="box bad">
+    <b>把三条证据串起来的判断</b>：视觉编码器不是"压缩得不够好"，而是<b>压缩目标错了</b>。它为"把画面说清楚"优化——那是分类、检索、描述的优化目标；而动作要的是<b>几何、边界、深度、状态的微小变化</b>。为描述优化的表征，会把"这块布边翘起两毫米"当成噪声压掉。<b>换更大的编码器不解决，因为优化目标没换。</b>
+  </div>
+
+  <h3>为什么"免编码器"能成立：一张图的 token 数才是真正的成本</h3>
+  <p>直觉上，扔掉编码器会让骨干直接吃像素，算力爆炸。但这里有个被忽略的账：<b>编码器方案的成本并不低</b>——它要先跑一个 ViT，再把特征投影进语言空间，中间还要对齐。而 patch embedder 用<b>总步长 32</b> 的两级卷积，把一张图压成<b>很短</b>的 token 序列，直接复用骨干的注意力。<b>省掉的是"两套表征之间那道翻译"，不是省掉分辨率。</b></p>
+  <p>论文没有明说的推论是：<b>真正的信息损失发生在"表征目标"这一层，不在"空间分辨率"这一层</b>。这也解释了为什么相机扰动 94.5、语言扰动 91.7 都很稳——它保住的正是那些被编码器视为细节、但对操作很关键的量。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：三个工程决定，每一个都在还上一段的债</h2>
+
+  <h3>决定一：不用码本、不用自编码器，但也不是"裸像素进 Transformer"</h3>
+  <p>它保留了卷积——<b>两级、总步长 32</b>。这是很克制的选择：卷积自带<b>局部性与平移等变</b>这两个先验，正好对应"边界、局部几何"这类信号；而 Transformer 从零学这两个先验很贵。<b>换句话说：扔掉的是"语义压缩"，留下的是"几何归纳偏置"。</b></p>
+
+  <h3>决定二：位置编码按时间、高、宽三维分解</h3>
+  <p>视频输入本质是三维的（时间 × 高 × 宽）。把它压成一维序列再套一维位置编码，等于告诉模型"时间相邻"和"空间相邻"是同一件事。三维分解的作用是<b>让模型能区分"这里变了"和"这时变了"</b>——而"什么时候发生了变化"恰恰是操作任务最需要判断的东西（东西滑了、门开了、手没对准）。</p>
+
+  <h3>决定三：动作专家的层映射做成可配置</h3>
+  <p>这是全文最实用的设计。它不硬编码"读第几层"，而是把<b>层映射作为超参</b>，允许动作专家从不同深度取特征。理由很简单：<b>哪一层对动作最有用，取决于任务与数据</b>，第 28 层只是在这个设置下的最优解，不该被焊死。</p>
+
+  <div class="box good">
+    <b>为什么训练必须"先冻骨、再全参"</b>：<br>
+    ① 第一段<b>冻结骨干、只训专家</b>——骨干的表征不能动，专家必须先学会"怎么从给定的中间层读出动作"，这是<b>接口先对齐</b>。<br>
+    ② 第二段<b>全参数训练</b>——接口通了，才允许骨干按"对动作有用"重新塑形。<br>
+    ③ 反过来做（一上来就全参）会怎样？<b>骨干会被动作损失迅速拉走，把语言理解能力破坏掉</b>，而这正是它后面观察到的现象的反面教材。
+  </div>
+
+  <h3>顺手捡到的两个结论（对做工程的人比榜单更有用）</h3>
+  <div class="step">
+    <div class="t">① 动作数据与理解数据要一起训，否则文本能力归零</div>
+    <div class="d"><b>协同训练</b>：模型既保留文本输出，策略也最优。<b>只微调动作</b>：文本能力<b>直接归零</b>。含义很直白——<b>把 VLA 当纯策略来训，等于把它的常识一起扔掉</b>，而常识正是它泛化到新任务的本钱。</div>
+  </div>
+  <div class="step">
+    <div class="t">② 它稳的是"外观"，虚的是"构型"</div>
+    <div class="d">作者自己交代：对视觉外观变化很稳（换纹理、换光照、换相机位置），但<b>陌生空间构型和任务目标仍显著退化</b>。这是一条很诚实的自我限定，也说明它学到的更多是<b>外观不变性</b>，而不是真正的三维几何理解。</div>
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式</h2>
+
+  <div class="fml">
+    <div class="name">① 两种范式：把"终点"换成一个"可选集合"</div>
+    \[ \underbrace{a \sim \pi_\theta\big(a \mid E_\phi(o),\, l\big)}_{\text{编码器范式：一个固定终点}} \qquad\longrightarrow\qquad \underbrace{a \sim \pi_\theta\Big(a \mid \{h^{(k)}\}_{k \in \mathcal{L}},\, l\Big)}_{\text{原生范式：一组可选的中间站}} \]
+    <div class="exp">
+      \(o\) 观测（图像/视频），\(l\) 语言指令，\(E_\phi\) 视觉编码器，\(h^{(k)}\) 骨干第 \(k\) 层的隐藏表征，\(\mathcal{L}\) <b>层映射</b>（哪些层供给动作专家）。<br>
+      <b>差别在哪</b>：左边只有一个入口，而且这个入口是<b>另一个模型（编码器）</b>按<b>另一个目标</b>训练出来的；右边有多个入口，<b>每一层都是骨干在"动作损失 + 语言损失"共同作用下长出来的</b>。<br>
+      <b>为什么右边更强</b>：\(\mathcal{L}\) 可选，意味着"哪一层的信息对动作最有用"<b>由数据决定，不由架构预设</b>。这是把归纳偏置从"人拍板"改成"可搜索"。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 逐层探针：动作可分性在末层之前就到峰值</div>
+    \[ S(k) \;=\; \text{Success}\Big(\pi\big(\cdot \mid h^{(k)}\big)\Big), \qquad \exists\, k^\* < L:\quad S(k^\*) > S(L) \]
+    <div class="exp">
+      \(S(k)\) 是"只读第 \(k\) 层"时的成功率，\(L=40\) 是总层数。<b>论文实测 \(k^\* = 28\)：\(S(28)=90.9\% > S(40)=86.7\%\)。</b><br>
+      <b>这条不等式为什么重要</b>：如果 \(S(k)\) 随 \(k\) 单调上升，说明"越深越好"，编码器范式没错。实测是<b>先升后降</b>——末层为了服务理解任务，<b>主动把动作需要的信息压掉了</b>。<br>
+      <b>它同时给了一个可复用的诊断工具</b>：任何 VLA，只要做一次逐层探针，就能知道自己该在哪一层接动作头。<b>这是全文最便宜、最可迁移的贡献。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 流匹配动作头：专家学的不是动作，是"把噪声推向动作的速度"</div>
+    \[ \mathcal{L}_{\text{FM}}(\theta) \;=\; \mathbb{E}_{t\sim U[0,1],\;\varepsilon\sim\mathcal{N}(0,I)}\Big\|\, v_\theta\big(a_t,\, t \mid c\big) \;-\; \big(a_1 - a_0\big) \Big\|^2, \qquad a_t = (1-t)a_0 + t\,a_1 \]
+    <div class="exp">
+      \(a_0=\varepsilon\) 是纯噪声，\(a_1\) 是专家动作块（\(t=0\) 噪声，\(t=1\) 真动作），\(v_\theta\) 是网络预测的<b>速度场</b>，\(c\) 是条件（读到的中间层 KV + 语言）。<br>
+      <b>大白话</b>：不直接回归"该出什么动作"（那样只会输出平均值，多峰任务上等于把两条可行路线平均成一条不可行的），而是学<b>"从噪声走到动作，每一步往哪走"</b>。推理时从噪声出发，沿速度场走 <b>10 步欧拉</b>就到了。<br>
+      <b>为什么这跟"免编码器"是配套的</b>：流匹配需要条件 \(c\) 足够<b>细</b>才能生成多峰的精细动作；如果条件是把画面压成一个粗向量，速度场只能学到一个模糊的平均方向。<b>接口的信息量，直接决定生成的分辨率。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 反向实验为什么崩：不是特征不好，是接口错配</div>
+    \[ \Delta \;=\; S_{\text{frozen}}\big(\text{enc} + \text{mid-feat}\big) \;-\; S_{\text{frozen}}\big(\text{enc}\big) \;=\; 64.9\% - 79.5\% \;<\; 0 \]
+    <div class="exp">
+      把中间视觉塔特征直接拼给编码器式的 Qwen3-VL，<b>冻结状态下掉了 14.6 个点</b>。<br>
+      <b>正确的解释</b>：中间层特征的<b>统计分布</b>与编码器输出完全不同（尺度、各向异性、语义密度都不一样）。骨干在预训练时只学会了"怎么读编码器输出"，突然多一路没见过的输入，<b>等于在推理时改变了输入分布</b>——这是典型的协变量偏移，冻结状态下无从适配。<br>
+      <b>所以这个实验证明了什么、没证明什么</b>：它证明了<b>"拼接中间层"这个做法不行</b>；它<b>并没有</b>证明"编码器范式必然更差"。两者被放在一起讲，是这篇论文最容易被误读的地方（见第五节）。<br>
+      <b>但它顺带解释了训练顺序的必要性</b>：正因为接口一换分布就变，才必须<b>先冻骨训专家（让专家适配新接口）→ 再全参（让骨干适配动作目标）</b>。顺序反了，两端同时漂移，训练必崩。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑤ 延迟预算：282.5 ms 是什么概念</div>
+    \[ f_{\max} \;=\; \frac{1}{T_{\text{query}}} \;=\; \frac{1}{0.2825\,\text{s}} \;\approx\; 3.5\ \text{Hz} \]
+    <div class="exp">
+      \(T_{\text{query}}=282.5\) ms（RTX 3090，单次查询）→ 上限约 <b>3.5 Hz</b>。<br>
+      <b>对比</b>：常规 VLA 大致在 1 Hz 量级，所以 3.5 Hz 确实是进步；但<b>高频闭环控制要 100–1000 Hz</b>，差两到三个数量级。<br>
+      <b>结论</b>：这类模型只能做<b>慢回路</b>（决定"往哪走、抓什么"），必须配一个独立的快回路（"手滑了赶紧收紧"）。<b>它不是端到端替代控制器，而是替代大脑</b>。
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限</h2>
+
+  <div class="box good">
+    <b>核心价值：它把一个"没人质疑的默认前提"变成了可检验的命题</b>。<br>
+    ① <b>方法论的干净</b>：先逐层探针拿到证据，再改架构。绝大多数架构论文是反过来的——先造，再造理由。这种顺序本身就是贡献。<br>
+    ② <b>逐层探针是可以直接抄的工具</b>：任何 VLA 团队花一天就能测出"我的动作头该接在第几层"，不需要重训。<br>
+    ③ <b>反向实验提供了真实的设计约束</b>：不能靠"把好特征拼进来"获得能力，<b>接口必须一起训</b>。这条对做多模态融合的人有普遍价值。<br>
+    ④ <b>顺带确认了两条工程常识</b>：动作与理解要协同训练（否则文本能力归零）；层映射不该写死。
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>"反向实验"与"架构结论"被混在一起，这是全文最大的逻辑缝隙</b>：64.9% 那次崩溃，原因很可能是<b>冻结状态下的输入分布错配</b>，而不是"编码器范式不行"。如果允许全参微调那一版（而不是冻结），结果可能完全不同——但论文没有报这个数。用一个"接口没训"的实验去支持"架构不该这么搭"，<b>证据强度被高估了</b>。</li>
+    <li><b>四个点（90.9 vs 86.7）没有给置信区间</b>：成功率类指标在小样本评测上，三到四个点常常落在噪声里。论文没有报种子数、评测 episode 数、方差。<b>而这四个点恰恰是整个架构决策的支点</b>——支点不稳，后面全部推论都要打折。</li>
+    <li><b>真机证据太薄</b>：只有 3 个任务、各 50 条演示微调，成功率 12/20、17/20、13/20。<b>每个任务 20 次试验</b>，这个量级下 12/20 与 17/20 的差距本身就可能不稳。而"匹敌或超过 π0.5"这句对比，<b>没交代 π0.5 是在什么数据量、什么后训练流程下测的</b>——9,927 小时预训练对上一个未说明口径的基线，公平性无法判断。</li>
+    <li><b>"开源最好"的定语需要看清</b>：LIBERO-plus 89.7 与 RoboTwin 69.4 都限定在"开源（代码 + 权重）"范围内。闭源系统（尤其是有大规模自有数据的）不在比较集里。<b>这是常见但容易被读成"全面最好"的表述</b>。</li>
+    <li><b>基准本身接近饱和</b>：LIBERO 平均 97.4 已经贴着天花板，能区分方法的空间很小；LIBERO-plus 与 RoboTwin 更有信息量，但它们的扰动类型（相机、语言、Clean2Rand）<b>恰好是"外观与指令"层面</b>，而作者自己承认<b>陌生空间构型显著退化</b>。也就是说：<b>它的强项正好被基准覆盖，弱项正好没被测</b>。</li>
+    <li><b>"免编码器"在小数据场景下的风险没被讨论</b>：预训练用了 9,927 小时、223 万 episode。这个规模下，骨干可以自己学出视觉表征。<b>但如果只有几百小时数据，编码器携带的通用先验就是不可替代的</b>。论文的结论很可能<b>只在"大数据 + 大骨干"这个区间成立</b>，而绝大多数机器人团队不在这个区间。</li>
+    <li><b>层映射成了超参，等于把问题挪了个位置</b>：可配置听着优雅，但意味着<b>每换一个本体 / 任务分布，可能要重新搜一遍</b>。论文没有给出"层选择对任务有多敏感"的曲线——如果很敏感，这套架构的迁移成本会比看上去高。</li>
+    <li><b>延迟数字的硬件口径偏保守，反而可能是加分项</b>：282.5 ms 是在 3090 上测的。这条要公平地说——换成机器人常用的边缘板卡只会更慢，所以<b>作者用消费级卡测，是在给读者一个乐观下界</b>。这一点值得肯定，但也意味着真机部署的真实延迟会更难看。</li>
+  </ul>
+
+  <p class="src">来源：arXiv 2611.06918《From Pixels to Actions — Towards Native Vision-Language-Action Policies》（v1 2026-11-04，v3 2026-11-09）· 作者 Weichen Fan、Haiwen Diao、Penghao Wu 等 17 人 · 代码 <a href="https://github.com/EvolvingLMMs-Lab/NEO/tree/main/VLAKit">EvolvingLMMs-Lab/NEO · VLAKit</a></p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div></body>
+</html>
