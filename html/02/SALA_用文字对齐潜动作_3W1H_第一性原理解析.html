@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SALA：用"话像不像"给潜动作对齐，一条监督同时吃人类视频和机器人视频</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:24px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>人类的潜动作，得先听懂"人话"才能对上机器人<span class="sub">SALA · 语义对齐的潜动作 · 用文字相似度代替成对数据 · 一条监督同时吃人类视频与机器人视频 · RoboTwin 平均 64.4%（π0.5 58.7 / FastWAM 41.3）· 真机四任务平均 72.5%（GR00T N1.7 41.3）· 预训练人类视频 0→2678 小时，动作误差单调下降</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-12 · arXiv 2611.17110</div>
+    <div><b>关键词</b> 潜动作模型 · 跨具身对齐 · 语言软邻域 · SoftVQ · 停止梯度</div>
+    <div><b>一句话</b> 别用"画面像不像"定义动作，要用"描述像不像"定义动作</div>
+    <div><b>机构</b> 清华大学（朱军、邓志杰 课题组）· Jiachun Jin、Zetong Zhou、Haonan Wang、Xiao Yang 等</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>过去的潜动作模型只用"能不能把下一帧重建出来"来学动作编码，于是编码里塞满的是场景长什么样，而不是手在干什么——实测四个任务里有三个按场景聚类，同一个动作在干净场景和随机场景里被分成两堆。SALA 换了个监督源：不加任何成对数据，只用两端各自的文字描述算出语义相似度，把它变成一张软邻域分布，去监督潜空间里的相似度分布，让人类的潜动作被拉向语义相近的机器人潜动作，而机器人一侧再用动作解码器把潜空间钉在控制上。一条监督信号就此同时管住两类视频，且能沿两个方向加量。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：把"潜动作"从一个压缩码改造成跨具身的通用语言</h2>
+  <p>先分清两条技术路线。要拿人类视频训练机器人，现在有两条路：</p>
+  <table>
+    <tr><th>路线</th><th>做法</th><th>代价</th></tr>
+    <tr><td><b>世界动作模型（WAM）</b></td><td>让模型显式预测未来的画面，再反推动作</td><td>训练贵、推理贵——每一步都要生成像素</td></tr>
+    <tr><td><b>潜动作模型（LAM）</b></td><td>用编码器把"两个时刻之间发生了什么变化"压成一个隐向量 z，不预测像素</td><td>训练与推理都便宜，但 z 到底学到了什么，没人管</td></tr>
+  </table>
+  <p>SALA 走的是 LAM，并且只改一件事：<b>给 z 加一个"语义对齐"的监督</b>。它不要求人类的片段和机器人的片段成对出现（现实中也不可能有），只要求"文字描述相似的两段，潜动作也该相似"。</p>
+
+  <div class="box good">
+    <b>它做的事（一句话）</b>：人类视频和机器人视频各自过同一个编码器得到潜动作；用冻结的文本编码器把两端各自的原子动作描述编码成文字向量，算出<b>跨具身的语义相似度</b>；把这个相似度经 softmax 变成一张<b>软邻域分布</b>，再用交叉熵去逼潜空间里的相似度分布向它靠拢。<b>机器人那侧额外挂一个动作解码器，保证潜空间没有飘离控制。</b>
+  </div>
+
+  <h3>四个组件，谁共享、谁专属</h3>
+  <table>
+    <tr><th>组件</th><th>符号</th><th>共享？</th><th>作用</th></tr>
+    <tr><td>视觉编码器</td><td>E_θ</td><td>✅ 共享</td><td>吃「首帧 + 末帧」，输出这段转移的潜动作</td></tr>
+    <tr><td>量化器</td><td>Q_φ</td><td>✅ 共享</td><td>SoftVQ，压信息瓶颈，输出 8 个潜 token 的<b>分布</b></td></tr>
+    <tr><td>视觉解码器</td><td>G_v</td><td>✅ 共享</td><td>从潜 token 重建末帧（目标不是像素，是 DINOv2 特征）</td></tr>
+    <tr><td>动作解码器</td><td>G_a</td><td>❌ 只在机器人片段上训</td><td>从潜 token + 初始状态重建动作块，<b>把潜空间钉在控制上</b></td></tr>
+  </table>
+  <p>这张表是全文的骨架：<b>共享的部分负责"让两类视频说同一种语言"，专属的部分负责"让这种语言不许脱离动作"</b>。少任何一半都不成立——只共享不锚定，潜空间会退化成"画面变化摘要"；只锚定不共享，人类视频根本进不来。</p>
+
+  <h3>成绩单</h3>
+  <table>
+    <tr><th>场景</th><th>对手</th><th>SALA</th><th>备注</th></tr>
+    <tr><td>RoboTwin 2.0（50 个双臂任务，Clean）</td><td>π0.5 70.7 / FastWAM 79.4</td><td><b>80.2</b></td><td>Clean 略胜</td></tr>
+    <tr><td>RoboTwin 2.0（Random 域随机化）</td><td>π0.5 46.6 / FastWAM 3.2</td><td><b>48.6</b></td><td><b>WAM 在这里崩了</b></td></tr>
+    <tr><td>RoboTwin 平均</td><td>π0.5 58.7 / LingBot-VA 57.1</td><td><b>64.4</b></td><td>且未用任何机器人预训练 checkpoint</td></tr>
+    <tr><td>真机四任务平均（Sharpa 轮式人形 + 22 自由度双手）</td><td>GR00T N1.7 41.3 / 普通 VLA 27.5</td><td><b>72.5</b></td><td>齿轮装配、双臂倒水、插花、勺子舀取</td></tr>
+    <tr><td>预训练人类视频 0 → 2678 小时</td><td>—</td><td>验证集动作 L1 误差单调下降</td><td><b>机器人数据一克没加</b></td></tr>
+    <tr><td>后训练人类演示 10% → 100%</td><td>53.75% → 72.5%</td><td>成功率随演示量上升</td><td>第二条加量轴</td></tr>
+  </table>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：重建目标只约束"画面能不能复原"，从不约束"这个码代表什么动作"</h2>
+  <p>这篇论文的推理链非常干净，四步就能推到它的设计上。</p>
+
+  <div class="step">
+    <div class="t">第一步：重建是一道信息题，答案不唯一</div>
+    <div class="d">让 z 能重建末帧，等价于"末帧的信息必须能从 z 里解出来"。但信息瓶颈只规定<b>多少</b>信息能过，不规定<b>哪一类</b>信息该过。<b>场景、背景、光照、纹理的变化同样能改善重建</b>——于是编码器会把配额花在这些更容易压缩的东西上。</div>
+  </div>
+  <div class="step">
+    <div class="t">第二步：于是潜空间按"场景"聚类，而不是按"动作"聚类（实测）</div>
+    <div class="d">论文做了潜空间分析：<b>不做对齐时，四个任务里有三个按场景聚类</b>——同一个"抓"的动作，在干净场景与随机场景里被分成两堆；<b>做了对齐后，改成按原子动作聚类</b>。量化指标：动作解释的潜方差中位数 <b>0.41 → 0.67</b>，场景解释 <b>0.14 → 0.04</b>。<b>这不是调参调出来的趋势，是"潜空间到底在编码什么"的直接读数。</b></div>
+  </div>
+  <div class="step">
+    <div class="t">第三步：为什么不能靠"成对数据"来修</div>
+    <div class="d">最直接的修法是找"人类抓杯子"和"机器人抓杯子"的成对样本做对比学习。但<b>成对数据恰恰是拿不到的</b>——同一动作在人类和机器人身上不会有帧级对应，跨具身的数据天然是不成对的。这个约束一摆出来，剩下的唯一选择就是：<b>找一个两端都有的、且同构的中间量</b>。</div>
+  </div>
+  <div class="step">
+    <div class="t">第四步：文字是唯一便宜的中间量</div>
+    <div class="d">人类视频有字幕/描述，机器人数据有任务指令，<b>两端的文字处在同一个语义空间里，而且不需要配对</b>——「抓杯子」和「抓瓶子」的相似度，天然比「抓杯子」和「放杯子」高。于是"跨具身对齐"被替换成了"文字相似度对齐"，问题从"找不到配对"变成了"算相似度"。<b>这是全文最关键的一次问题重写。</b></div>
+  </div>
+
+  <div class="box bad">
+    <b>把四步串起来</b>：重建目标 → 潜空间编码外观 → 跨具身对不上 → 因为没有成对数据，只能借文字 → 用文字相似度当监督。<br>
+    这条链里每一环都是被上一环逼出来的，<b>没有一环是"我选了个酷方法"</b>。这种"被约束推着走"的设计，比堆模块的论文更值得学。
+  </div>
+
+  <h3>为什么必须是"软"邻域，而不是硬配对</h3>
+  <p>直觉上可以更粗暴一点：给每个人类片段找个最像的机器人片段，一对一做对比学习。但现实是<b>一个人类片段从来不会只对应一个机器人片段</b>——「把杯子放进托盘」和「把瓶子放进托盘」「抓起杯子」都相关，只是程度不同。</p>
+  <p>所以论文用 softmax 造了一张<b>分级</b>的邻域：文字相似度高的机器人片段权重高，低的权重低，但都不为零。这样监督信号不是"你必须和它配对"，而是"<b>你的相似度排序要和文字的相似度排序一致</b>"。<b>从"找对象"变成"排座次"，容错率立刻高了一个量级。</b></p>
+
+  <h3>为什么必须用 SoftVQ，而不是普通的向量量化</h3>
+  <div class="box good">
+    <b>硬 VQ 的死穴</b>：每个 token 是 one-hot，只能"是"或"不是"某个码字；码字之间的分级关系表达不出来，而且 commitment 损失会把 z 硬拽向最近码字，<b>相似度排序在这个过程中被抹平</b>。<br>
+    <b>SoftVQ 的做法</b>：每个 token 是码本上的<b>一个分布</b>，进解码器的潜向量 z̃ 就是按这个分布加权求和出的码字组合，<b>没有 commitment 损失，分布随 z 平滑变化</b>。<br>
+    <b>实测后果</b>：SoftVQ 的对齐损失显著下降；硬 VQ 则几乎停在初始值不动，<b>尽管两者的视觉重建损失差不多</b>。<b>这条对照非常有力：重建得一样好，对齐却学不动——恰好证明了"重建好"和"对齐好"是两件事。</b>
+  </div>
+
+  <h3>为什么对齐必须是单向的（停止梯度）</h3>
+  <p>潜空间相似度 s_z(i,j) 的机器人一侧做了 sg(·)（停止梯度）。方向很关键：<b>只把人类的潜动作拉向机器人</b>，不把机器人的拉向人类。原因是机器人那侧有动作解码器在管，它是"锚"；如果把锚也拖走，动作语义会为了迎合人类视频而漂移，<b>等于用好看的聚类换掉了可执行性</b>。消融也印证了：去掉停止梯度改成双向对齐，Random 从 <b>48.6 掉到 46.8</b>。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：一个 tokenizer、四个训练阶段、两处很省的设计</h2>
+
+  <h3>决定一：监督信号不是"动作标签"，是"邻域分布"</h3>
+  <p>整个方法的核心操作只有三步：算文字相似度矩阵 → softmax 成目标分布 P → 算潜空间相似度 softmax 成预测分布 Q → 交叉熵。没有对比学习的正负样本对，没有队列，没有动量编码器。<b>把"对齐"从"拉近/推远"改写成"分布匹配"，实现复杂度直接降到十几行。</b></p>
+
+  <h3>决定二：视觉重建的目标不是像素，是 DINOv2 特征</h3>
+  <p>这一点容易被忽略但很关键。重建像素会把算力花在纹理细节上，而<b>对齐需要的是"语义层面发生了什么变化"</b>。改重建冻结 DINOv2 的末帧特征，等于把重建目标也往语义上推了一把——<b>和语义对齐是同一个方向的两股力</b>。</p>
+
+  <h3>决定三：教师只在训练时存在，部署时不需要未来帧</h3>
+  <p>tokenizer（教师）标注需要视频片段，但<b>策略（学生）只用当前帧就能预测 token 分布</b>。这意味着部署时没有额外开销，也不需要"预知未来"——<b>这是把"训练期特权信息"用干净的一次，很多同类工作在这里会留下推理期的隐患。</b></p>
+
+  <h3>四个阶段，顺序不能换</h3>
+  <table>
+    <tr><th>阶段</th><th>数据</th><th>损失</th><th>在解决什么</th></tr>
+    <tr><td><b>① 预训练</b></td><td>大规模通用人类视频</td><td>只用潜动作损失（人类侧）</td><td>把动作语义从人类视频里先学出来</td></tr>
+    <tr><td><b>② 中训练</b></td><td>目标机器人遥操作</td><td>流匹配动作损失 + 潜动作损失（机器人侧）</td><td>把潜空间接到这个本体上</td></tr>
+    <tr><td><b>③ 后训练</b></td><td>任务遥操作 + 人类演示</td><td>完整策略损失</td><td>吃任务特定的两类数据</td></tr>
+  </table>
+  <p>顺序的道理和"双轴加量"是同一件事：<b>第①段只给人类视频，模型必须先在没有机器人数据的情况下把动作语义学出来，这条轴才有意义</b>；如果第①段就混进机器人数据，"预训练轴"的增益就无从归因了。</p>
+
+  <h3>架构与关键超参</h3>
+  <p>策略是 π₀ 风格：Qwen3-VL-4B 编码观测与语言，旁边挂一个 0.6B（36 层、768 维）的动作专家，每层与 VLM 联合注意力；动作专家里加入<b>可学习的潜动作查询</b>，通过 latent head 输出 token 分布。<b>注意对齐项权重 λ_align 只有 0.001（仿真）/ 0.005（真机）</b>——对齐项权重极小，说明它起的是"轻轻拨一下方向"的作用，而不是主导训练。</p>
+
+  <h3>消融：谁在真正出力</h3>
+  <table>
+    <tr><th>配置</th><th>Clean</th><th>Random</th><th>读法</th></tr>
+    <tr><td>SALA 完整</td><td>80.2</td><td>48.6</td><td>—</td></tr>
+    <tr><td>去掉对齐损失（只剩重建）</td><td>75.5</td><td><b>36.8</b></td><td>Random 掉 11.8 点 —— <b>对齐主要在抗场景变化</b></td></tr>
+    <tr><td>去掉停止梯度（双向对齐）</td><td>73.5</td><td>46.8</td><td>Clean 掉 6.7 点 —— <b>锚被拖走，控制变差</b></td></tr>
+  </table>
+  <p>这两行的分工非常清楚：<b>对齐管"换个场景还认不认得出动作"，停止梯度管"别为了对齐把动作语义搞坏"</b>。前者掉 Random，后者掉 Clean，各打各的靶。</p>
+
+  <h3>跨具身检索：最能说明"对齐真的生效"的证据</h3>
+  <p>仿真里让 ARX-X5 的片段去检索 Aloha-AgileX 的片段，看 Top-1 命中是不是同一个原子动作：<b>随机 0.8% → 仅重建 41.3% → SALA 78.2%</b>，末端位移误差 <b>8.03 → 2.89 → 2.58 cm</b>。真机上人类→机器人的同任务命中率 <b>3.8% → 34.2%</b>。<b>这组数字比成功率榜单更能证明"潜空间真的在按动作语义组织"</b>，因为它测的是表征本身，而不是下游策略的偶然表现。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式</h2>
+
+  <div class="fml">
+    <div class="name">① 潜动作的信息瓶颈：只规定"多少信息能过"，不规定"哪类信息该过"</div>
+    \[ z = E_\theta(o_t, o_{t+k}), \qquad \tilde z = Q_\phi(z), \qquad \min\ \big\| G_v(o_t, \tilde z) - o_{t+k} \big\|^2 \]
+    <div class="exp">
+      \(o_t, o_{t+k}\) 是一段视频的首帧与末帧，\(k\) 是跨度；\(E_\theta\) 编码"这两帧之间发生了什么"；\(Q_\phi\) 是量化器（<b>信息瓶颈</b>）；\(G_v\) 负责把末帧复原。<br>
+      <b>大白话</b>：让 \(z\) 当"这段视频的摘要"，判卷标准是"只看摘要能不能把末帧画回来"。<br>
+      <b>漏洞在哪</b>：摘要该写"手向右移了两厘米"还是"背景是木纹桌"，这道题<b>没有约束</b>。而"背景是木纹桌"更容易压缩、对重建更划算——于是编码器自然去写背景。<b>这不是训练不充分，是目标函数本身就允许抄近路。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 语义对齐损失：让潜空间的"像不像"去模仿文字的"像不像"</div>
+    \[ P_i = \mathrm{softmax}_j\!\left(s^{\ell}_{ij}\right), \qquad Q_i = \mathrm{softmax}_j\!\left(s^{z}_{ij}\right), \qquad s^{z}_{ij} = \mathrm{sim}\!\left(z_i^{H},\ \mathrm{sg}(z_j^{R})\right) \]
+    \[ \mathcal{L}_{\text{align}} \;=\; \mathbb{E}_i\left[\ \mathrm{CE}\!\left(\,P_i \,\|\, Q_i\,\right)\right] \]
+    <div class="exp">
+      \(i\) 是第 \(i\) 个人类片段，\(j\) 遍历同一个 batch 里的机器人片段；\(s^\ell_{ij}\) 是<b>两段文字描述</b>的相似度（冻结文本编码器给），\(s^z_{ij}\) 是<b>两个潜动作</b>的余弦相似度；\(\mathrm{sg}(\cdot)\) 是停止梯度。<br>
+      <b>大白话</b>：文字说"这两个动作像"，那潜空间里这两个码也必须像；文字说"不像"，潜空间里也必须不像。<b>交叉熵在这里管的不是"猜对哪个类别"，而是"整张相似度排行榜的顺序对不对"。</b><br>
+      <b>为什么用分布而不是直接回归相似度</b>：分布对<b>整体排序</b>敏感、对绝对数值不敏感。文字相似度的绝对值本来就没有物理意义（0.62 和 0.65 的差别靠不住），但排序是稳的。<b>把不可靠的绝对值换成可靠的排序，这是这一步最聪明的地方。</b><br>
+      <b>为什么 \(\mathrm{sg}\) 只加在机器人侧</b>：机器人一侧有动作解码器在约束，是"锚"；只让人类往锚上靠，锚不动。<b>反过来就会用可执行性换聚类美观。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ Tokenizer 总损失：三股力，各有各的靶</div>
+    \[ \mathcal{L}_{\text{tok}} \;=\; \tfrac{1}{2}\left(\mathcal{L}_{\text{vis}}^{H} + \mathcal{L}_{\text{vis}}^{R}\right) \;+\; \lambda_{\text{act}}\,\mathcal{L}_{\text{act}} \;+\; \lambda_{\text{align}}\,\mathcal{L}_{\text{align}} \]
+    <div class="exp">
+      \(\mathcal{L}_{\text{vis}}\)：视觉重建（<b>目标是冻结 DINOv2 特征，不是像素</b>）；\(\mathcal{L}_{\text{act}}\)：机器人侧的动作重建（Huber，\(\delta=0.35\)）；\(\mathcal{L}_{\text{align}}\)：上面那条对齐项。<br>
+      <b>三股力的分工</b>：视觉重建保证"码里确实有变化信息"；动作重建保证"码能翻成动作"，即<b>锚定</b>；语义对齐保证"两类视频的码在同一套语义坐标里"。<br>
+      <b>权重很说明问题</b>：\(\lambda_{\text{act}}=10\)、\(\lambda_{\text{align}}=0.001\)。动作锚定的权重是对齐的一万倍——<b>作者心里很清楚，可执行性不能拿来换对齐效果</b>，对齐只是给方向加一点偏置。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 策略损失：动作靠流匹配，语义靠"跟教师对齐"</div>
+    \[ \mathcal{L}_{\text{policy}} \;=\; \mathcal{L}_{\text{FM}}^{R} \;+\; \lambda_{\text{LA}}\left(\mathcal{L}_{\text{LA}}^{R} + \mathcal{L}_{\text{LA}}^{H}\right), \qquad \mathcal{L}_{\text{LA}} = D_{\mathrm{KL}}\!\left(y \,\|\, \hat y\right) \]
+    <div class="exp">
+      \(\mathcal{L}_{\text{FM}}^{R}\) 是机器人数据上的流匹配动作损失；\(y\) 是冻结 tokenizer（教师）给的 token 分布，\(\hat y\) 是策略（学生）预测的分布，\(D_{\mathrm{KL}}\) 在 token 上取平均；\(\lambda_{\text{LA}}=0.1\)。<br>
+      <b>大白话</b>：动作怎么出，用流匹配学；"这一步属于什么动作"，用<b>蒸馏教师的分布</b>学。学生只需当前帧就能猜出分布，<b>教师那套"看未来帧"的特权只在训练期用</b>。<br>
+      <b>为什么人类数据那项 \(\mathcal{L}_{\text{LA}}^{H}\) 也在策略损失里</b>：它没有动作标签，但它能让学生的潜动作预测和教师的语义判断保持一致——<b>这就是"人类视频不需要动作标签也能参与策略训练"的机制所在</b>，也是双轴加量能成立的接口。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑤ 双轴加量的账：为什么"加人类视频"能降机器人误差</div>
+    \[ \underbrace{\text{Err}_{\text{robot}}\!\downarrow\ \ \text{as}\ \ N_{H}\!\uparrow}_{\text{预训练轴：0→2678 h}} \qquad\text{and}\qquad \underbrace{\text{Succ}\!\uparrow\ \ \text{as}\ \ N_{H}^{\text{task}}\!\uparrow}_{\text{后训练轴：10\%→100\%}} \]
+    <div class="exp">
+      \(N_H\) 是人类视频总量，\(N_H^{\text{task}}\) 是任务相关的人类演示量。<br>
+      <b>第一轴的实测量</b>：人类视频 0 → 473 → 1103 → 2678 小时，验证集动作 L1 误差<b>单调下降</b>，<b>且机器人数据一克没加</b>；0 小时那版就已经优于普通 VLA。<br>
+      <b>第二轴的实测量</b>：任务人类演示从 10% 加到 100%，真机平均成功率 <b>53.75% → 72.5%</b>。<br>
+      <b>为什么这件事在原则上成立</b>：如果潜动作真是"跨具身通用的动作语义"，那么更多人类视频 = 更多动作语义样本 = 潜空间更密；策略从更密的潜空间里取条件，误差自然降。<b>反过来，如果潜动作只是"画面变化摘要"，加人类视频只会加噪声——所以这两条曲线本身就是对"对齐是否成功"的检验。</b>
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限</h2>
+
+  <div class="box good">
+    <b>核心价值：它把"跨具身对齐"从"找配对"改写成"排座次"</b>。<br>
+    ① <b>问题重写得很漂亮</b>：没有成对数据是硬约束，那就换一个两端都有、且天然同构的中间量（文字）。<b>这个思路可以直接搬到任何"两套数据对不上"的场景</b>。<br>
+    ② <b>用分布匹配代替对比学习</b>：不需要正负样本对、不需要大 batch 的队列技巧，十几行交叉熵就完事，<b>工程上极其好复现</b>。<br>
+    ③ <b>SoftVQ 的对照实验有普适价值</b>：硬 VQ 重建得一样好、对齐却学不动——<b>这条证据说明"离散化"会悄悄抹掉分级信息，凡是用 VQ 做跨模态对齐的人都该看这一眼</b>。<br>
+    ④ <b>双轴加量是可验证的主张，不是口号</b>：两条曲线都给了实测点，而且第一轴<b>不掺机器人数据</b>，归因干净。<br>
+    ⑤ <b>教师只在训练期存在</b>：部署不需要未来帧、不需要额外模型，<b>没有把训练期的特权泄漏成推理期的开销</b>。
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>扩展性结论只跑了一次，且只测了离线误差</b>：作者自己写明"每个设置 one run per setting"，且预训练预算最高 2678 小时。<b>一条没有误差棒的单调曲线，和一个只测离线 L1 的指标，撑不起"scaling law"这个词</b>——它目前只是"在这个区间内看起来在降"。</li>
+    <li><b>tokenizer 仍然要文字标注</b>：这是全文最实在的软肋。虽然作者强调只需标注一个子集、策略本身只看视频帧，但<b>"不需要成对数据"和"需要逐片段写原子动作描述"是两件事</b>——后者在真实数据上同样是人力成本，只是从"配对标注"换成了"描述标注"。</li>
+    <li><b>对齐的收益主要在"抗外观变化"，不在"提升上限"</b>：消融显示去掉对齐 Clean 只掉 4.7 点、Random 掉 11.8 点。<b>也就是说这套机制买的是鲁棒性，不是能力上限。</b>如果任务场景本来就固定（工业产线），收益会明显缩水。</li>
+    <li><b>78.2% 的跨具身检索命中率，意味着仍有约五分之一的样本对错了</b>：这个数字被当作"对齐成功"的证据，但它同时也说明<b>潜空间里还有相当一部分语义是错的</b>。论文没有分析错的那 22% 长什么样——是罕见动作，还是文字描述本身太糊？<b>这恰恰是下一步最该看的地方。</b></li>
+    <li><b>基线口径不完全对等</b>：SALA 用通用 VLM 初始化、没吃机器人预训练 checkpoint，却赢了吃过的 π0.5——这条被写成优势。但反过来看，<b>π0.5 那 70.7/46.6 是在什么数据量、什么后训练流程下测的，论文没交代</b>。<b>"我方少吃了数据还赢"和"对方没调好"在数字上无法区分。</b></li>
+    <li><b>真机每个任务只有 20 次试验</b>：四任务平均 72.5% vs GR00T 41.3%，差距够大所以结论可信；但单任务层面（比如插花 55%）<b>20 次试验的置信区间很宽</b>，不宜逐项解读。</li>
+    <li><b>对齐权重 λ_align = 0.001 这个量级很微妙</b>：权重小到这种程度，说明它是个"微调方向"的项。好处是不破坏锚定；<b>坏处是它可能对 batch 组成、温度（P 用 0.0253/0.049）相当敏感</b>，而这些超参是逐数据集调的——<b>换一个号、换一套文字描述风格，是否需要重调，论文没给敏感性曲线。</b></li>
+    <li><b>"文字描述"这个中间量的可靠性被默认了</b>：整套方法建立在"文字相似度能反映动作相似度"上。但公众号式的描述、口语化描述、粒度不一致的描述，会让 P 直接失真。<b>而 P 是唯一的目标信号——它错了，后面全错，且没有任何机制能发现它错了。</b>这是这套方法最脆弱的一环。</li>
+    <li><b>WAM 在 Random 下崩到 3.2%，这个对比要谨慎读</b>：它更像是"WAM 没做域随机化的适配"，而不一定是"预测像素这条路不行"。<b>用一个没为扰动调过的基线来反衬自己的鲁棒性，说服力要打折。</b></li>
+  </ul>
+
+  <p class="src">来源：arXiv 2611.17110《SALA: Semantically Aligned Latent Actions Enable Dual-Axis Scaling of Embodied Foundation Models》（v1 2026-11-12）· 作者 Jiachun Jin、Zetong Zhou、Haonan Wang、Xiao Yang、Jun Zhu、Zhijie Deng · 清华大学</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div></body>
+</html>
