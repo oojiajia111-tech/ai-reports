@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EgoX：六种身体共用一套经验，靠"训练时做梦"把不同身体拉进同一个坐标系</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:24px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>六种身体，一套经验：别统一身体，统一"部件的接口"<span class="sub">EgoX · 自我中心跨具身操作 · 模态级拆分的 MXT+ · 只在训练时存在的"具身做梦" · 13 个任务-身体对平均进度 0.63 → 0.80 · 没见过的场景 0.53 → 0.77 · 做梦把跨身体表征距离再拉近 38.5%</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-12 · arXiv 2611.16728</div>
+    <div><b>关键词</b> 跨具身学习 · 模态级模块化 · 具身做梦 · 未来潜变量预测 · GW 距离</div>
+    <div><b>一句话</b> 身体不同不要紧，只要"部件对得上、坐标系对得上"，经验就能共用</div>
+    <div><b>机构</b> 卡内基梅隆大学 · UC Berkeley · 博世人工智能中心（Ding Zhao、Changliu Liu、Jonathan Francis 等 22 人）</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>跨具身学习一直卡在一个假前提上：以为要让不同身体共用经验，就得先把它们的动作对齐成同一种表示。但人的五指和机器人的两指夹爪本来就没有共同的"关节语义"，硬对齐只会得到一个谁都不像的平均身体。EgoX 换了切法：不去统一身体，而是把每个身体拆成功能对应的部件——躯干、左右腕、末端关键点，各部件配各自的编码器，只在中间留一条共享主干；再补一条只在训练时存在的"做梦"损失，逼主干从当前画面猜出这个身体下一刻的画面特征和关节特征。这样主干学到的是"身体怎么动"，而不是"画面长什么样"。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：把"统一身体"换成"统一部件的接口"</h2>
+  <p>先说清楚它要解决的那个具体麻烦。机器人操作的数据有三个来源：人拍的视频（量大、场景杂、没有动作标签）、真机遥操作（有动作、但一个机器人一种格式）、仿真（可控、但和真机有差距）。三者的价值是互补的，但它们的"身体"完全不同：</p>
+
+  <table>
+    <tr><th>差异维度</th><th>人类</th><th>人形机器人</th><th>桌面机械臂 / 四足</th></tr>
+    <tr><td>外形</td><td>双手五指，身高 1.7 m</td><td>双手五指或三指，身高 1.3 m</td><td>单臂或腿上挂夹爪，工作空间只有半米</td></tr>
+    <tr><td>感知</td><td>头戴相机，视角随头动</td><td>头部主相机 + 腕部相机</td><td>常常只有一路主相机</td></tr>
+    <tr><td>本体感受</td><td>几乎没有（只能反解手腕位姿）</td><td>全身关节角 + 手部关节角</td><td>6~7 个关节角 + 夹爪开合</td></tr>
+    <tr><td>动作接口</td><td>没有（视频里只有结果）</td><td>关节目标 + 末端位姿 + 底盘速度</td><td>末端位姿 + 夹爪</td></tr>
+  </table>
+
+  <p>EgoX 的做法是不去消除这些差异，而是<b>把差异关进"接口"里，让中间那段共享</b>。整个框架就三件事：</p>
+
+  <div class="box good">
+    <b>① 统一的模态表 + 统一的自我中心坐标系</b>：把每个身体的观测和动作拆成"命名模态"——主相机图、本体关节、躯干位姿、左/右腕位姿、左/右末端关键点。位姿一律换算到三个规范系里（根部系、主相机系、腕部系），关节角则保留各自的原生空间。<br>
+    <b>② MXT+：每个模态一个编码器，每个动作模态一个专家，中间一条共享主干</b>。共享主干是唯一跨身体的东西，其余全是"这个身体专属"的。<br>
+    <b>③ 具身做梦（embodiment dreaming）</b>：一条只用于训练的辅助损失，从当前共享表征去预测<b>这个身体未来时刻的潜表征</b>（画面特征 + 关节特征），逼主干把"身体动力学"编码进去。
+  </div>
+
+  <h3>成绩单：13 个任务-身体对</h3>
+  <table>
+    <tr><th>设置</th><th>对照</th><th>结果</th><th>读法</th></tr>
+    <tr><td>13 对平均（ID+OOD 合并）</td><td>从头训 0.63</td><td><b>0.80</b></td><td>12/13 对拿第一，平均分全场最高</td></tr>
+    <tr><td>分布内（ID）</td><td>从头训</td><td>11/13 对有提升</td><td>和见过的场景相似，涨得不多</td></tr>
+    <tr><td>分布外（OOD，换物体/换摆位/换场景）</td><td>0.53</td><td><b>0.77</b></td><td><b>13/13 对全涨</b>，且涨幅远大于 ID</td></tr>
+    <tr><td>只加"做梦"（7 组消融）</td><td>0.63</td><td><b>0.78</b></td><td>7/7 全涨，最大涨幅在 G1 舀猫砂</td></tr>
+    <tr><td>预训练数据逐步加宽</td><td>不预训练</td><td>ID +0.12 / OOD +0.23</td><td>人类 → 别的机器人 → 目标机器人的别的任务，越宽越好</td></tr>
+    <tr><td>只用人视频预训练</td><td>不预训练</td><td>OOD 6 对里 5 对提升</td><td><b>完全没有机器人动作标签也能迁移</b></td></tr>
+    <tr><td>跨身体表征距离（GW）</td><td>不预训练</td><td>−21.30%（9/10 对）</td><td>表征几何真的靠近了</td></tr>
+    <tr><td>跨身体表征距离（GW）</td><td>不加做梦</td><td><b>−38.52%（10/10 对）</b></td><td>做梦对"几何靠拢"的贡献比预训练本身还大</td></tr>
+  </table>
+  <p>注意最后两行：<b>它没有只用任务分数来证明自己</b>，而是另外量了一个表征层面的指标。这一点很关键，下面会展开。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：跨身体真正不变的，不是关节，是"部件的角色"</h2>
+  <p>这条推演链有五环，每一环都是被上一环逼出来的。</p>
+
+  <div class="step">
+    <div class="t">第一步：数据缺口是硬约束，绕不过去</div>
+    <div class="d">机器人数据的采集成本是"人站在设备前遥操作"，一小时几十条轨迹；人拍视频的成本约等于零。所以<b>只要人类视频能被用上，数据量就多一个数量级</b>。这不是"想不想要"的问题，是"不这么做就永远缺数据"的问题。仿真是第三条腿，但仿真到真机还有落差。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第二步："统一动作空间"这条路，从数学上就不成立</div>
+    <div class="d">通行的做法是把不同身体的动作拼成一个固定长度的向量，缺的补零。但补零是有代价的：<b>零不是"没有这个关节"，零是一个具体数值</b>。模型看到 30 维里 24 维是零，会把"零"当成"这个关节保持不动"的信号，于是学会了"大部分时候什么都别动"。更根本的问题是<b>维度语义不对应</b>——人类第 3 维是食指弯曲，机器人第 3 维可能是底盘的横向速度。把两者放进同一个坐标轴，等于宣告"食指弯曲"和"横移"是同一个方向的两种强度。<b>这是范畴错误，不是精度问题。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第三步：那就找真正跨身体不变的那个量</div>
+    <div class="d">不变的是什么？不是关节，而是<b>几何关系与任务阶段</b>：躯干相对地面在哪、腕相对相机在哪、指尖相对腕在哪。这些量在任何人、任何机器人身上都有，且语义一致——"指尖碰到杯柄"这件事，在五指手和两指夹爪上是同一个物理事件。<b>所以正确的切分不是"按关节编号切"，而是"按功能角色切"</b>：躯干一类、腕一类、末端点一类。切完之后，每个身体提供自己有的那几类，缺的留空而不是补零。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第四步：但共享主干会偷懒——这是设计里最隐蔽的坑</div>
+    <div class="d">一旦把编码和解码都做成"每身体专属"，主干就面临一个诱惑：<b>它只需要学"共性的浅层"，把每个身体的动力学差异全部推给各自的编码器</b>。这样动作损失照样能降，因为编码器可以替主干把活干了。主干退化成一个路由器——<b>参数是共享了，知识没有共享</b>。论文的消融其实抓到了这个现象：粗粒度版本（所有相机共用一个编码器、所有动作共用一个专家）在预训练后反而掉分，甚至在厨房清理任务上直接归零。<b>因为它把"速度指令"这个只占 51 维里 3 维、但对移动操作生死攸关的模态，淹没在了合并后的动作空间里。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第五步：所以要有一条损失，专门逼主干学动力学</div>
+    <div class="d">行为克隆只监督"动作"，从不要求模型"预判身体会怎么变"。于是主干可以完全不懂动力学，照样把动作拟合出来（因为当前帧已经足够决定下一步该干嘛）。补一条<b>预测未来</b>的损失就堵住了这个漏洞：要预测未来，主干必须先在内部建立一个"这个身体受这个动作会怎么演化"的模型。<b>这就是做梦的全部动机——不是让模型生成画面，是让主干没法再偷懒。</b></div>
+  </div>
+
+  <div class="box bad">
+    <b>五环串起来</b>：数据永远不够 → 硬统一动作空间在语义上不成立 → 改按功能部件切、按规范系对齐 → 但共享主干会退化成路由器 → 所以加一条"预测未来潜表征"的损失逼它学动力学。<br>
+    <b>这条链里没有一个模块是"为了显得先进"加进去的</b>，每一个都是被上一个约束逼出来的。这是判断一篇系统论文是否扎实的最简单标准。
+  </div>
+
+  <h3>为什么"做梦"预测的是潜表征，而不是像素</h3>
+  <p>最直觉的版本是让模型预测未来的画面（世界模型那条路）。论文明确避开了：<b>重建像素会把容量花在纹理、光照、背景上，而这些东西跟"身体怎么动"几乎无关</b>。改预测一组压缩后的潜表征（8 个 token），等于把"要预测什么"这道题的答案收窄到"语义与几何的变化"上。<b>而且预测潜表征不需要解码器、不需要在部署时算未来帧——训练完这条支路就可以整个扔掉。</b></p>
+
+  <h3>为什么要用 EMA 教师 + 停止梯度</h3>
+  <p>如果学生自己和自己的目标一起动，这条损失会退化：<b>把目标往预测值上拽，损失瞬间归零，什么也没学到</b>。这是自监督学习里非常经典的塌缩。论文用 JEPA 家族的标准解法：目标的编码器是学生编码器的指数滑动平均（更新极慢），且目标一侧停止梯度。<b>等于给学生一个"缓慢移动、不会跟着你跑"的靶子。</b></p>
+
+  <h3>为什么值得信：它量了表征，不只量了分数</h3>
+  <p>GW（Gromov-Wasserstein）距离衡量的是<b>两个分布内部的距离结构有多像</b>——不是比两个向量的绝对位置，而是比"谁和谁近、谁和谁远"这张关系表。用它来比"人类舀猫砂"和"机器人舀猫砂"的表征分布，是在问：<b>同一个任务，在两种身体上被编码成了相似的几何形状吗？</b></p>
+  <p>结果是：预训练让它降了 21.30%（10 对里 9 对），<b>而"做梦"单独让它降了 38.52%，10 对全降</b>。这条数字比成功率更能说明问题——<b>因为成功率会被控制器调参、试验初始位形这些噪声污染，而 GW 直接读的是表征本身。</b>一篇论文愿意补这类指标，通常说明作者自己也在怀疑"分数涨了是不是因为别的原因"。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：三处设计，一处反直觉</h2>
+
+  <h3>决定一：按功能部件对齐，不按自由度对齐</h3>
+  <p>每个身体被拆成命名模态，每个模态配一个<b>专属编码器</b>，编码结果投到同一个 token 空间。关键在于坐标系的规范：</p>
+  <table>
+    <tr><th>量</th><th>表达在哪个系</th><th>为什么</th></tr>
+    <tr><td>躯干位姿、底盘速度指令</td><td>根部系（脚下/身下地面投影）</td><td>和"身体站在哪"绑定，跨身体可比</td></tr>
+    <tr><td>左右腕位姿、腕部目标</td><td>主相机系（自我中心）</td><td>和"我看到什么"绑定，天然对齐视角</td></tr>
+    <tr><td>末端关键点位置</td><td>各自腕部系</td><td><b>描述手本身的几何，而不是关节角</b>——这是让五指手、夹爪、固定铲子能互通的关键</td></tr>
+    <tr><td>关节角</td><td>各身体原生关节空间</td><td>不强行换算，保留本体感受的差异</td></tr>
+  </table>
+  <p>第三行是这套设计里最要紧的一格。<b>末端关键点（指尖、夹爪接触点）描述的是"手能碰到哪"，而不是"关节转了多少度"</b>。所以一个 22 自由度的灵巧手和一个 2 指夹爪，在"关键点位置"这个模态上是可以直接对话的——它们说的都是三维空间里的点。</p>
+
+  <h3>决定二：模态级拆分，粗粒度合并会崩</h3>
+  <p>论文专门做了粗粒度对照：相机视图合并成一个编码器、位姿和本体感受拼在一起、所有动作模态共用一个专家。结果很有说服力：</p>
+  <table>
+    <tr><th>场景</th><th>粗粒度 + 预训练</th><th>模态级 + 预训练</th><th>说明</th></tr>
+    <tr><td>Z1 固定铲子（模态最少）</td><td>有提升</td><td>有提升</td><td>差距小——模态少，拆不拆无所谓</td></tr>
+    <tr><td>xArm7 舀取</td><td><b>掉分</b></td><td>多数提升</td><td>预训练反而有害</td></tr>
+    <tr><td>仿真厨房清理（双臂 + 移动）</td><td><b>任务进度直接 0</b></td><td>保持可观水平</td><td>速度指令只占 51 维里 3 维，合并后被淹没</td></tr>
+  </table>
+  <p><b>这张表是全文最有工程价值的一张。</b>它说明"共享"不是越多越好：当某个模态的信息量小但对任务生死攸关（3 维速度指令决定机器人能不能走到桌前），把它和 48 维的关节目标拼在一个专家里，梯度会被大模态主导，小模态学不到东西。<b>模态级拆分的真正作用是给小模态一个不被淹没的通道。</b></p>
+
+  <h3>决定三：做梦只在训练时存在，部署零开销</h3>
+  <p>这是设计上最省的一笔。训练时：学生编码器处理当前观测 → 主干 → 做梦专家输出未来 k 个时刻的潜 token → 和 EMA 教师处理真实未来观测得到的潜 token 对齐。部署时：<b>做梦专家、EMA 教师全扔掉，只留学生编码器 + 主干 + 动作专家</b>。不需要未来帧、不需要额外前向、不需要生成任何像素。</p>
+  <p>对比一下世界模型那条路：预测未来画面意味着推理时也要跑一遍生成，每步几十毫秒到几百毫秒，控制频率直接被压到 5 Hz 以下。<b>EgoX 把"训练期的特权信息"用在了训练期就结束，没有把它变成推理期的债。</b></p>
+
+  <h3>训练流程：预训练求和，微调只算目标身体</h3>
+  <table>
+    <tr><th>阶段</th><th>数据</th><th>损失</th><th>更新谁</th></tr>
+    <tr><td><b>① 跨具身预训练</b></td><td>人类 + 多个机器人 + 仿真，每身体一个小批次</td><td>各身体损失相加（动作 + 做梦）</td><td>主干吃所有身体的梯度；各身体的专属模块只吃自己的数据</td></tr>
+    <tr><td><b>② 目标身体微调</b></td><td>目标身体 + 目标任务的演示</td><td>动作 + 做梦</td><td>全部（含目标身体的专属模块）</td></tr>
+  </table>
+  <p>有个细节值得记下来：<b>预训练时每个身体采等量的一个 mini-batch</b>。这保证了小数据集（人视频量大、某个四足机器人数据少）不会被大数据集压死，代价是<b>小数据集的样本被反复复用，容易过拟合</b>——作者自己把这个写进了局限。这是"公平采样"和"不过拟合"之间的硬取舍，没有免费的解法。</p>
+
+  <h3>规模与口径（读数字前必须知道的）</h3>
+  <ul>
+    <li>5 个任务 × 6 种身体 = 13 个任务-身体对；6 种身体里 <b>5 个真机 + 1 个仿真人形</b>（G1 仿真）。</li>
+    <li>真机每个对跑 <b>20 次</b>（13 次分布内 + 7 次分布外），仿真每对跑 50 次。同一套初始条件对所有方法一致。</li>
+    <li>评价指标是<b>归一化任务进度</b>，不是纯成功率——把中间阶段也计分，避免长任务全是 0 分看不出差别。</li>
+    <li>潜表征取主干输出里"右腕位姿"那一组 token，池化成 512 维向量来算 GW 距离（因为舀取任务里右腕是唯一跨身体都活跃的末端）。</li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式</h2>
+
+  <div class="fml">
+    <div class="name">① 策略的三段式分解：共享的只有中间那一段</div>
+    \[ \pi^{e} \;=\; \Psi^{e}\,\circ\,G_{\theta}\,\circ\,\Phi^{e}, \qquad \Phi^{e}=\{\phi^{e}_{m}\}_{m\in\mathcal{M}^{e}_{\mathrm{obs}}}\cup\{\phi^{e}_{\mathrm{dream}}\}, \qquad \Psi^{e}=\{\psi^{e}_{m}\}_{m\in\mathcal{M}^{e}_{\mathrm{act}}} \]
+    <div class="exp">
+      \(e\) 是某个身体，\(\phi^{e}_{m}\) 是这个身体第 \(m\) 个<b>观测模态的编码器</b>，\(\psi^{e}_{m}\) 是第 \(m\) 个<b>动作模态的解码专家</b>，\(G_{\theta}\) 是<b>所有身体共用</b>的主干。\(\mathcal{M}^{e}_{\mathrm{obs}}\)、\(\mathcal{M}^{e}_{\mathrm{act}}\) 是这个身体实际提供的模态子集。<br>
+      <b>大白话</b>：两头各说各的方言（身体专属编码器/专家），中间那个翻译官（主干）说普通话。<b>公式里唯一带 \(\theta\) 的、唯一跨身体共享的，就是 \(G_{\theta}\)——所有别的模块都挂着上标 \(e\)。</b><br>
+      <b>为什么这么切</b>：如果把编码器也共享，等于要求"人的手部图像"和"夹爪的手部图像"进同一个编码器后输出同一种东西——这在像素层面根本不成立。共享必须发生在<b>语义已经对齐之后</b>，不能在原始信号上强行共享。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 动作块预测：一次出一整段，按模态分别解码</div>
+    \[ \hat{\bm{A}}^{e}_{t}=\pi^{e}\!\left(\bm{o}^{e}_{t}\right)=\left(\hat{\bm{A}}^{e,m}_{t}\right)_{m\in\mathcal{M}^{e}_{\mathrm{act}}}, \qquad \hat{\bm{A}}^{e,m}_{t}=\left(\hat{\bm{a}}^{e,m}_{t+k}\right)_{k=0}^{H-1}\in\mathbb{R}^{H\times d^{e}_{m}} \]
+    <div class="exp">
+      \(\bm{o}^{e}_{t}\) 是当前观测（一组命名模态的元组），\(H\) 是动作块长度，\(d^{e}_{m}\) 是这个身体第 \(m\) 个动作模态的维度。<br>
+      <b>大白话</b>：不是一步一步出动作，而是一次吐出未来 \(H\) 步的整段轨迹，每个模态（躯干、左腕、右腕、左手、右手）各出一条。<b>分模态输出而不是拼成一条长向量，是上面那个"3 维速度指令被 48 维关节淹没"问题的直接解法。</b><br>
+      <b>缺模态怎么处理</b>：观测缺的补零 token，动作缺的<b>直接不进损失</b>——这一点很重要，补零进损失会让模型学会"预测零"，等于主动教它别动。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 做梦的目标：用"慢半拍"的教师去标注这个身体的未来</div>
+    \[ \bm{Y}^{e}_{t+k}=\mathrm{sg}\!\left[\,\bar{\phi}^{e}_{\mathrm{dream}}\!\left(\left[\,\bar{f}^{e}_{m}\!\left(\bm{o}^{e,m}_{t+k}\right)\right]_{m\in\mathcal{M}^{e}_{\mathrm{dream}}}\right)\right], \qquad \bar{w}\leftarrow\alpha\,\bar{w}+(1-\alpha)\,w \]
+    <div class="exp">
+      \(f^{e}_{m}\) 是模态编码器里"聚合之前"的特征提取段（含位置编码），\(\phi^{e}_{\mathrm{dream}}\) 用 8 个可学习查询通过交叉注意力把这些特征压成 <b>8 个潜 token</b>；带上划线的 \(\bar{\phi}\)、\(\bar{f}\) 是它们的 <b>EMA 教师副本</b>；\(\mathrm{sg}[\cdot]\) 是停止梯度；\(\alpha\) 是衰减系数。<br>
+      <b>大白话</b>：学生看现在，教师要它去猜"未来那一刻，这个身体的画面特征和关节特征会被压成哪 8 个向量"。教师要"慢半拍"是因为——<br>
+      <b>不慢半拍会怎样</b>：学生和教师一起追着预测值跑，目标自己往预测值上滑，损失几秒内归零，模型什么也没学到。这是自监督里的塌缩。<b>EMA 相当于把靶子钉在地上，只允许它极缓慢地挪。</b>停止梯度则是防止梯度从目标反流回去继续帮着塌缩。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 做梦损失：只对齐方向，幅值单独管</div>
+    \[ \mathcal{L}^{e}_{\mathrm{dream}}=\frac{1}{|\mathcal{K}|L_{\mathrm{dream}}}\sum_{k\in\mathcal{K}}\sum_{j=1}^{L_{\mathrm{dream}}}\Big[\,1-\cos\!\left(\hat{\bm{y}}^{e}_{t+k,j},\ \bm{y}^{e}_{t+k,j}\right)\;+\;\beta\,\ell_{\text{smooth-L1}}\!\left(\left\|\hat{\bm{y}}^{e}_{t+k,j}\right\|_{2},\ \left\|\bm{y}^{e}_{t+k,j}\right\|_{2}\right)\Big] \]
+    <div class="exp">
+      \(\mathcal{K}\) 是采样的未来时间偏移集合，\(j\) 遍历 8 个潜 token，\(\beta\) 是幅值项权重。<br>
+      <b>为什么用余弦而不是均方误差</b>：余弦只管<b>方向</b>，不管长度。潜空间里向量的绝对长度没有物理意义（可以被整体缩放而不改变语义），但方向承载了"这个状态往哪走"的信息。<b>用 MSE 会逼模型去匹配一个无意义的长度，把容量浪费掉。</b><br>
+      <b>那长度真的完全不用管吗</b>：也不。长度可能承载"变化有多剧烈"这类信息，所以论文留了一个轻量的幅值项（只比两个向量的模长，用 smooth-L1），\(\beta\) 控制它的分量。<b>这是"主对齐方向、副对齐强度"的分工。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑤ 总目标：单身体损失、预训练求和、微调只算目标身体</div>
+    \[ \mathcal{L}^{e}(\mathcal{D})=\mathbb{E}_{\mathcal{D}}\!\left[\mathcal{L}^{e}_{\mathrm{act}}+\lambda^{e}_{\mathrm{dream}}\,\mathcal{L}^{e}_{\mathrm{dream}}\right], \qquad \mathcal{L}_{\mathrm{pre}}=\sum_{e\in\mathcal{E}_{\mathrm{pre}}}\mathcal{L}^{e}(\mathcal{D}_{e}), \qquad \mathcal{L}_{\mathrm{ft}}=\mathcal{L}^{e^{\star}}\!\left(\mathcal{D}^{\mathrm{task}}_{e^{\star}}\right) \]
+    \[ \mathcal{L}^{e}_{\mathrm{act}}=\sum_{m\in\mathcal{M}^{e}_{\mathrm{act}}}\lambda^{e}_{m}\,\ell_{\mathrm{act}}\!\left(\hat{\bm{A}}^{e,m},\ \bm{A}^{e,m}\right) \]
+    <div class="exp">
+      \(\mathcal{L}^{e}_{\mathrm{act}}\) 是各动作模态的 smooth-L1 加权和（动作先标准化）；\(\lambda^{e}_{\mathrm{dream}}\) 是做梦项的权重；\(\mathcal{E}_{\mathrm{pre}}\) 是参与预训练的身体集合；\(e^{\star}\) 是目标身体。<br>
+      <b>大白话</b>：每个身体算自己的账（动作 + 做梦），预训练时把所有身体的账加在一起，微调时只算目标身体那一本。<br>
+      <b>一个容易漏掉的关键约束</b>：预训练时<b>目标身体在目标任务上的演示必须排除在外</b>。否则"预训练涨了多少"这个问题根本无法归因——你会分不清是跨身体迁移起了作用，还是模型早就见过这些演示。<b>论文明确写了这条排除，这属于实验设计的基本功。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑥ 表征层面的证据：用 GW 距离量"两种身体的表征几何像不像"</div>
+    \[ \mathrm{GW}\!\left(\mu_{e_{1}},\mu_{e_{2}}\right)=\min_{\pi\in\Pi}\ \mathbb{E}_{\pi}\!\left[\,\big|\,d_{e_{1}}(i,i')-d_{e_{2}}(j,j')\,\big|^{2}\,\right] \]
+    <div class="exp">
+      \(\mu_{e_{1}},\mu_{e_{2}}\) 是两种身体在同一个任务（舀取）上、主干输出的 512 维表征分布；\(d_{e}(\cdot,\cdot)\) 是<b>分布内部</b>两个样本的距离（用中位数归一化）；\(\pi\) 是两个分布之间的耦合（软配对）。<br>
+      <b>大白话</b>：它不比较"人类的第 1 个样本和机器人的第 1 个样本离多远"——那没有意义，两个空间的绝对坐标本来无关。它比的是<b>关系表</b>：在人类空间里 A 和 B 挨得很近，那在机器人空间里对应的一对是不是也挨得很近。<b>比"形状是否相似"，不比"位置是否重合"。</b><br>
+      <b>为什么这个指标值钱</b>：任务成功率受控制器、初始位形、试验次数影响，噪声大且不能直接说明"知识迁移了"。GW 是直接读表征的，<b>它降了，才说明主干真的把两种身体编码成了同一种结构，而不是下游策略恰好凑出了好分数。</b>
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限</h2>
+
+  <div class="box good">
+    <b>核心价值：它把"跨具身"从"统一表示"改写成"统一接口"</b>。<br>
+    ① <b>问题的切法变了</b>：过去几年跨具身的主流思路是"把动作空间做大、把缺失维度补零"，本质是在赌"不同身体的动作可以对齐到同一个坐标系"。EgoX 直接放弃这个赌，改按功能角色切分。<b>这个转向不依赖任何新模块，只依赖对"什么是不变量"的重新判断——这是最有复用价值的部分。</b><br>
+    ② <b>OOD 增益（+0.24）远大于 ID 增益（+0.17 平均口径下的差）</b>：这个不对称本身就是证据。<b>如果只是"多学了点外观相似的东西"，ID 应该涨得更多；OOD 涨得多，说明迁移的是"怎么动"，不是"长什么样"。</b><br>
+    ③ <b>做梦是"免费监督"</b>：不需要额外标注、不需要额外数据，只用已有的未来帧就能造出一条逼主干学动力学的损失，且部署时零开销。<b>这条思路可以搬到任何"行为克隆学得太表面"的场景。</b><br>
+    ④ <b>补了表征层面的证据</b>：GW 距离 21.30% / 38.52% 这两个数字，让"经验真的共享了"从主张变成了可测量的现象。<b>而且它揭示了一件反直觉的事——做梦对几何靠拢的贡献（38.5%）比预训练本身（21.3%）还大。</b><br>
+    ⑤ <b>粗粒度消融有普适的工程含义</b>：小模态（3 维速度指令）在大模态（48 维关节）旁边会被梯度淹没。<b>凡是做多模态融合的人，都该拿这条对照检查自己的拼接方式。</b>
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>"6 种身体"这个数字被高估了</b>：其中 Z1-Tool 是<b>固定不动的铲子</b>（无驱动末端），G1-Sim 是仿真。真正形态差异大的其实只有 4 种（人形五指、桌面四指、轮式夹爪、四足前腿夹爪）。<b>"跨六种身体"听起来很强，但多样性并没有数字那么宽。</b>尤其 Z1 那对任务（舀猫砂）本质是"把一个刚体按轨迹移动"，难度远低于灵巧操作。</li>
+    <li><b>加一个新身体仍要人工写映射</b>：作者自己承认，扩展到新身体仍需<b>手动指定模态对应关系和坐标变换、并集成专属控制接口</b>。也就是说这套框架解决的是"训练时怎么共用"，没有解决"接入时怎么自动化"。<b>而实际部署中，接一个新机器人的工程量往往比训练还大。</b>"通用了"这个说法要打折扣。</li>
+    <li><b>等量采样是个未解的矛盾</b>：每个身体采同样大小的 mini-batch，保证公平但让小数据集被反复过采样（作者点名 LocoMan-Dex2）。<b>这意味着"跨具身收益"里可能混进了"小数据集过拟合"的噪声</b>，而论文没有给出按数据量调整采样比例的对照。</li>
+    <li><b>真机每对只有 20 次试验（13 ID + 7 OOD）</b>：7 次 OOD 试验的置信区间极宽——一次翻转就是 14 个百分点。<b>OOD 从 0.53 涨到 0.77 这个结论，是靠"13 对全涨"的方向一致性撑起来的，不是靠单对数字。</b>单看某一对的 OOD 提升没有意义，论文也没逐对给误差棒。</li>
+    <li><b>13 对里 ID 有 2 对没提升，论文没解释</b>：只在正文写了"11/13 提升"。<b>没提升的那 2 对是哪两个、为什么？</b>这恰恰是最有信息量的部分——如果是模态太少（像 Z1），说明框架对极简身体无益；如果是数据太少，说明有数据量门槛。<b>缺了这个分析，"什么时候该用跨具身预训练"这个问题就没法回答。</b></li>
+    <li><b>所有数据都是自己团队采的</b>：作者把它列为局限（规模受限），但更值得注意的是<b>数据分布的一致性</b>——同一套采集协议、同一批场景、同一个团队的操作习惯。这种情况下人类视频和机器人视频的"语义对应"天然更干净。<b>换成公开的、风格杂乱的野外人类视频，模态对应关系还能不能手工标得对，是未知的。</b></li>
+    <li><b>基线只有 ACT 和 π0.5，且调参预算没交代</b>：π0.5 是从预训练 checkpoint 微调的，但<b>微调多少步、用什么学习率、在什么数据上</b>都没细说。ACT 是很老的基线（2023），拿它做对照说服力有限。<b>真正的对手应该是同样做跨具身预训练的方法（如 HPT、RDT 这类），论文里没有直接对比。</b></li>
+    <li><b>"做梦"学到的可能不是任务相关的动力学</b>：预测未来潜表征没有指定"预测哪些方面"。它完全可能把容量花在<b>手臂惯性、相机抖动、背景运动</b>这些与任务无关的动力学上——这些也确实"帮助预测未来"。论文用 GW 距离证明了表征变像，但<b>没有拆解"变像的那部分是不是任务相关的那部分"</b>。这是这套方法最需要补的一块证据。</li>
+    <li><b>GW 距离只在一个任务上算</b>：所有 GW 数字都来自"舀猫砂"的右腕 token。选它是因为右腕是唯一跨身体都活跃的末端，<b>合理但局限</b>——一个任务的表征几何靠拢，不能推出所有任务都靠拢。尤其双手协同任务（厨房清理）里，单看右腕可能完全看不到关键变化。</li>
+    <li><b>推理延迟完全没报</b>：模态级拆分意味着前向时要跑<b>多个编码器</b>（主相机 + 可能两路腕相机 + 若干本体流），主干还要处理拼接后更长的 token 序列。<b>模块化在训练时是好事，在推理时是负担。</b>真机控制频率是多少、能不能跑到 30 Hz 以上，论文一个字没提。</li>
+  </ul>
+
+  <p class="src">来源：arXiv 2611.16728《EgoX: Egocentric Cross-Embodiment Manipulation with Embodiment Dreaming》（v1 2026-11-12）· 作者 Yaru Niu、Binghong Chen、Changwei Yao、Shangtao Li、Zhenlong Fang 等 22 人 · 卡内基梅隆大学 / UC Berkeley / 博世人工智能中心</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div></body>
+</html>
