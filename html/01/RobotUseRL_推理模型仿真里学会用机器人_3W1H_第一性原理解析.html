@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>不教动作，只告诉它成没成：推理模型在仿真里学会用机器人</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>不教动作，只告诉它"成没成"<span class="sub">27B 开放权重推理模型 · 全程仿真 + 零示范数据 + 不用 Harness · LIBERO 1.6% → 74.4% · 真实双臂机器人零样本 18/30 · 通用能力九项基准平均只降 0.15 个百分点</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-15</div>
+    <div><b>关键词</b> Robot-use RL · 二值奖励 · GRPO · 课程式训练 · 无 Harness · Sim-to-real</div>
+    <div><b>一句话</b> 它把"教机器人动作"换成了"给机器人一个目标，让它自己想怎么动"</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>机器人泛化不了的根子，往往不在模型不够大，而在训练方式把它教成了"看场景背动作"：示范数据只说明"在这个画面里手该去哪"，所以换一句指令、换一台机器人，这张对照表立刻作废。Robot-use RL 换了一个目标函数——不教动作，只告诉它"任务成没成"这一个 0/1 信号，让模型自己去想"为了完成这件事，手该往哪挪"。它把 27B 的开放权重推理模型放进仿真，只给相机画面和机械臂位姿，每轮输出一个末端位姿，靠组内比较从 1.6% 爬到 74.4%，然后在没见过的真实双臂机器人上一次都没训，拿下 60%——而基座模型一次也没成。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么拆</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：把"Computer-use"这套范式原封不动搬到机械臂上</h2>
+  <p>先说这件事的形状。<b>Computer-use Agent</b>（CUA）的工作循环是：看屏幕截图 → 在脑子里推理"下一步该点哪" → 输出一次点击或按键 → 操作系统执行 → 拿到新截图。能力不是人教的，是在一堆计算机任务上用强化学习刷出来的。</p>
+  <p>Robot-use Agent（RUA）把这个循环一比一换掉了载体：<b>看相机画面 → 推理 → 输出末端执行器的下一个位姿 → 逆运动学把位姿转成关节角、控制器执行 → 拿到新画面。</b>没有别的了。</p>
+  <table>
+    <tr><th>环节</th><th>CUA</th><th>RUA（本文）</th></tr>
+    <tr><td>观测</td><td>屏幕截图</td><td>相机画面 + 机械臂状态（JSON）</td></tr>
+    <tr><td>动作空间</td><td>点击坐标 / 按键</td><td>末端位姿的增量（厘米、弧度）</td></tr>
+    <tr><td>执行者</td><td>操作系统</td><td>逆运动学 + 机器人控制器</td></tr>
+    <tr><td>奖励</td><td>任务是否完成</td><td>任务是否完成（0/1）</td></tr>
+    <tr><td>上下文</td><td>历史截图与操作</td><td>历史画面、推理与位姿，整段保留</td></tr>
+  </table>
+  <p>这里最反直觉的一条是<b>"不用 Harness"</b>。此前让开放权重模型干活的通行做法，是在模型外面搭一堆配件：分割模型帮忙找物体、技能库提供"抓/推/放"几种固定动作、运动规划器负责避障。这类 Harness 能让弱模型勉强完成任务，但它同时也把动作空间<b>焊死</b>了——离开技能库的抽屉，模型就无从下手。</p>
+  <p>本文的选择是：<b>不给工具、不给规划器、不给技能库、不给示范数据。</b>模型必须自己从画面里定位物体、自己决定怎么接近、自己判断"刚才那一下是失败了"。所有能力，只能从仿真里的二值奖励中长出来。</p>
+  <div class="box good">
+    <b>一句话概括它干的事：</b>把一个通用推理模型，当成一个"看着画面、想着目标、每次只挪一小步"的机器人操作员，然后用"任务有没有完成"这一个比特，把它从几乎不会（成功率 1.6%）训练到接近前沿闭源模型（74.4%），并且这个能力能跨仿真器、跨机器人本体、跨到真实世界。
+  </div>
+  <p>几组必须记住的数字，后面所有讨论都围着它们转：</p>
+  <ul>
+    <li><b>LIBERO：1.6% → 74.4%。</b>对照的 GPT-6 Astra 与 GPT-6.1 Sol 在最大推理强度下分别是 80.6% 与 76.2%，中等强度下只有 49.3% 与 48.1%。</li>
+    <li><b>真实双臂 YAM 机器人：30 次测试成 18 次（60%），基座模型 0 次。</b>这台机器人从未出现在训练里，也没有任何真机数据。</li>
+    <li><b>只用了两个仿真器（LIBERO、RoboDojo）、两个双臂任务、一个 27B 基座。</b>训练规模远未做完，作者自己把这条写在局限第一条。</li>
+    <li><b>九项通用基准（AIME 2026、GPQA Diamond、LiveCodeBench v6、MMMU 等）平均只掉 0.15 个百分点</b>，每项的 95% 置信区间都包含零。</li>
+  </ul>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：示范教的是"答案"，RL 教的是"解题过程"</h2>
+  <p>要理解这篇的价值，得先把"示范数据"这件事的局限说透。</p>
+
+  <h3>公理一：示范数据里藏的是一张"画面→动作"的对照表</h3>
+  <p>行为克隆（以及绝大多数 VLA 的微调）做的事情，本质上是拟合一个条件分布：给定当前观测和指令，输出示范里出现过的那个动作。数据越多、覆盖越广，表就越厚。但这张表有个致命的结构性问题：<b>它把"指令"和"画面"一起编码进了同一个映射里。</b></p>
+  <p>于是当指令变了、画面没变（同一个厨房，让你从"拿杯子"改成"擦桌子"），模型没有对应的表项，只能就近取一个——它会去做训练时在这个场景里做过的那件事。这不是模型笨，是<b>目标函数里根本没有"指令是变量"这个概念</b>。</p>
+  <p>论文里有一组数字把这件事钉死了：π0.5 在 LIBERO 上是 96.9%，一旦把任务换成"同一个场景、不同目标"，掉到 <b>0.75%</b>——掉了 96.2 个百分点。而本文的模型从 74.4% 掉到 57.4%，只掉 17 个百分点。</p>
+
+  <h3>公理二：RL 优化的不是"像不像"，而是"成不成"</h3>
+  <p>强化学习的目标函数里没有"示范动作"这一项。它只有奖励：任务完成 = 1，否则 = 0。要在这种信号下提高分数，模型唯一能做的事是<b>找出"从当前局面到成功"的因果关系</b>，而不是复现某个特定轨迹。</p>
+  <p>这就解释了为什么它在"指令变了"的时候不崩：它学到的不是"这个场景该做这个动作"，而是"这条指令要求什么、当前差多少、该怎么补"。前者是一张表，后者是一个可以重新推导的过程。<b>换目标只是换前提，推演还能继续。</b></p>
+
+  <h3>公理三：二值奖励的信息量极小，但足够"排序"</h3>
+  <p>一个 0/1 奖励看起来信息量低到可怜：它不告诉你哪里做错了、差多少、下一步该往哪调。但强化学习不需要这些，它只需要<b>在同一个任务的多次尝试之间排出好坏</b>。</p>
+  <p>所以本文用的是组内归一化：同一个任务、同一个初始状态，采样一组（G 个）episode，用"这一组成绩的均值和标准差"把这个 episode 的奖励标准化成优势值。全组都成功或全组都失败时，优势值为零，这组数据直接丢掉重采。</p>
+  <div class="box bad">
+    <b>这条设计埋了一个必须解决的死结：</b>如果模型在某个任务上<b>从来没成功过</b>，那么这一组全是 0，优势值恒为零，梯度恒为零——这个任务永远不会提供学习信号。<b>它不是一个"难"的问题，是一个"没有梯度"的问题。</b>
+  </div>
+
+  <h3>公理四：所以必须"先学会一点，再学难的"——这是启动问题，不是技巧问题</h3>
+  <p>基座模型在 LIBERO 的三个任务集上成功率约 2%，在长时程的 LIBERO-Long 上只有 0.4%，在多数 RoboDojo 任务上几乎从不成功。按上面的逻辑，这些任务全都没有梯度。</p>
+  <p>本文的解法是课程：<b>先在"还能偶尔成功"的任务上训，让模型学到一点通用本事；这点本事会迁移到没训过的任务上，把它们的成功率从"恒零"抬到"偶尔成功"；一旦有了信号，再把它们加进训练集。</b>这是一个自我启动的循环——用已经会的东西，去点亮还不会的东西。</p>
+  <p>证据很干净：在第 148 步（此时模型<b>完全没在</b> LIBERO-Long 上训练过），它已经能解决其中 39.0% 的任务，而基座是 0.4%。第 149 步把 LIBERO-Long 加进来后，这个数字最终到 53.2%。</p>
+
+  <h3>公理五：接口越"笨"，迁移越强</h3>
+  <p>模型输出的动作不是关节角，也不是一串动作块，而是<b>"末端执行器下一步该到的位姿"</b>，单位是厘米和弧度。这个位姿交给机器人自带的逆运动学去解成关节角，再交给它自带的控制器去执行。</p>
+  <p>这个笨接口带来一个巨大的好处：<b>仿真器和真实机器人用的是同一套协议。</b>单臂 Franka、双臂 ARX、真实双臂 YAM，三者的差别只有"部件列表"和"系统提示里的机器人描述"，动作格式一个字都不用改。所以"部署到真机"这一步，<b>不需要任何额外的训练或适配</b>——只是换一段 Prompt。</p>
+  <p>代价也很明确：每轮只能挪一个位姿，原本可以一次输出一整段动作块（action chunk）完成的复杂运动，现在必须拆成十几、二十几轮。这是它推理慢的直接原因。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：三轮课程、一个引擎、四个"故意不做"</h2>
+
+  <h3>第一步：把机器人写进 Prompt，把动作写成 JSON</h3>
+  <div class="step">
+    <div class="t">协议设计</div>
+    <div class="d">System Prompt 里描述机器人的坐标系和相机，把机器人写成一组成员化的部件（每条臂的末端位置与朝向）。机器人状态是一个 JSON 对象，列出每个物理量的当前值；动作是一个结构相同的 JSON 对象，给出每个物理量的变化量（厘米 / 弧度）。控制器驱动机器人直到所有目标到位且静止，或者中途被挡住。</div>
+  </div>
+  <p>这个设计的巧妙之处在于：<b>模型的输出和具体硬件解耦了。</b>它不知道什么是"第 3 关节限位"，它只知道"这个末端要往右 2 厘米"。剩下的交给机器人的逆运动学。</p>
+
+  <h3>第二步：一个 episode 的定义，决定了奖励的形状</h3>
+  <div class="step">
+    <div class="t">回合结束条件</div>
+    <div class="d">仿真器报告任务成功 / 达到基准的步数上限 / 达到上下文的 token 预算上限 / 模型输出里没有合法动作。满足任一即结束，然后给一个 0 或 1 的奖励。</div>
+  </div>
+  <p>注意"上下文 token 预算上限"这一条——它把<b>推理长度也变成了资源</b>。想得越久，能动手的轮数就越少。这是后面"推理强度 vs 成功率"那组实验的制度基础。</p>
+
+  <h3>第三步：PEAR 引擎——长时程多轮 RL 的工程前提</h3>
+  <p>训练一个"每轮都要想半天、一个回合几十轮"的 agent，瓶颈不在算法，在工程：</p>
+  <ul>
+    <li><b>前缀缓存命中率。</b>每一轮都在上一轮的基础上多一段，前缀高度重复。用 LMCache 把前缀 KV 缓存卸载到 CPU 内存，并<b>限制并发回合数</b>，就是为了让缓存命中率维持在高效区间。</li>
+    <li><b>整段 episode 作为一条训练序列。</b>一个回合可能几万 token，靠 FSDP + 序列并行 + 梯度检查点才塞得进显存。</li>
+    <li><b>异步 rollout。</b>采样和参数更新完全并行跑，因此生成 episode 的策略会比正在训练的版本落后一到两个版本。</li>
+  </ul>
+  <p>异步带来的"策略不一致"，用两项技术处理：一项是 REINFORCE 估计器（用组内均值当基线，<b>不做 PPO 裁剪</b>），另一项是 score-centering 修正项，专门抵掉"用旧策略采的样本更新新策略"的偏差。<b>只用了修正项，没有用截断重要性采样。</b></p>
+
+  <h3>第四步：三段课程，每段都只加"已经有一点信号"的任务</h3>
+  <table>
+    <tr><th>阶段</th><th>训练内容</th><th>步数</th><th>为什么这样切</th></tr>
+    <tr><td>一</td><td>LIBERO 的 Goal / Spatial / Object 三个任务集</td><td>1 – 148</td><td>这里有约 2% 的偶发成功，是唯一有梯度的地方</td></tr>
+    <tr><td>二</td><td>LIBERO 全部四个任务集（加入 Long）</td><td>149 – 225</td><td>迁移已把 Long 的成功率抬到 39%，信号出现了</td></tr>
+    <tr><td>三</td><td>RoboDojo 两个双臂任务（general pickup、align blocks）</td><td>+115</td><td>换仿真器、换双臂本体，验证"技能不绑环境"</td></tr>
+  </table>
+  <p>第一阶段<b>故意不碰 LIBERO-Long</b>，这样"零样本迁移"就有了一个干净的对照组——不是事后解释，是设计时就留好的证据。</p>
+
+  <h3>第五步：能力长出来的样子，是"会想"而不是"会动"</h3>
+  <p>论文里最值得琢磨的一组实验是推理强度和成功率的关系。同一个模型（只用 xhigh 强度训练过），在 low 强度下每轮只花 <b>0.86k</b> 个思考 token，LIBERO 成功率 <b>21.9%</b>；在 xhigh 强度下花 <b>3.23k</b> 个 token，成功率 <b>74.4%</b>。</p>
+  <div class="box good">
+    <b>思考长度砍到不足三分之一，成功率也掉到不足三分之一。</b>这说明它在 LIBERO 上的能力，绝大部分来自"每次动手之前的那段长考"，而不是来自某个被固化的动作反射。这是"推理即策略"最直接的一条实证。
+  </div>
+  <p>反过来，这也暴露了它的工程代价：GB300 单卡解码 747 token/s，一轮推理约 4.3 秒；low 强度约 1.1 秒。少数情况下思维链冲到 32k token，<b>一次动作要半分钟以上</b>。真机上评测时，一个回合超过 25 轮、或单轮推理超过 32k token，直接判失败——这条规则本身就是对"想太久"的惩罚。</p>
+
+  <h3>四个"故意不做"，每一个都有理由</h3>
+  <table>
+    <tr><th>不做</th><th>理由</th><th>代价</th></tr>
+    <tr><td>不用 Harness</td><td>配件会限制动作空间，让技能库之外的任务无法完成；模型变强后这些配件本会被吸收</td><td>模型必须自己定位物体、自己发现失败，学到的东西更少更慢</td></tr>
+    <tr><td>不用示范数据 / SFT</td><td>缺高质量分布内数据；担心 SFT 侵蚀通用能力；认为机器人数据该进预训练中期，而非事后微调</td><td>从 2% 起步，全靠课程爬坡，训练成本高</td></tr>
+    <tr><td>不输出动作块</td><td>统一到"末端位姿"这一个最笨的接口，才能跨本体零适配</td><td>复杂运动要拆成十几二十轮，慢</td></tr>
+    <tr><td>不加长度惩罚</td><td>先看清"想得久"到底能换来多少成功率，再谈压缩</td><td>4.3 秒一轮，真机节奏偏慢</td></tr>
+  </table>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>核心公式：一个比特的奖励，怎么变成梯度</h2>
+
+  <div class="fml">
+    <div class="name">① 一个回合的定义：上下文是累积的，奖励是唯一的</div>
+    \[ \xi=\left(o_1,y_1,o_2,y_2,\dots,o_T,y_T\right),\qquad c_t=\left(h,\;o_1,y_1,\dots,o_{t-1},y_{t-1},o_t\right) \]
+    \[ R(\xi)=\mathbb{1}\!\left[\text{仿真器在步数或 token 预算耗尽前报告成功}\right]\in\{0,1\} \]
+    <div class="exp">\(o_t\) 是第 t 轮的观测（相机画面 + 机械臂状态），\(y_t\) 是模型的回应（推理文字 + 一个位姿增量），\(h\) 是 System Prompt，\(c_t\) 是这一轮真正喂进模型的完整上下文。<b>大白话：</b>模型每一步都能看到"我之前想了什么、做了什么、结果画面变成什么样"，所以它具备"发现自己刚才失败了"的能力——这个能力本来是 Harness 里"记忆模块"负责的，这里被上下文直接吃掉了。奖励只有一个比特：这一整套动作下来，任务到底成没成。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 组内归一化优势：把"成没成"变成"比同伴好多少"</div>
+    \[ A_i=\frac{R_i-\dfrac{1}{G}\sum_{j=1}^{G}R_j}{\operatorname{std}\!\left(R_1,\dots,R_G\right)+\epsilon} \]
+    <div class="exp">同一个任务、同一个初始状态采 \(G\) 个回合，\(R_i\) 是第 i 个回合的 0/1 奖励。<b>大白话：</b>绝对分数没意义（全是 0 或全是 1 都没法比），有意义的是"同一道题下，我这次比平均好多少"。减去组内均值就是把"这题本身难不难"消掉，只留下"这次发挥的相对好坏"。除以标准差是让不同难度的题在同一个尺度上比较。这也直接解释了为什么<b>全成功或全失败的组必须丢掉</b>——那种组的分子恒为零，算了也白算。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 策略梯度：一个回合里的每个 token，共同承担这个回合的功劳或过错</div>
+    \[ \nabla_\theta J=\mathbb{E}_{\xi\sim\mu}\left[\frac{1}{T_{\text{tot}}}\sum_{i=1}^{G}\sum_{k=1}^{T_i}A_i\,\nabla_\theta\log\pi_\theta\!\left(y_i^{k}\mid c_i^{k}\right)\right] \]
+    <div class="exp">\(y_i^{k}\) 是第 i 个回合里的第 k 个 token（不管是推理文字还是那个 JSON 动作），\(c_i^{k}\) 是这个 token 之前的上下文，\(\mu\) 是采样时用的策略。<b>大白话：</b>如果一个回合最终成功了，那么这一回合里<b>所有</b> token——包括那些"想错了又改回来"的思考——都被认为有功，概率一起往上推；失败了就一起往下压。没有 PPO 那种"只奖励比旧策略更好的部分"的裁剪，因为这里的优势已经是组内相对值了。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ score-centering：抵掉"用旧策略的样本更新新策略"的偏差</div>
+    \[ \tilde{\nabla}=\nabla_\theta J-\mathbb{E}_{\xi\sim\mu}\left[\frac{1}{T_{\text{tot}}}\sum_{i=1}^{G}\sum_{k=1}^{T_i}A_i\,\nabla_\theta\log\mu\!\left(y_i^{k}\mid c_i^{k}\right)\right] \]
+    <div class="exp">第一项是正常的策略梯度，第二项用的是<b>生成样本的那个策略 \(\mu\)</b>（比正在训练的 \(\pi_\theta\) 落后一到两个版本）。<b>大白话：</b>因为采样和训练是异步跑的，样本是"旧模型"产生的。旧模型天然更偏爱它自己写过的东西，这个偏爱会污染梯度。减掉这一项，等于把"旧模型的偏好"从更新方向里扣掉，只留下"新模型相对旧模型该怎么改"。作者特意注明<b>只用了这一项修正，没用截断重要性采样</b>——少一层超参，也少一处不稳定源。</div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：60% 这个数字，含金量在哪、边界在哪</h2>
+
+  <h3>它真正证明了什么</h3>
+  <div class="box good">
+    <b>"机器人使用"是一种可以被训练出来的技能，不是一种必须被设计出来的架构。</b>这是全文最硬的一句话。它把 CUA 的成功路径完整复刻到了机械臂上：同一个"观察—推理—原子动作—环境执行"的循环，同一个二值奖励，同一个课程思路。如果这条路成立，那么机器人能力的增长就可以搭在大模型后训练的列车上，而不必每次重造一套 VLA。
+  </div>
+  <p>第二条证据是<b>"不侵蚀通用能力"</b>。九项基准、配对比较、平均 −0.15 个百分点、置信区间全部含零。这与此前的观察一致：在新任务上做 RL，比做 SFT 对模型其他技能的破坏小得多。这条结论的分量比 74.4% 更大——它意味着<b>你可以把机器人能力当成"又一个后训练阶段"加进模型，而不必担心它把模型变傻</b>。</p>
+  <p>第三条是<b>零样本跨本体</b>。真实 YAM 双臂机器人 18/30，仅 LIBERO 训练的版本 7/30，基座 0/30。这里有三个台阶，每个台阶都很干净：仿真技能能出仿真器（7/30）、能跨本体（18/30）、基座完全不行（0/30）。</p>
+
+  <h3>这些数字该怎么读——五处必须打折的地方</h3>
+  <ol class="crit">
+    <li><b>60% 是"30 次测试"的 60%，样本很小。</b>评测设计是 5 个场景各 2 次 + 10 个物体各 2 次，共 30 次，任务只有两类（"用三角尺把三个积木推成一条直线"、"把某物体拿起 10 厘米"）。这两类任务恰好就是它在 RoboDojo 上专门训过的两个任务。<b>所以这 60% 严格说是"训练任务的真实世界复现率"，不是"真实世界通用操作能力"。</b>把它当成后者读，会高估一大截。</li>
+    <li><b>"不用 Harness"是优点，但它换来的代价被低估了。</b>不能输出动作块，意味着一个原本一轮能完成的复杂运动要拆成十几二十轮。真机评测里"超过 25 轮判失败"这条规则，本质上是给这个设计缺陷打的补丁。<b>换句话说：它不是"不需要脚手架"，而是"把脚手架的成本转移到了轮数上"。</b></li>
+    <li><b>速度是这条路线的硬约束，不是工程细节。</b>4.3 秒一轮，20 轮的任务光思考就 86 秒；少数情况 32k token 的思维链让一次动作超过半分钟。真机上这已经不是"慢一点"，而是"无法与人协作"。作者把"如何在不牺牲成功率的前提下缩短推理"列为未来工作，说明这个问题当时没解。</li>
+    <li><b>π0.5 的对比数字是"拼"出来的，不是同一个实验跑的。</b>LIBERO 结果来自 openpi 仓库，LIBERO-Plus 来自 Yan 等人，LIBERO-Pro 来自 Zhou 等人，RoboLab 那个 π0.5 甚至是另一个 checkpoint（在 DROID 上训的）。<b>跨来源拼接的对照，方向通常可信，但绝对差值要谨慎</b>——尤其 LIBERO-Pro 上那 8.8 个百分点的反超，受各来源评测协议差异的影响未知。</li>
+    <li><b>它对 Prompt 的依赖，是这条路线的隐性天花板。</b>作者自己承认：27B 的基座"通常缺少关于所控制机器人本体的知识，因此需要在 Prompt 中提供这些信息"，成功率"很大程度上取决于模型能否根据 Prompt 清楚理解本体和环境"。图 7(c) 那两个推理任务（画星空、选酚酞）只有在 Prompt 里详细描述本体与任务之后才成功。<b>这意味着"换一台机器人"并不免费——你要重写一段足够好的本体描述。</b>这段描述写得好不好，直接决定 60% 还是 20%。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>这篇的真正分量不在 74.4%，也不在 60%，而在它把一个问题重新定义了：<b>过去我们问"怎么让机器人学会更多动作"，它改问"怎么让机器人学会为了目标自己想动作"。</b>前者靠数据堆，堆到某个规模就撞墙（示范覆盖不到新指令）；后者靠奖励，只要任务能被判定成败，就永远有信号。<b>而"任务成没成"这个信号，恰恰是最便宜、最不需要人来标注的那一种。</b></p>
+  <p>它也因此把成本从"采数据"挪到了"想得久"：<b>用户要为一个 4.3 秒的思考等 4.3 秒，而不是为一个不会做的任务永远等下去。</b>这笔交易在哪些场景划算，是下一个要回答的问题。至于"仿真里练出来的东西能不能真的到真机上"——18/30 这个数字已经给出了一个朴素的答案：<b>能，但只在你训过的那两件事上。</b></p>
+  <p class="src">原文：《Robot-use RL：让推理模型在仿真中学习操作机器人》，公众号 human five，2026-11-15。项目主页：mit-han-lab.github.io/pear-blog。相关：PEAR（Post-training Engine for Agentic Robotics）、veRL、LMCache、GRPO、DAPO、LIBERO / LIBERO-Plus / LIBERO-Pro、RoboDojo、RoboLab-120、Qwen3.8-27B、π0.5、GPT-6 Astra、GPT-6.1 Sol。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ 来源：公众号 human five</footer>
+</div></body>
+</html>

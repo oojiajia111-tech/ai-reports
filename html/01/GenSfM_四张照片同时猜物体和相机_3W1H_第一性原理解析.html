@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>四张照片，同时找回完整 3D 物体与拍摄视角</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>四张照片，同时找回完整 3D 物体与拍摄视角<span class="sub">GenSfM · 忆生科技 + 香港大学 · NeurIPS 2026 · 输入四张未标定照片，不需要相机内外参 · 新视角 PSNR 领先 4.53 dB（Toys4K）/ 3.22 dB（GSO）· 相机相对旋转误差 1.60° / 1.27° · 比 FreeSplatter、ReconViaGen、VGGT 都低</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-13</div>
+    <div><b>关键词</b> 单物体三维重建 · 相机位姿 · UV 体素网格 · 原生三维扩散 · 生成式先验</div>
+    <div><b>一句话</b> 与其先猜相机再猜形状，不如让两个"猜"在同一张纸上互相校正</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>要从几张照片还原一个物体，得先知道照片是从哪儿拍的；而要知道相机在哪儿，又得先知道物体长什么样。这两个问题互相咬住，正是经典 SfM 在只有四张图时必然失效的根因——轮廓变窄，可能是形状变了，也可能只是角度斜了，局部证据根本分不开这两种解释。GenSfM 不去拆这个死结，而是让两边在同一张纸上一起猜：把相机写成一张"每个三维位置对应哪个二维像素"的查询表，和物体共用同一个 64³ 体素网格，一起丢进三维扩散模型里同步去噪。四张未标定照片进去，完整物体和四组相机参数一起出来。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么拆</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个输出里包含两件事，缺一件就都不算对</h2>
+  <p>先看任务本身的形状。给四张同一物体的照片，人眼能认出这是正面、侧面、背面，也能隐约感觉到"这三张是从左边拍的、那张是从上面拍的"。但要把它变成一个能自由旋转的三维模型，必须同时回答三件事：<b>每张照片从哪儿拍的？不同照片里的轮廓能不能拼成同一个物体？没拍到的部分该长什么样？</b></p>
+  <p>GenSfM 的输出是一组<b>必须相互自洽</b>的东西：一个完整的三维物体 + 能解释每一张输入图像的相机参数（内参与外参）。四张图进去，不需要事先给任何相机信息。</p>
+  <div class="box good">
+    <b>怎么算"自洽"？</b>论文给了一个非常朴素的检查法：沿着预测出的相机方向，把三维结果重新渲染成二维图像，再和原始照片逐像素对照。<b>车轮位置、车架边缘、表面图案对得上，说明物体与相机是同一个三维空间里的两件东西，而不是各猜各的。</b>
+  </div>
+  <table>
+    <tr><th>要回答的问题</th><th>经典做法</th><th>四张图时的困境</th></tr>
+    <tr><td>相机在哪儿</td><td>找特征对应 → 几何求解 → 联合优化（SfM）</td><td>图少、重叠少，可用对应点骤减</td></tr>
+    <tr><td>物体什么形状</td><td>稀疏点云 → 稠密重建（MVS）</td><td>表面覆盖率低，大片区域无观测</td></tr>
+    <tr><td>没拍到的地方</td><td>基本无解，只能留洞或平滑填</td><td>形状先验缺位，补出来的东西不成立</td></tr>
+  </table>
+  <p>论文的核心数字，分两路给出，因为它认为<b>物体质量和相机质量是两种不同的失败</b>，必须分开看：</p>
+  <ul>
+    <li><b>三维生成：</b>与多视角基线 TRELLIS-M 相比，新视角 PSNR 在 Toys4K 上高 <b>4.53 dB</b>、在 GSO 上高 <b>3.22 dB</b>，几何 F-score（阈值 0.01）同步提高。</li>
+    <li><b>相机：</b>在自行预测内参的条件下，相对旋转误差 <b>1.60°</b>（Toys4K）与 <b>1.27°</b>（GSO），低于 FreeSplatter、ReconViaGen 与 VGGT。</li>
+    <li><b>测试条件：</b>Toys4K 与 GSO 各取 <b>400 个物体</b>，每个物体两组<b>互不重叠</b>的四视角输入，两个测试集都未参与训练；外观只用"没作为输入的新视角"评。</li>
+  </ul>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：一个循环依赖，两种打破方式，它选了第二种</h2>
+
+  <h3>公理一：位姿与形状的互相依赖，是一个"联合分布"问题，不是"两个串行估计"问题</h3>
+  <p>串行做法是：先估相机，再重建物体。它的结构性缺陷是<b>误差单向传播</b>——相机估歪了，重建必然跟着歪，而且后面的步骤没有任何机制去纠正前面那个错误。</p>
+  <p>正确的形式化是：这两件事本来就该从<b>同一个联合分布</b>里采样。<b>知道相机，能约束形状；知道形状，也能约束相机。</b>只要让两者在同一轮推断里互相打分，误差就是双向约束的，而不是单向传递的。</p>
+
+  <h3>公理二：要"联合"，先得让两者住进同一个空间、被同一种算子处理</h3>
+  <p>这是全文最关键的一步。相机参数天生是个"外来户"：内参是 3×3 矩阵，外参是旋转 + 平移，总共 7 个自由度，和占据整个三维空间的物体完全不是一个物种。你没法让一个处理三维体素的扩散网络顺手处理一个 7 维向量——那等于两套网络各干各的，又退回了串行。</p>
+  <p>GenSfM 的答案是<b>换坐标</b>：把相机翻译成一张<b>投影查询表</b>。</p>
+  <div class="box good">
+    <b>UV 体素网格：</b>对三维网格里的每一个位置，记录"它在某张图像上对应的二维坐标 (u, v)"。每个输入视角各有一份这样的网格。<b>于是"相机"这个东西，从"一组参数"变成了"一个和物体同尺寸、同坐标系的三维场"。</b>
+  </div>
+  <p>这个转换的妙处是双重的：① 它和物体共用同一套 64×64×64 体素网格，位置一一对应，扩散模型可以把两者放在一起处理；② 它天然就是"采样器"——第二阶段要拿图像特征时，不需要任何外部相机估计器，直接查表。<b>参数变成了数据结构，于是它就能被当成数据来处理。</b></p>
+
+  <h3>公理三：生成先验是第二种证据，但它只能补"没看到"，不能修"对不上"</h3>
+  <p>经典 SfM 只有一种证据：多图之间的特征对应。四张图时这种证据不够，于是出现了"轮廓变窄"的歧义——是物体那里真的凹进去，还是拍摄角度更斜？<b>局部图像信息里没有答案。</b></p>
+  <p>生成模型提供了第二种证据：<b>形状的先验分布</b>。它在大量三维实例上见过"背包一般长什么样""钟表一般有几个脚"，所以能对没拍到的区域给出一个合理的猜测。这就是它敢用四张图的原因——不是四张图够了，而是<b>四张图 + 先验够了</b>。</p>
+  <p>但这条证据有严格的适用边界，论文自己划得很清楚：<b>先验只能补全"没有被输入图像覆盖的区域"，不能纠正"图像与三维位置之间的对应关系"。</b>对应关系错了，纹理就会贴到错误的表面上——这就是为什么它必须把相机质量单独拿出来评。</p>
+
+  <h3>公理四：稠密网格太贵，于是用"表征精度"换"算力"</h3>
+  <p>64³ 的 UV 网格，每个体素存两个浮点数，还每个视角一份——直接进扩散模型，显存和计算都撑不住。所以先用一个<b>共享的相机编码器</b>把它压成 <b>4×4×4 的潜在网格</b>。</p>
+  <p>这一步看起来是暴力压缩，其实有依据：<b>相机本身只有 7 个自由度，它的信息量远小于一个 64³ 的三维场。</b>把相机的空间分辨率压到 4³，丢掉的冗余远多于丢掉的信号。联合去噪时，模型真正处理的是"一份物体形状潜变量 + 几份紧凑的相机潜变量"，量级终于对得上了。</p>
+
+  <h3>公理五：纹理贴不对位置，是因为"注意力是隐式的"</h3>
+  <p>如果只靠 Attention 把图像特征注入三维表示，"图像上哪一块对应三维哪一块"这件事是由网络<b>自己隐式学</b>的。四张图、覆盖稀疏时，这种隐式学习很容易糊。</p>
+  <p>GenSfM 在第二阶段把这个关系<b>显式化</b>：既然第一阶段已经预测出了相机，那就把粗结构里"活跃的体素"投影到各张输入图像上，<b>从对应坐标精确取特征</b>。同一块三维区域，从四张图各取一次，语义特征在分支内取平均，纹理特征也取平均，再拼回待去噪的体素特征里。</p>
+  <div class="box good">
+    <b>这一步的本质是：把"该去哪儿找证据"从"让网络自己猜"变成了"用几何算出来"。</b>相机准不准，直接决定这一步取到的特征对不对——所以第一阶段的相机质量，同时又成了第二阶段的上限。
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：先粗后细，两阶段各管一件事</h2>
+  <p>整体沿用 TRELLIS 的"先粗后细"框架，但把相机塞进了第一阶段，并让第二阶段直接消费它。</p>
+
+  <h3>第一阶段：粗结构与相机，一起从噪声里长出来</h3>
+  <div class="step">
+    <div class="t">联合去噪</div>
+    <div class="d">输入四张图，各自提取特征（DINOv2 负责语义与结构，一个小卷积网络补多尺度的颜色、边缘、纹理），连同各自的相机潜变量，一起进入原生三维扩散模型；去噪过程中<b>物体形状与相机参数同步更新</b>。某张图缺失的结构可以从其他图补上，逐渐成形的形状反过来又为相机判断提供线索。</div>
+  </div>
+  <div class="step">
+    <div class="t">视角标签</div>
+    <div class="d">多视角输入时，模型必须知道"这份相机表示属于哪张图"。做法是给图像特征和它对应的相机潜变量<b>打上同一个视角标签</b>，再用一个共享的全局信息表示把多张图的线索汇集起来。<b>标签只标明来源，具体拍摄角度仍要模型自己推断。</b></div>
+  </div>
+  <div class="step">
+    <div class="t">解出相机</div>
+    <div class="d">生成完成后，相机潜变量被解码回 UV 体素网格，再用 <b>DLT</b>（直接线性变换）根据"三维位置 ↔ 二维投影"的对应关系求出相机矩阵，得到内参与外参。</div>
+  </div>
+
+  <h3>第二阶段：拿第一阶段的相机，把细节"按位置"取回来</h3>
+  <div class="step">
+    <div class="t">按投影采样</div>
+    <div class="d">把粗结构中的活跃体素按预测相机投影到各张输入图像，从对应坐标提取特征。语义走 DINOv2 分支，纹理走卷积分支，不同视角的特征在各自分支内取平均。</div>
+  </div>
+  <div class="step">
+    <div class="t">拼回三维</div>
+    <div class="d">语义特征经冻结的 SLat 编码器转到三维潜在空间，与纹理特征一起拼接到待去噪的体素特征上，再细化几何与外观。</div>
+  </div>
+  <div class="step">
+    <div class="t">输出</div>
+    <div class="d">最终 SLat 表示可解码为<b>三维高斯</b>或<b>网格</b>。没被输入覆盖的区域，仍由生成先验补全。</div>
+  </div>
+
+  <h3>整条流水线省掉了什么</h3>
+  <table>
+    <tr><th>经典流水线</th><th>GenSfM</th></tr>
+    <tr><td>相机标定（需要标定板或已知内参）</td><td>不需要，四张未标定图像直接进</td></tr>
+    <tr><td>特征匹配 + 几何求解 + 光束法平差</td><td>被第一阶段的联合去噪替代</td></tr>
+    <tr><td>稠密重建（MVS）+ 网格化 + 补洞</td><td>被第二阶段的投影采样 + 先验补全替代</td></tr>
+    <tr><td>每个物体单独跑一次后处理优化</td><td>不需要额外后处理，一次前向出结果</td></tr>
+  </table>
+  <p>这也解释了它的演示为什么是"约 76 秒"：<b>它不是一个优化流程，而是一次生成。</b></p>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>核心公式：把相机写成一张表</h2>
+
+  <div class="fml">
+    <div class="name">① 相机 = 一张投影查询表（UV 体素网格）</div>
+    \[ \mathcal{U}_{v}\in\mathbb{R}^{64\times 64\times 64\times 2},\qquad \mathcal{U}_{v}(\bm{x})=\Pi_{v}(\bm{x})=\left(u_{v}(\bm{x}),\,v_{v}(\bm{x})\right) \]
+    <div class="exp">\(\bm{x}\) 是三维网格中的任意位置，\(\Pi_v\) 是第 v 个视角的投影函数，\(\mathcal{U}_v(\bm{x})\) 就是"这个三维点落在第 v 张图的第几个像素上"。<b>大白话：</b>传统做法把相机存成"一个 3×3 内参 + 一个旋转 + 一个平移"，本文把它换成"给空间中每个格子记一个二维坐标"。形状是三维场，相机也被改造成三维场，两者终于能用同一套网络处理。<b>这一步是整个方法的地基。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 从表和结构反解相机矩阵（DLT）</div>
+    \[ \tilde{\bm{u}}_{v}(\bm{x})\;\sim\;\bm{K}_{v}\left[\bm{R}_{v}\mid\bm{t}_{v}\right]\tilde{\bm{x}},\qquad \left(\bm{K}_{v},\bm{R}_{v},\bm{t}_{v}\right)=\mathrm{DLT}\!\left(\left\{\left(\bm{x},\ \mathcal{U}_{v}(\bm{x})\right)\right\}_{\bm{x}\in\Omega}\right) \]
+    <div class="exp">\(\tilde{\bm{u}}\)、\(\tilde{\bm{x}}\) 是齐次坐标，\(\bm{K}\) 是内参，\([\bm{R}\mid\bm{t}]\) 是外参，\(\Omega\) 是活跃体素集合。<b>大白话：</b>既然已经有了一大堆"三维点 ↔ 二维像素"的对应关系，求相机就变成一个标准的最小二乘问题——这正是 DLT 干的事。注意这里的关键：<b>对应关系不是从图像特征匹配出来的，是模型自己生成出来的。</b>所以哪怕四张图之间几乎没有可匹配的特征，这一步照样有解。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 联合去噪：物体与多组相机在同一个网络里同步更新</div>
+    \[ \epsilon_{\theta}\!\left(\bm{z}^{o}_{t},\ \left\{\bm{z}^{c_v}_{t}\right\}_{v=1}^{V},\ t\right)\;\longrightarrow\;\left(\hat{\epsilon}^{o}_{t},\ \left\{\hat{\epsilon}^{c_v}_{t}\right\}_{v=1}^{V}\right) \]
+    <div class="exp">\(\bm{z}^o\) 是物体形状的潜变量，\(\bm{z}^{c_v}\) 是第 v 个视角的相机潜变量（由 64³ 压到 4³），\(V\) 是输入视角数（本文为 4），\(t\) 是扩散步。<b>大白话：</b>一次前向同时输出"物体该去掉多少噪声"和"每组相机该去掉多少噪声"。因为它们在同一个注意力场里，<b>物体的去噪会看到相机的状态，相机的去噪也会看到物体的状态</b>——这就是"互相校正"在代码里真正的样子。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 第二阶段：拿预测相机去精确取样，而不是让注意力猜</div>
+    \[ \bm{f}(\bm{x})=\frac{1}{V}\sum_{v=1}^{V}\mathcal{F}_{v}\!\left(\Pi_{v}(\bm{x})\right),\qquad \Pi_{v}\ \text{来自第一阶段预测的相机} \]
+    <div class="exp">\(\mathcal{F}_v\) 是第 v 张图的特征图（语义分支用 DINOv2，纹理分支用卷积网络），\(\bm{f}(\bm{x})\) 是三维位置 \(\bm{x}\) 处聚合到的图像证据。<b>大白话：</b>以前是"我把四张图的特征都扔给网络，你自己想办法对上"；现在是"我已经知道这个三维点该看第几张图的第几个像素，我直接去那儿取"。<b>前者是隐式学习，后者是几何计算</b>——四张图这种稀疏条件下，后者稳定得多。</div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：它删掉的是"标定"这一整段</h2>
+
+  <h3>真正的贡献不是 4.53 dB，是流水线短了一截</h3>
+  <div class="box good">
+    过去做单物体三维重建，标准流程是：<b>标定相机 → 特征匹配 → 光束法平差 → 稠密重建 → 网格化 → 补洞</b>。每一步都有自己的失败模式，误差层层累积，而且每一层都要单独调。GenSfM 把这一整串压成了一次生成，并且给了你一个<b>可验证的自洽条件</b>：把结果按预测相机渲回去，和原图对得上，就说明物体和相机是同一个解。
+  </div>
+  <p><b>"可验证"这一点比精度更值钱。</b>生成式三维重建长期被质疑"好看但不是这个物体"。这里提供了一个不依赖参考模型的判据——重投影一致性。它不能证明绝对正确，但能证明<b>内部没有矛盾</b>，这已经是稀疏视角下能拿到的最强约束。</p>
+
+  <h3>4.53 dB 这个数字该怎么读</h3>
+  <p>在三维生成这个领域，新视角 PSNR 提升 4 dB 以上是很大的幅度。要理解它为什么能这么大，得看基线怎么做的：<b>TRELLIS-M 在每次去噪更新时只随机选一张图作为条件</b>——它其实没有真正"同时看四张图"，只是轮流看。而 GenSfM 让四个视角共同参与推断，还显式恢复了各视角与物体的空间关系。<b>所以这个提升有相当一部分来自"多视角一致性"这件事本身，而不是某个更聪明的网络结构。</b>这是合理的设计收益，但读数字时要知道它在跟什么比。</p>
+
+  <h3>五处必须打折的地方</h3>
+  <ol class="crit">
+    <li><b>它只做单个物体，不做场景。</b>论文明确写了"目前面向单个物体"。这意味着它无法直接迁移到"一张客厅照片重建整个房间"——而后者才是机器人、AR、电商真正想要的东西。<b>物体级和场景级的差别不是规模问题，是"背景算不算重建目标"的问题。</b></li>
+    <li><b>精度提升里，"生成先验"占多大比重没说清。</b>未见表面靠先验补全，那么 PSNR 提升究竟来自"相机更准所以纹理贴对了"，还是来自"生成器把没拍到的地方编得更像"？<b>论文用"只用新视角评外观"来控制这一点（新视角确实没被输入覆盖），但新视角里仍有一部分区域是"没被任何输入覆盖"的——那部分的高分是先验的功劳，不是重建的功劳。</b>这两者混在一起报，是该被追问的地方。</li>
+    <li><b>固定四视角是个隐含约束。</b>全部实验都用四张图、两组不重叠的四视角输入。视角数变成 2 张或 8 张时会怎样？方法上"多份相机潜变量"是可扩展的，但训练分布是四视角，<b>换视角数属于分布外，论文没有给证据。</b></li>
+    <li><b>相机评测用的是"相对旋转"，绕开了全局坐标系。</b>这在无标定设定下是合理的（整体坐标系本来就不可观），但也意味着<b>它没有验证"绝对位姿准确"，只验证了"视角之间的相对关系对"</b>。对于需要把重建结果放回真实世界坐标的应用（机器人抓取），这个差别是要命的。</li>
+    <li><b>SAM 3D 这个单图基线被"四张图各生成一次再平均"，对它其实是有利的处理。</b>等于给了它四次机会，再取平均去比。反过来看，<b>如果 GenSfM 也允许"四张图各跑一次"，谁更好看就不好说了</b>——但这不公平，因为 GenSfM 的卖点恰恰是用四张图一次性联合推断。这个对照设置的解读要小心。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>这篇的方法论价值，比它的分数更值得记：<b>当两个量互相定义时，不要试图先定一个再算另一个，而要把它们写成同一种数据结构，扔进同一个推断过程。</b>相机是参数、物体是场，看起来毫不相干；但一旦把相机翻译成"投影查询表"，它就变成了一个能和物体同框处理的三维场，循环依赖自然解开。</p>
+  <p>这是"换个坐标表示"解决"鸡生蛋"问题的典型样本。<b>它不需要更强的网络、更大的数据，只需要问一句：这两个东西，能不能写成同一种东西？</b></p>
+  <p class="src">原文：《NeurIPS 2026｜四张照片，如何同时找回完整3D物体与拍摄视角？》，公众号 human five，2026-11-13。论文：Generative Structure from Motion with Native 3D Diffusion（arXiv:2610.35522），忆生科技 + 香港大学。项目主页：dotb1ue.github.io/GenSfm。相关：TRELLIS（arXiv:2412.01506）、CUPID（arXiv:2510.20776）、SAM 3D（arXiv:2511.16624）、ReconViaGen（arXiv:2510.23306）、FreeSplatter（arXiv:2412.09573）、VGGT（arXiv:2503.11651）。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ 来源：公众号 human five</footer>
+</div></body>
+</html>
