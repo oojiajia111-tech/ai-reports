@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识可以继承，技能必须自训——10.5M 参数 VLA 的第一性原理拆解</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>知识可以继承，技能必须自训<span class="sub">microVLA 开发日志 · π0.5 缩到 10.5M 参数 · SigLIP 蒸馏 · Flow Matching · LIBERO 90% · 4GB 显存跑 3B 模型</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-16</div>
+    <div><b>关键词</b> VLA · π0.5 · nanogpt · SigLIP 蒸馏 · Flow Matching · LIBERO-Spatial · 过拟合 · Muon · NF4 量化 · 推理优化</div>
+    <div><b>一句话</b> 视觉语义不用学，蒸馏就行；动作生成不用大，几百万参数就够</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>数十亿参数的 VLA 里，真正需要从头学的部分小得出奇：视觉语义不必自己学——那是预训练大模型已经解决的事，蒸馏进来即可；动作生成本身只需要一个几百万参数的小头。把"知识"与"技能"分开对待，π0.5 就能缩到 10.5M 参数、在笔记本 GPU 上 25 分钟训完，LIBERO 拿到九成成功率。文中另一个反直觉发现同样重要：验证损失翻倍而机器人成功率几乎不降——动作模仿得像不像，不是任务完成与否的好代理。算力从来不是 VLA 的第一性约束，把每个字节和每毫秒花在哪里的清点才是。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么拆</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一台笔记本 GPU 上的完整 VLA 实验</h2>
+  <p>先说清楚它要解决的那个具体的麻烦。<b>现在的 VLA 模型——π0、π0.5 这一类——参数量都是数十亿级别，训练要大算力，推理连移动芯片都装不下。</b>想亲手做实验、做消融、学推理优化的人，被算力挡在门外。这篇开发日志的做法和 nanogpt 一脉相承：不是"用小算力训小模型凑合"，而是把一个大模型的每个部件按"谁在贡献能力"逐个清点、逐个缩小，直到塞进一台笔记本。</p>
+  <p>具体做法是把 π0.5 缩到约 10.5M 参数。VLA 的输入是相机图像、语言指令和机器人状态，输出是控制机械臂的动作块；动作由 Flow Matching 生成——<b>一个小得多的 Action Expert，看着前缀信息（图像 patch + 指令 + 状态）预测动作。</b></p>
+  <table>
+    <tr><th>部件</th><th>规模</th><th>职责</th><th>能力来源</th></tr>
+    <tr><td>视觉 Transformer</td><td>4 层 · 1.9M</td><td>把图像变成 patch 特征</td><td>从 SigLIP 蒸馏（不从头学）</td></tr>
+    <tr><td>前缀 Transformer</td><td>6 层 · 5.7M</td><td>融合图像 + 指令 + 状态</td><td>随动作训练</td></tr>
+    <tr><td>Action Expert</td><td>6 层 · 2.3M</td><td>预测动作方向（Flow Matching）</td><td>随动作训练</td></tr>
+  </table>
+  <p>整个项目分两半：<b>前半段把训练跑通</b>——玩具世界做合理性检查、发现并修复视觉瓶颈、上 LIBERO-Spatial 拿到 75/100，再经消融和改进把保留布局上的成绩推到 90%；<b>后半段把推理瘦身</b>——在 4GB 显存上跑真正的 3B 参数 π0.5，把单次推理从 1147 毫秒压到 662 毫秒，并逐 episode 验证"变快没有变笨"。</p>
+  <div class="box good">
+    <b>一句话概括这篇讲的事：</b>VLA 的能力不是均匀长在参数量里的。视觉语义是"知识"，可以继承；动作生成是"技能"，必须自己练但规模很小。分清这两样，VLA 的门槛就从"一个集群"降到"一台笔记本"。
+  </div>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：三个被实验逼出来的关键认识</h2>
+  <p>这篇的价值不在最终数字，而在它用一组干净的对照实验，把三个通常被混在一起的问题拆开了。</p>
+
+  <h3>认识一：动作损失教不会视觉——它是视觉的弱信号</h3>
+  <p>第一版从零训练 ViT，损失正常下降，机械臂却什么都不会做。作者没有急着调参，而是做了一个对照：<b>不给图像，把方块和盒子的真实位置直接作为 token 输入——其余架构完全不变。</b>这个版本方向余弦相似度 0.86、夹爪开合正确率 93%，还能响应指令。<b>结论被钉死了：瓶颈在视觉，不在动作链路。</b></p>
+  <p>原因想一层就明白：动作损失只告诉模型"你动得有点偏"，靠这一个间接信号，一个 1.9M 的小 ViT 要同时学会什么是方块、方块在哪、颜色怎么区分——这是弱信号学强语义，学不动。<b>真正的 π0.5 也不是从机器人数据里学视觉的，它从预训练的 SigLIP 开始。</b>视觉语义这件事，在预训练时代就已经被解决了，任何 VLA 都不该重做一遍。</p>
+
+  <h3>认识二：验证损失与任务成功是两个指标</h3>
+  <p>第二轮训练出现教科书式过拟合：验证损失从 0.135 升到 0.264，几乎翻倍。作者本以为后期 checkpoint 表现会崩，实测却几乎不掉。<b>解释是：完成任务只需要一个足够好的动作，因为下一个动作块无论如何都会修正。</b>验证损失衡量的是"动作与人类示范有多接近"，而这件事对任务成功没有那么重要。</p>
+  <div class="box bad">
+    <b>这是一个必须记住的指标错位：</b>模仿贴合度（回归损失）与任务成功率（闭环结果）在机器人学习里是两个不同的量。用前者监控训练，你会在它翻倍时错误地停手；用它选模型，你选中的可能不是最会干活的那个。
+  </div>
+
+  <h3>认识三：高成功率里可能藏着捷径</h3>
+  <p>75% 的成绩不代表模型学会了任务——它可能只是学会了"从相同的起始位置执行相同的动作"。<b>作者的对策有两层：每次移除一种输入再测，确认模型真的在使用每种输入；把每个 LIBERO 任务的 50 种初始布局分成 0–19（做决策用）和 20–49（藏到最后做终测），防止改进过程对评估集过拟合。</b>最终 90% 的成绩是在从未参与过任何决策的布局上测出来的——这个数字才站得住。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：从零到 90% 的五步实验链</h2>
+  <p>每一步都先建立一个可检验的小结论，再进入下一步。</p>
+
+  <div class="step">
+    <div class="t">第 1 步：缩架构——先回答"每部分多大才够"</div>
+    <div class="d">把 π0.5 缩成 4 层 ViT（1.9M）+ 6 层前缀 Transformer（5.7M）+ 6 层 Action Expert（2.3M），合计 10.5M。缩比例的依据不是拍脑袋，而是后文的实验逐个验证：视觉走蒸馏路线，所以 1.9M 够；动作头在玩具世界和 LIBERO 上都被证明够用。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：玩具世界做合理性检查——用最小问题验证配置</div>
+    <div class="d">直接上 LIBERO 做检查太慢，先造一个 GPU 上的二维抓取放置环境（两个彩色方块、两个彩色盒子、"把红色方块放进蓝色盒子"）。损失下降但机械臂乱动 → 记录预测方向与专家方向的余弦相似度 → 发现视觉失灵 → 用"喂真实位置"的对照版本（0.86 / 93%）确认瓶颈。<b>这一步的方法论价值不亚于结论：先隔离变量，再动手术。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：蒸馏 SigLIP——把视觉"知识"灌进 1.9M 参数</div>
+    <div class="d">两条路摆在一起：直接用 SigLIP（视觉部分膨胀到约 90M，违背初衷）或蒸馏。选蒸馏：<b>动作训练开始之前，让小 ViT 的 patch 特征过线性层后，用余弦损失加 MSE 损失去匹配冻结 SigLIP 的 patch 特征</b>；调整 SigLIP 输入尺寸让两者 patch 网格一致。只训 1,200 步就在从未见过的颜色组合上拿到 91.8%，还能遵循交换后的指令——说明模型在读指令而不是背动作。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：上 LIBERO——先蒸馏后训练，再用消融和划分防自欺</div>
+    <div class="d">LIBERO-Spatial：10 项任务、432 条人类示范、约 5.3 万帧、两个相机（场景 + 腕部），图像缩到 96 像素。先 SigLIP 蒸馏、再 8,000 步 Flow Matching，<b>训练约 25 分钟，100 次 episode 成功 75 次，每个动作块推理 70 毫秒。</b>之后是防捷径的输入消融、布局划分（0–19 决策 / 20–49 终测）、三轮改进（蒸馏 3,000 步、batch 32→64、EMA、颜色抖动；128 像素假设被数据否决——91 对 90 没有显著差异；Muon 优化器让拟合更猛、验证损失升得更快、机器人表现略升），终测 270/300 = 90%，对比第一版的 210/300。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：推理瘦身——在 4GB 显存上跑 3B 的 π0.5</div>
+    <div class="d">π0.5 约 3B 参数，bf16 下仅权重 6GB，笔记本只有 4GB。<b>方案：视觉语言部分用 NF4 量化（4-bit，每块带缩放因子），Action Expert 保持 bf16（它小、且直接输出数值，精度要保）；在 PyTorch meta device 上只建形状再逐个填充张量，绕开"先在 CPU 建整个模型"的死路。</b>拿到 1147 毫秒 / 3.22GB 后逐项清点：第三个相机槽是空白图却烧 256 个 token、最长指令只需 62 个 token 却填充到 200——前缀剪掉后 813 毫秒；性能分析发现前缀约 520 毫秒、每步 Flow Matching 只要 30 毫秒，步数 10→5 只省约 150 毫秒，最终 662 毫秒。<b>最后在 LIBERO 仿真里逐 episode 对齐比较，确认变快没有变笨。</b></div>
+  </div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>核心公式：三个式子撑起整个项目</h2>
+
+  <div class="fml">
+    <div class="name">① Flow Matching：把"生成动作"化简成"指出方向"</div>
+    \[ x_t = (1-t)\,\epsilon + t\,a, \qquad \dot x_t = a - \epsilon \ \ (\text{常数，与 } t \text{ 无关}) \]
+    <div class="exp">\(a\) 是示范里的真实动作块，\(\epsilon\) 是同形状的随机噪声，\(x_t\) 是两者连线上 \(t\) 时刻的点。<b>大白话：</b>终点减去起点就是这条直线的方向，它在整条线上都不变——所以模型要学的只有一件事：<b>站在直线上任意一点，指出终点在哪个方向</b>。执行时从纯噪声出发，沿预测方向走几步就得到动作块。这就是那个 2.3M 的 Action Expert 全部的工作内容：不预测"动作是什么"，只预测"往哪边修"。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② SigLIP 蒸馏损失：把大模型的眼睛装进小脑袋</div>
+    \[ \mathcal{L}_{\text{distill}} = \lambda_{\cos}\,\big[\,1-\cos\!\big(z,\ z^{\star}\big)\big] + \lambda_{\text{mse}}\,\big\lVert z - z^{\star}\big\rVert^{2} \]
+    <div class="exp">\(z\) 是小 ViT 的 patch 特征（过线性层后），\(z^{\star}\) 是冻结 SigLIP 在同一图像上的 patch 特征。<b>大白话：</b>两项一起罚——方向要对齐（余弦），长度也要对齐（MSE）；再把 SigLIP 的输入尺寸调到 patch 网格一致，让小模型的每一个 patch 都拿到大模型对应位置看到的信息。<b>要害是顺序：蒸馏在一切动作训练之前完成。</b>视觉是先修课，动作是专业课——先让眼睛成熟，再教手。1,200 步就见效，因为这不是学视觉，是把已有的视觉"搬运"进来。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 推理时间预算：每一毫秒都要先问花在哪</div>
+    \[ t_{\text{infer}} = t_{\text{prefix}} + k \cdot t_{\text{step}} \;\approx\; 520\,\text{ms} + k \times 30\,\text{ms} \]
+    <div class="exp">\(t_{\text{prefix}}\) 是前缀（图像 + 指令 + 状态）的一次性编码耗时，\(k\) 是 Flow Matching 采样步数。<b>大白话：</b>前缀一项就占约 520 毫秒，每步采样只有约 30 毫秒——所以把步数从 10 减到 5 最多省 150 毫秒，而剪掉空白相机槽的 256 个 token 和无意义的 padding 却能省 334 毫秒。<b>优化的正确顺序由这个式子决定：先看占比，再动手。</b>同理显存侧：NF4 把视觉语言部分压到每参数半字节、Action Expert 保 bf16，配合 meta device 分块加载，3B 模型 3.22GB 就放下。凭直觉"减步数"是优化大忌，先测量再优化才是。</div>
+  </div>
+
+  <div class="box good">
+    <b>把三个式子连起来看：</b>①定义了动作生成这项"技能"有多小（学一个方向）；②定义了视觉这项"知识"怎么便宜地获得（对齐特征而非重学）；③定义了推理优化的决策规则（按预算占比下手）。<b>整个项目就是这三句话的工程化：把大模型拆开，分清哪些是知识、哪些是技能、哪些是浪费。</b>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：它证明了什么，又没证明什么</h2>
+
+  <h3>三样真正值得带走的东西</h3>
+  <div class="box good">
+    <b>第一，一条可复现的极简 VLA 路线。</b>10.5M 参数、25 分钟训练、LIBERO 保留布局 90%、全部代码开源——它把"参与 VLA 研究"的硬件门槛从集群降到笔记本。对高校实验室和个人研究者，这是准入券。
+  </div>
+  <p><b>第二，一套可以直接抄的实验方法论。</b>玩具世界做合理性检查、"喂真实状态"的对照实验隔离瓶颈、蒸馏先于训练、输入消融防捷径、布局划分防评估过拟合、推理优化逐 episode 对齐验证——每一条都是花钱都难买到的坏教训的反面。</p>
+  <p><b>第三，两个反直觉的实测结论。</b>验证损失翻倍而成功率不降（模仿贴合度不是任务指标）；128 像素对 96 像素几乎无差异（"更多像素帮抓取"的合理直觉被数据否决）。<b>它们共同提醒：在机器人学习里，直觉必须被仿真验证之后才算数。</b></p>
+
+  <h3>五处必须打折的地方</h3>
+  <ol class="crit">
+    <li><b>只在 LIBERO-Spatial 上验证。</b>这个 benchmark 的结构是"物体固定、位置变化"，90% 的成绩不能外推到长程任务、多样物体、动态干扰。它证明了路线可行，没证明通用。</li>
+    <li><b>验证损失与成功率脱钩是双刃剑。</b>它解放了"别被损失吓停"，但也意味着训练监控部分失灵——过拟合程度无法从损失曲线判断，只能频繁跑仿真评估，而这在大任务上并不便宜。</li>
+    <li><b>量化的语义损失没有被单独评估。</b>NF4 只压视觉语言部分、Action Expert 保 bf16，但"量化后 VLM 语义退化了多少"没有独立的消融数字，只有逐 episode 的整体对比。</li>
+    <li><b>Muon 等结论是单点观察。</b>没有多种子方差、没有置信区间，"机器人表现略有提升"的幅度和稳定性都未知——作者自己也定位为"近期想做更多消融"。</li>
+    <li><b>推理耗时的测量场景与真实部署有差距。</b>耗时在保存的图像帧上测得，仿真验证是"尽量对齐"作者设置；换到真机、更低算力的移动芯片上，各项占比会重新洗牌，③式需要重测。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>这篇最值得记住的不是 90% 或 662 毫秒，而是它示范的一种思考顺序：<b>面对一个"太大、太贵、训不动"的系统，先别问"怎么压缩"，先问"哪些部分在贡献能力、哪些在重做别人已解决的事、哪些干脆是浪费"。</b>视觉语义是别人已解决的事，蒸馏即可；动作生成贡献核心能力但规模很小；空白相机槽和 padding 是纯粹的浪费。把这个顺序用在任何算力受限的场景里，"小算力做不了大模型的事"这个断言就会开始松动。对做具身智能的人，还有一层：闭环里最后修正一切的是下一个动作块——<b>你的评估指标，应该长成闭环的样子，而不是开环的样子。</b></p>
+  <p class="src">原文：《microVLA：在笔记本上训练和运行 VLA》，开发日志（原作者 X 账号 starlitmatcha），公众号 human five 2026-11-16 转载。涉及概念：VLA、π0.5、Action Expert、Flow Matching、SigLIP 蒸馏、patch 特征对齐、LIBERO-Spatial、输入消融、过拟合与验证损失、Muon 优化器、NF4 量化、meta device 加载、推理预算分析。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ 来源：公众号 human five</footer>
+</div></body>
+</html>

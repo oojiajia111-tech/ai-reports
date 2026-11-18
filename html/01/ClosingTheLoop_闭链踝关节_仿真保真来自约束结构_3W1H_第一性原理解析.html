@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>仿真失真不在参数，在结构——G1 推杆踝关节闭链建模的第一性原理拆解</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>仿真失真不在参数，在结构<span class="sub">Unitree G1 推杆式踝关节 · 闭合运动学回路 · 传动雅可比 · 折算惯量 · Fixed/Spatial Tendon · 积分器一致性</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-17</div>
+    <div><b>关键词</b> MuJoCo · Unitree G1 · 踝关节 · 闭链机构 · 机械限位 · 传动雅可比 · 折算惯量 · 积分器稳定性</div>
+    <div><b>一句话</b> 把闭链简化成两个独立关节，丢掉的不是精度，是约束本身</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>把真实的曲柄加推杆机构简化成两个独立关节，得到的失真不是"参数差一点"，而是"结构少一块"：运动范围被假想成矩形、机械增益被假想成常数，而这两样在真机上都随姿态变化。仿真的保真度不取决于方程多复杂，而取决于决定行为的约束有没有被保留——一旦把闭合运动学回路加回去，可达范围、可用扭矩、折算惯量就会自动随构型变化。本文给出的使用法则是：用最简单的够用模型训练，再用闭环模型验证部署。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么拆</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：踝关节建模里被抹掉的那块结构</h2>
+  <p>先说清楚它要解决的那个具体的麻烦。<b>常见的 Unitree G1 仿真模型，把每个踝关节表示成两个独立驱动的关节：一个管 Pitch（俯仰），一个管 Roll（侧倾）。</b>这种串联表示简单高效，非常适合强化学习训练——但它偷偷塞进了两个近似：一是把踝关节的运动范围当成 Pitch–Roll 平面上的一个矩形；二是完全忽略电机与足部之间的传动机构。</p>
+  <p>真机不是这样长的。<b>装在小腿上的两台电机，通过曲柄和推杆驱动足部，两根推杆各自构成一个闭合运动学回路。</b>闭合回路意味着 Pitch 和 Roll 从此不再独立：连杆几何决定了哪些姿态组合根本到不了，机械限位又在此基础上再砍一刀；而且传动机构的机械增益和折算惯量都随踝关节姿态变化——同样的电机扭矩，在不同姿态下推出来的踝关节扭矩不一样。</p>
+  <div class="box bad">
+    <b>要害在这里：串联模型的两个近似不是"误差"，是"缺失"。</b>矩形限位砍掉了耦合的机械限位；固定执行器限位和固定附加惯量（armature）砍掉了随构型变化的传动特性。这两块不是靠调参数能补回来的，因为串联模型的表达能力里根本没有它们的位置。
+  </div>
+  <p>本文做的事分三层：<b>先用硬件测量把耦合限位测出来、编码进模型；再重建闭合传动机构，让扭矩和惯量的传递自动随姿态变化；最后解决闭环仿真带来的两个实际问题——状态初始化和数值稳定性。</b>全文落在 MuJoCo 上，给了一套可直接下载使用的五版本模型（串联、Tendon 闭环、推杆刚体闭环，各带两种执行器安装位置）。</p>
+  <table>
+    <tr><th>模型</th><th>结构</th><th>能捕捉</th><th>代价</th></tr>
+    <tr><td>Serial（串联）</td><td>Pitch/Roll 两个独立关节 + 拟合限位</td><td>近似真实的运动范围</td><td>最低，最适合 RL</td></tr>
+    <tr><td>Tendon（肌腱闭环）</td><td>Spatial Tendon 表示推杆 + 等式约束定长</td><td>随构型变化的扭矩与折算惯量</td><td>每根推杆 1 行约束</td></tr>
+    <tr><td>Rod body（推杆刚体）</td><td>推杆显式建模为刚体 + 连接等式约束</td><td>上述全部 + 推杆的质量、惯量、碰撞</td><td>每根推杆多 2 个自由度和 2 行约束</td></tr>
+  </table>
+  <div class="box good">
+    <b>一句话概括这篇讲的事：</b>sim-to-real 的失真有两种来源——参数不准和结构近似。参数不准靠辨识补，结构近似只能靠把约束加回模型里补。踝关节这个案例把"怎么加回去"完整走了一遍：测限位、建闭链、修初始化、换积分器。
+  </div>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：三个绕不过去的物理约束</h2>
+  <p>不恢复闭链行不行？答案是：取决于你要拿仿真做什么。下面三条约束决定了哪些场景里串联模型必然撒谎。</p>
+
+  <h3>约束一：可达范围不是矩形，四角被推杆"切掉"了</h3>
+  <p>串联模型里 Pitch 和 Roll 各有独立限位，合起来是一个矩形。但推杆机构把两个运动耦合起来：<b>足部完全向上翘起时，串联模型仍允许的 Roll，真机几乎一点也做不了。</b>作者把一台 G1 仰面放置，用手推脚遍历整个运动范围、记录 Pitch–Roll 轨迹，实测显示 Pitch 接近极限时可用 Roll 范围急剧缩小，矩形的四个角被切掉。</p>
+  <p>这不是纯理论洁癖：<b>用原始矩形限位做 LAFAN1 动作重定向时，1.5% 的支撑脚姿态落在了真实机械限位之外。</b>Retargeter 或策略会请求一些"两个关节各自都合规、合起来真机做不到"的姿态——仿真里做到的动作，上真机就是另一个样子。</p>
+
+  <h3>约束二：增益和惯量是姿态的函数，不是常数</h3>
+  <p>电机与足部之间隔着曲柄和推杆，这是一个姿态相关的杠杆系统。<b>同样的电机扭矩，在不同踝姿态下产生的踝关节扭矩不同；电机惯量反映到踝关节上的折算惯量也不同。</b>图上的直观表现是：串联模型下踝关节能产生的扭矩集合是一个固定矩形，而闭环模型下它是一个随姿态变形的平行四边形。串联模型用固定的 armature 和固定的执行器限位，从表达能力上就无法描述这种变化。</p>
+
+  <h3>约束三：控制器验证需要电机侧的真实性</h3>
+  <p>有意思的是，作者实测发现<b>电机扭矩饱和很少真的发生</b>：把 LAFAN1 重定向数据限制在拟合限位内后，需要任一台电机超过扭矩上限的承重足采样占比不到 0.1%，且几乎都发生在足部载荷超过机器人自重 1.2 倍时。<b>但传动机构的影响不止于饱和：连杆会改变电机侧的刚度和阻尼，于是踝关节处的控制增益随构型变化。</b>只要你关心电机侧动力学和控制增益如何影响行为——这正是部署验证关心的事——串联模型就不够用了。</p>
+  <div class="box good">
+    <b>三条约束合起来指向一个结论：</b>限位决定"能不能做到"，传动决定"做到了是什么手感"。重定向和初期训练只要前者，部署验证两者都要。这也解释了为什么本文的最终建议是"训练用简单模型、验证用闭环模型"而不是一刀切。
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：从硬件测量到稳定仿真的五步链</h2>
+  <p>每一步都只解决一个问题，且后一步建立在前一步的产物上。</p>
+
+  <div class="step">
+    <div class="t">第 1 步：测限位、编码限位——用 Fixed Tendon 写线性不等式</div>
+    <div class="d">保留串联模型原有的 Roll 限位（它略小于中立位置附近的实测范围），再用实测轨迹拟合四个线性不等式，把矩形的四个角裁掉。<b>MuJoCo 的 Fixed Tendon 恰好能计算关节坐标的线性组合，每个不等式对应一个上限受限的 Tendon。</b>注意坑：mjlab 这类训练框架的软限位、重置裁剪、限位惩罚只看 Joint Range，不会自动考虑 Tendon 约束，必须手动把初始姿态投影进有效区域。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：重建闭链——用 Spatial Tendon 加等式约束表达推杆</div>
+    <div class="d">推杆的本质是一条距离约束：曲柄末端到足部锚点的长度恒定，它把踝关节的自由度从四个压到两个。<b>MuJoCo 的刚体层级必须是运动学树，不能把推杆直接连在曲柄和足部之间</b>——所以用连接两个安装点的 Spatial Tendon 表示推杆，再用 Equality Constraint 把 Tendon 长度固定在参考构型下的长度。<b>关键细节：模型的 qpos0 必须本身满足连杆几何，否则约束从一开始就是错的。</b>若还需要推杆的质量与碰撞，才升级成刚体 + 连接等式约束。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：让特性自动恢复——不手工算增益，让约束自己算</div>
+    <div class="d">闭链一旦建对，<b>随姿态变化的扭矩传递和折算惯量不需要你显式编码，MuJoCo 通过闭环约束自动捕捉</b>——前提是电机侧惯量和执行器建模正确。这就是"保留约束结构"路线的精髓：你描述结构，物理量作为结果自己长出来。串联模型里这些量只能手工设定成常数，这正是它做不到的原因。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：一致的状态初始化——先闭合回路，再恢复仿真</div>
+    <div class="d">动作捕捉帧只给踝关节的 Pitch 和 Roll，不给对应的电机角度。<b>只重置踝关节不动电机，推杆长度就违反了约束，求解器会用很大的恢复力把机构拉回去，扰乱预期的足部姿态——实测中不一致重置的峰值推杆力约 53.6 N，而一致重置只有约 2.9 N，相差近二十倍。</b>解法：利用 MuJoCo 暴露的约束残差和雅可比，在保持目标踝姿态不变的前提下做几次 Gauss–Newton 迭代闭合回路，再线性求解满足微分约束的电机速度。<b>注意 free 索引是 qvel 的索引而不是 qpos 的，对自由关节和球关节两者并不相同。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：选对积分器——隐式与约束求解器必须"看同一张质量矩阵"</div>
+    <div class="d">RL 常用的 4 ms 步长下，<b>implicitfast 积分器配合"执行器装在 Pitch/Roll 关节上"会不稳定：推杆长度误差一秒内撕开闭环</b>。根源是失配——implicit 系积分器推进动力学时用有效惯量（原始质量矩阵扣掉执行器阻尼的贡献），约束求解器却仍用原始质量矩阵；踝关节自身惯量很小，阻力大多来自机构另一端的电机，失配因此被放大。两条出路：<b>换 discrete 积分器（约束求解和动力学更新用同一个有效惯量），或把执行器移到电机上（此时所有测试过的积分器都稳定）。</b></div>
+  </div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>核心公式：三个式子把闭链物理钉死</h2>
+
+  <div class="fml">
+    <div class="name">① 传动雅可比：电机与踝关节之间的速度与力桥梁</div>
+    \[ \dot{q}_{m} = J(q_{a})\,\dot{q}_{a}, \qquad \tau_{a} = J(q_{a})^{\mathsf T}\,\tau_{m} \]
+    <div class="exp">\(q_m\) 是电机角度，\(q_a\) 是踝关节角度，\(J\) 是传动雅可比矩阵。<b>大白话：</b>第一行说"足部转多快由电机转多快乘一个比例系数决定"；第二行由虚功原理给出，方向反过来——"电机出多少力，足部实际拿到多少，也由同一个比例决定"。要害在于 <b>\(J\) 是踝姿态的函数</b>：姿态变了，杠杆比就变了，同样的电机扭矩推出来踝扭矩不同。串联模型的隐含假设是 \(J\) 恒等于单位阵，这就是它把增益写死成常数的原因。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 折算惯量：电机飞轮通过机构"变重"或"变轻"</div>
+    \[ \tfrac{1}{2}\,I_{m}\,\dot q_{m}^{2} = \tfrac{1}{2}\,I_{\text{ref}}\,\dot q_{a}^{2} \quad\Longrightarrow\quad I_{\text{ref}} = I_{m}\,\Big(\tfrac{\dot q_{m}}{\dot q_{a}}\Big)^{2} = I_{m}\,\big\|J\big\|^{2} \]
+    <div class="exp">\(I_m\) 是电机侧惯量，\(I_{\text{ref}}\) 是它反映到踝关节上的折算惯量。<b>大白话：</b>让两边动能相等，就能算出"从踝关节看过去，电机有多沉"。因为比例里带着 \(J\)，而 \(J\) 随姿态变化，<b>折算惯量也随姿态变化</b>——踝关节在某些构型下感觉电机很沉，在另一些构型下很轻。串联模型用固定 armature，等于假设这个数永远不变；闭环约束一旦建对，MuJoCo 会自动算出这个随构型变化的量，不需要任何手工编码。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 两种积分器的有效惯量：不稳定性的数学根源</div>
+    \[ M_{\text{eff}} = M - h\,B \qquad\text{（implicit / implicitfast）} \qquad M_{\text{eff}} = M - h\,B + h^{2}K \qquad\text{（discrete）} \]
+    <div class="exp">\(M\) 是原始质量矩阵，\(h\) 是时间步长，\(B\)、\(K\) 是执行器的阻尼与刚度矩阵。<b>大白话：</b>implicit 系积分器在推进动力学时用上面的有效惯量，但约束求解器算约束力时仍用原始 \(M\)——两边"对系统质量的认识"不一致。当执行器装在惯量很小的踝关节上、而真正的阻力来自闭链另一端的电机时，这个失配被放大，4 ms 步长下闭环约束误差持续增长直到撕开回路。<b>discrete 积分器在约束求解和动力学更新中使用同一个有效惯量</b>（还多含执行器刚度项），两边认识一致，所以全步长稳定。修复方式二选一：换 discrete，或把执行器移到电机上。</div>
+  </div>
+
+  <div class="box good">
+    <b>把三个式子连起来看：</b>①告诉我们机构和姿态一起决定"力怎么传"；②告诉我们惯量也走同一条桥、同样随姿态变；③告诉我们一旦把这条桥装进仿真，积分器和约束求解器必须"认识同一个系统"，否则数值世界里的桥会自己断掉。<b>测限位、建闭链、修初始化、换积分器，全部服务于同一件事：别让模型结构和数值方法替你做物理决定。</b>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：它教会什么，又承认什么</h2>
+
+  <h3>三样真正值得带走的东西</h3>
+  <div class="box good">
+    <b>第一，一个明确的模型选择阶梯。</b>动作重定向和初期训练：带拟合限位的串联模型可能已经足够；电机侧动力学变得重要时：Tendon 闭环模型；还需要推杆的质量、惯量或碰撞：推杆刚体模型。<b>配套的使用法则是：用能捕捉相关行为的最简单模型训练，部署到真机前用闭环模型验证。</b>这比"仿真越真越好"的直觉省一个数量级的算力。
+  </div>
+  <p><b>第二，一份 MuJoCo 约束系统的实战教材。</b>Fixed Tendon 表达关节坐标的线性不等式（裁限位角），Spatial Tendon 加等式约束表达闭链距离约束（不引入多余刚体），等式约束残差和雅可比用来做 Gauss–Newton 状态修复——这三招都是可迁移的通用技巧，远不止踝关节一个用途。</p>
+  <p><b>第三，一个反直觉但重要的实测结论。</b>扭矩饱和在正常步态数据里几乎不发生（不足 0.1%），所以闭链模型的主要价值不在"扭矩算得准"，而在<b>电机侧刚度、阻尼和控制增益随构型的变化</b>——这决定了该在哪类问题上投入闭环建模的算力。</p>
+
+  <h3>五处必须打折的地方</h3>
+  <ol class="crit">
+    <li><b>拟合限位仍是近似。</b>实测轨迹在部分位置会穿过拟合得到的边界，最大偏差不可忽略；拟合面是"够用的裁剪"，不是机械限位本身。对手头没有真机的团队，这一步无法复现。</li>
+    <li><b>Tendon 模型不含推杆的质量与碰撞。</b>它复现的是"理想无质量推杆"的几何和力传递；如果推杆动态本身重要（高速运动、碰撞场景），必须升级刚体模型，代价是额外的自由度和约束行。</li>
+    <li><b>扭矩结论基于逆动力学估计，不是真机测量。</b>"饱和很少发生"来自近似接触力拟合的估算，载荷条件一变（高负载落地、外力扰动）结论未必延续，作者自己也明确标注了这一点。</li>
+    <li><b>训练框架的生态没跟上。</b>mjlab 等框架的软限位、重置裁剪、限位惩罚只看 Joint Range，Tendon 限位要手动收缩边界并投影初始姿态；discrete 积分器要求 MuJoCo 3.13 以上。把这些纳入训练管线还有工程距离。</li>
+    <li><b>一致性初始化只救"接近有效构型"的状态。</b>文中的 Gauss–Newton 迭代无阻尼，适用于动捕重置这类已经接近可行构型的场景，不能从任意乱构型起步——初始装配分支选错仍会失败。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>这篇最值得记住的不是某条公式，而是一个建模观：<b>仿真的失真分两种，参数误差可以靠辨识收敛，结构近似永远不会——因为你没给物理留出表达自己的位置。</b>串联踝模型不是"算得不准"，而是从表达能力上就写不出随姿态变化的增益和惯量。对做具身智能的人，这个判据可以直接迁移：下次发现 sim-to-real 有差距，先问一句——<b>是参数错了，还是我把它简化成了另一个物理系统？</b>前者的修法是调参，后者的修法是把约束加回来。</p>
+  <p class="src">原文：《Closing the Loop》，Kevin Zakka、Qiayuan Liao，kzakka.com，2026-11-16，公众号 human five 2026-11-17 转载。涉及概念：串联踝模型、闭合运动学回路、装配分支、机械限位拟合、Fixed/Spatial Tendon、等式约束、传动雅可比、虚功原理、折算惯量、有效惯量、discrete 积分器。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ 来源：公众号 human five</footer>
+</div></body>
+</html>

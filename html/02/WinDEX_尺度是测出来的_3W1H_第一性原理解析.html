@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>像素里没有"米"——WinDEX 米制手部重建的第一性原理拆解</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>像素里没有"米"——尺度是测出来的，不是算出来的<span class="sub">WinDEX · 双目鱼眼 + 惯性 · 米制手部重建 · CyberCap · 几何时序优化 · 因果流式蒸馏 · Hand2Policy</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-16 · arXiv 2611.21143</div>
+    <div><b>关键词</b> 野外手部重建 · 米制尺度 · 立体视觉 · 视觉惯性 SLAM · MANO · 时序一致性 · 策略学习参考轨迹 · 遥操作</div>
+    <div><b>一句话</b> 想让机器人知道手离它多远，必须先给相机一把尺子</div>
+    <div><b>机构</b> Hongyu Ma 等，cs.RO，2026-11</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>一张照片里手看起来小，可能是手小，也可能是手远——这两个解释投到像素上是同一个答案。所以"米制尺度"从来不是算法问题，是测量学问题：要让机器知道手离它多远，必须请进一把尺子。WinDEX 请了两把：60.7 毫米的双目基线，和 300 赫兹的惯性单元。尺子钉住尺度，剩下的才是几何优化、时序平滑与网络蒸馏。而这套工程的回报写在策略成功率上——用它的手部参考训强化学习，成功率 61%，比用现成方案高 7.6 倍。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：一条从"头上戴台相机"到"机器人学会用手"的完整流水线</h2>
+  <p>先说要解决的具体麻烦。<b>训练机器人灵巧操作，最便宜的数据是人的手：人手每天都在做各种操作，录下来就是示范。但录下来的东西不能直接用——画面里有手，却没有"手离物体多少厘米、往哪个方向移动"这种机器人能执行的动作。</b>现有工作（WiLoR、HaWoR 一类）能从视频里重建手的三维姿态，却有三个共同的软肋：尺度不落到米、野外泛化差、速度慢。</p>
+  <p>WinDEX 交出的是一整套闭环，四块拼起来才成立：</p>
+  <table>
+    <tr><th>模块</th><th>干的事</th><th>关键数字</th></tr>
+    <tr><td>CyberCap（硬件）</td><td>头戴双目鱼眼 + 刚性 IMU，无需手部佩戴任何东西</td><td>1920×1200 @30fps，基线 60.7 mm，IMU 300 Hz 同钟</td></tr>
+    <tr><td>几何-时序优化</td><td>把每帧的手"标"成米制伪真值，再配视觉惯性 SLAM 落到世界系</td><td>标定误差 MPJPE 10.1 mm、腕 9.6 mm</td></tr>
+    <tr><td>WinDEX-Net（网络）</td><td>端到端鱼眼原生网络，吃标定双目 + 局部细节 + 时序上下文</td><td>野外重投影 14.5 px，2D F1 80.88</td></tr>
+    <tr><td>蒸馏双出口</td><td>离线窗口版保精度，因果流式版保速度</td><td>43.61 FPS / 171 FPS</td></tr>
+  </table>
+  <p>数据侧同步产出 <b>WinDEX-Hand 数据集：1000 小时野外伪真值标注，200 多名操作者、1000 多个场景、5000 多个短任务</b>；评测侧另备两个独立集合——20 小时人工标注的野外 2D 集（只评重投影，不进训练）和 10 名志愿者、38 类任务、20 小时的光学动捕 3D 真值集。<b>这个"训练用自动标注、评测用人工+动捕"的分法，是全文最该学的一个实验设计。</b></p>
+  <div class="box good">
+    <b>一句话概括它在生态里的位置：</b>它不发明新的操作策略，它造的是"策略能吃的人类示范"。上游是戴在头上的便宜硬件，下游是强化学习和遥操作。<b>它把数据的可用性从"看着像"抬到了"量得准"。</b>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：三堵墙，每一堵都不是调参能翻过去的</h2>
+
+  <h3>墙一：尺度不可观测——像素只约束方向，不约束距离</h3>
+  <p>把三维点投影到二维，深度这一维被压掉了。于是"手很小很远"和"手很大很近"可以产生<b>完全相同的像素</b>。这不是模型不够强，是信息在投影那一刻就丢了。<b>想把它找回来，必须引入第二个观测——要么第二只眼，要么第二个传感器。</b>人眼靠双眼视差判断远近，测距仪靠基线，原理完全一样：<b>米制不是"算"出来的，是"测"出来的。</b>单目方案再怎么堆数据，也只能学到一个统计意义上的平均尺度，遇到没见过的手型或视角就会漂。</p>
+
+  <h3>墙二：单帧准不等于轨迹对，抖动会毁掉策略</h3>
+  <p>强化学习拿到的不是一张张孤立的手，而是<b>一段连续的参考轨迹</b>。如果每帧各自最优、帧与帧之间跳动，得到的轨迹在物理上是不可能完成的——手会瞬移，速度会突变。<b>策略学这种数据，学到的第一步是怎么抖动。</b>所以真正要优化的不是"每帧误差最小"，而是"整段轨迹既贴合观测、又符合运动规律"，这是两件不同的事。论文把"抖动"（jitter，单位米每二次方秒）当作独立指标来评测，正是因为它是策略成败的隐性开关。</p>
+
+  <h3>墙三：精度和延迟是一对死敌</h3>
+  <p>离线重建可以看完整个片段再回头修前面的帧（非因果），精度高但没法实时；遥操作必须只用过去的信息（因果），否则就是"用未来控制现在"。<b>同一套模型不可能同时满足两者。</b>WinDEX 的解法是承认这对矛盾，拆成两个出口：窗口版 43.61 FPS 供数据生产，流式版 171 FPS 供实时遥操作——<b>速度涨 4 倍，代价是 MPJPE 从 20.1 毫米掉到 33.2 毫米。</b>这笔账摆在明面上，比号称"又快又准"诚实得多。</p>
+  <div class="box bad">
+    <b>三堵墙的共同点：</b>它们都不是"模型容量不够"，而是物理与信息层面的硬约束。所以论文的方案结构也不是"换个更大的 backbone"，而是<b>加传感器（解尺度）、加时序项（解抖动）、拆两个模型（解延迟）</b>。
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：四步，从硬件到策略</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：先把"尺子"戴上头——硬件决定了精度上限</div>
+    <div class="d">CyberCap 是头戴的双目鱼眼相机加刚性 IMU：<b>两眼的基线固定 60.7 毫米，两路图像硬件同步，IMU 300 赫兹且与相机同钟，测量值直接嵌进视频流。</b>为什么非得是鱼眼？因为手就在眼前、还经常跑到画面边缘——数据显示<b>手腕的中位深度只有 318 毫米，半数手帧偏离光轴超过 25 度，十分之一超过 43 度</b>。普通镜头在这个角度早就把手裁掉了。这一步的哲学是：<b>能用物理解决的事，不要留给算法。</b>基线一固定，米制深度的约束就写进了硬件，网络不用再"猜"。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：用几何优化"标"出米制伪真值——把 MAP 估计写成能量函数</div>
+    <div class="d">给定标定好的双目图像和惯性流，把手部状态（MANO 姿态 + 腕部平移 + 共享形状）和相机位姿一起做最大后验估计。能量函数有五项：<b>双目重投影（Geman–McClure 鲁棒核抗遮挡）、立体腕部锚定（三角化给的米制初值）、手部姿态先验、二阶时域差分（压制抖动）、形状正则。</b>优化分两阶段：第一阶段先关掉动态项、纯拟合观测；第二阶段再按运动模式调动态项与重投影项的权重。<b>还有个务实的清洗步骤：平均重投影误差超过 15 像素的手帧直接丢掉，2D 置信度低于 0.3 的观测不参与。</b>宁可少标，不标错的。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：把优化器"蒸"进网络——一次前向替代几百次迭代</div>
+    <div class="d">几何优化准，但慢到不能实时。WinDEX-Net 学的是"优化器的解"，输入是标定双目 + 几何条件化特征（相机射线编码、内参编码、眼别标记），中间用残差注意力块融合局部细节与时序上下文。<b>点睛之笔是可微三角化：把左右眼的估计坐标反投影成标定射线、三角化出三维点，这个操作不切断梯度，于是 3D 损失和 2D 重投影损失可以一起训定位与重建。</b>这就是"网络里内置了一把尺子"，而不是学完再事后对齐尺度。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：双出口蒸馏 + 数据飞轮，最后接到机器人上</div>
+    <div class="d">从教师模型蒸出两个学生：<b>窗口版</b>看一小段上下文，43.61 FPS，供离线数据生产；<b>流式版</b>严格因果，171 FPS，供遥操作（RTX 4090 + 实时 VIO，以 30 赫兹驱动 7 关节机械臂 + 20 关节五指手）。同时跑一个<b>数据-模型飞轮</b>：模型辅助标注 → 人工/几何校验 → 重训，把 1000 小时训练集滚起来。下游两个出口：<b>Hand2Policy</b> 把重建轨迹当强化学习的参考，<b>Hand2Teleop</b> 直接把人手映射成机器人指令。</div>
+  </div>
+
+  <h3>成绩单：精度赢在哪，赢多少</h3>
+  <table>
+    <tr><th>指标</th><th>WinDEX</th><th>最强基线（微调后）</th><th>差距</th></tr>
+    <tr><td>野外 2D 重投影（像素，越低越好）</td><td><b>14.5</b></td><td>22.42 – 26.72</td><td>好约 35%–46%</td></tr>
+    <tr><td>相机系 MPJPE（毫米）</td><td><b>16.68</b></td><td>23.48 – 24.53</td><td>好约 29%–32%</td></tr>
+    <tr><td>世界系 W-MPJPE（毫米）</td><td><b>37.29</b></td><td>97.65</td><td>降 61.8%</td></tr>
+    <tr><td>世界系轨迹误差 RTE（%）</td><td><b>2.00</b></td><td>2.83</td><td>降 29.3%</td></tr>
+    <tr><td>2D 检测 F1（野外 / 动捕，%）</td><td><b>80.88 / 87.53</b></td><td>79.69 / 81.39</td><td>小幅领先</td></tr>
+    <tr><td>仿真抓取-抬升-放置成功率</td><td><b>61%</b></td><td>WiLoR 8% / HaWoR 17%</td><td><b>7.6 倍 / 3.6 倍</b></td></tr>
+  </table>
+  <div class="box good">
+    <b>注意最后一行才是全文的重点。</b>前面那些毫米和像素，只是中间指标；真正被验证的是"<b>参考轨迹的质量直接决定策略能学成什么样</b>"——同一个模仿学习框架、同一批任务，只换手部参考的来源，成功率就从 8% 变成 61%。这是对"数据质量 > 数据数量"最干净的一次量化。
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：三个式子，一条从像素到米的链</h2>
+
+  <div class="fml">
+    <div class="name">① 双目三角化：把"两眼看同一物"换成"一个距离"</div>
+    \[ z \;=\; \frac{f\,b}{d}, \qquad \mathbf{P} \;=\; \mathrm{Tri}\!\left(\pi^{-1}_{\mathrm{KB},l}(\mathbf{u}^{l}),\ \pi^{-1}_{\mathrm{KB},r}(\mathbf{u}^{r});\ \mathtt{R}_{lr},\mathbf{t}_{lr}\right) \]
+    <div class="exp">\(f\) 是焦距，\(b\) 是两眼光心距离（基线，此处 60.7 毫米），\(d\) 是同一个点落在左右两幅图上的横向像素差（视差），\(z\) 就是深度。\(\pi^{-1}_{\mathrm{KB}}\) 是鱼眼模型的反投影（把像素变成一条射线），\(\mathrm{Tri}\) 求两条射线的交点。<b>大白话：</b>两只眼睛看同一个东西，它离得越远，两幅图里的位置差得越少；量出这个差，就能反推距离。<b>关键在分母那个 \(b\)：</b>基线是硬件的物理长度，以米为单位，所以算出来的深度天生带"米"。单目没有 \(b\)，这一整行就写不出来——这就是"尺度不可观测"的数学表达。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 几何-时序能量函数：一次性估计"手 + 相机 + 轨迹"</div>
+    \[
+    \begin{aligned}
+    E(\mathcal{X}) \;=\;& \lambda_{\mathrm{2D}}\sum_{t}\sum_{e\in\{l,r\}}\rho_{\mathrm{GM}}\!\left(\pi^{e}_{\mathrm{KB}}\!\left(\mathcal{J}(\theta_t,\beta)+\mathbf{w}_t\right)-\mathbf{u}^{e}_{t}\right)
+    \;+\; \lambda_{\mathrm{st}}\sum_{t}\left\|\mathbf{w}_t-\hat{\mathbf{w}}_t\right\|^{2} \\
+    &+\; \lambda_{\mathrm{pose}}\sum_{t}E_{\mathrm{prior}}(\theta_t)
+    \;+\; \lambda_{\mathrm{dyn}}\sum_{t}\left(\left\|\Delta^{2}\theta_t\right\|^{2}+\left\|\Delta^{2}\mathbf{w}_t\right\|^{2}\right)
+    \;+\; \lambda_{\beta}\left\|\beta\right\|^{2}
+    \end{aligned}
+    \]
+    <div class="exp">\(\theta_t\) 是手部姿态参数、\(\beta\) 是整段共享的手型、\(\mathbf{w}_t\) 是腕部在相机系下的米制平移；\(\mathcal{J}\) 由参数算出关节位置，\(\pi_{\mathrm{KB}}\) 是标定鱼眼投影；\(\rho_{\mathrm{GM}}\) 是 Geman–McClure 鲁棒核；\(\hat{\mathbf{w}}_t\) 是立体匹配三角化给的腕部初值；\(\Delta^{2}\) 表示二阶时间差分。<b>大白话，五项各管一件事：</b>第一项"你看到的手要跟图上对得上"（鲁棒核让遮挡和检测错误不至于带偏全局）；第二项"腕子要靠近立体算出来的位置"（这是把米制钉死的锚）；第三项"手型别乱来"；<b>第四项是全文的灵魂——惩罚加速度而不是速度，等于说"手可以快速移动，但不许突然抖一下"</b>；第五项"手的胖瘦别一帧一个样"。<b>注意这是联合估计：手和相机位姿一起解，不是先定位再放手。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 网络损失：把优化器的"道理"逐条搬进监督</div>
+    \[ \mathcal{L} \;=\; \lambda_{\mathrm{3D}}\mathcal{L}_{\mathrm{3D}}+\lambda_{\mathrm{2D}}\mathcal{L}_{\mathrm{2D}}+\lambda_{\mathrm{par}}\mathcal{L}_{\mathrm{par}}+\lambda_{\mathrm{st}}\mathcal{L}_{\mathrm{st}}+\lambda_{\mathrm{tm}}\mathcal{L}_{\mathrm{tm}} \]
+    <div class="exp">\(\mathcal{L}_{\mathrm{3D}}\) 是用几何优化标出来的米制几何（主监督），\(\mathcal{L}_{\mathrm{2D}}\) 是二维关键点，\(\mathcal{L}_{\mathrm{st}}\) 是立体一致性（腕部 token 给出立体估计），\(\mathcal{L}_{\mathrm{par}}\) 是姿态与手型参数的正则，\(\mathcal{L}_{\mathrm{tm}}\) 是时序项（惩罚变化但保留快速运动）。<b>大白话：</b>这五项和上面能量函数的五项几乎是<b>一一对应</b>的——把优化问题里的每一条"信念"，翻译成网络训练时的每一条损失。这就是"蒸馏"在这篇里的真实含义：<b>不是蒸输出，是蒸方法论。</b>学生网络因此不必再看几百次迭代，一次前向就带上了教师对尺度、时序、形状的全部偏见。</div>
+  </div>
+
+  <div class="box good">
+    <b>三式连读：</b>① 解决了"米从哪来"（基线的物理长度）；② 解决了"怎么把米约束进一整段轨迹"（联合估计 + 加速度惩罚）；③ 解决了"怎么让网络一次前向就复现这套约束"（损失逐条对齐）。<b>整条链的逻辑是：物理给尺度，优化给一致性，蒸馏给速度。</b>三者缺一，就退化成现成的单目方案。
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限：它证明了数据质量的分量，也留下了几笔没算完的账</h2>
+
+  <h3>三样真正值得带走的东西</h3>
+  <div class="box good">
+    <b>第一，一个可以复用的判据：策略失败先查参考轨迹的度量质量。</b>同一个模仿学习框架，换手部参考就让成功率从 8% 变成 61%——这说明很多"算法不 work"的结论，其实是数据在毫米级就已经错了。以后遇到灵巧操作训不动，第一件事不是换策略网络，而是量一下示范轨迹的抖动和尺度误差。
+  </div>
+  <p><b>第二，"训练用自动标注、评测用人工与动捕"的实验纪律。</b>1000 小时训练集全靠几何优化产出的伪真值，但两个评测集完全独立：野外 2D 集由人标、被明确排除在训练和飞轮之外；3D 真值来自光学动捕。这种分法让"14.5 像素"这个数字有说服力——<b>它没有在自己的标注标准里自证。</b></p>
+  <p><b>第三，把硬件当算法的一部分来设计。</b>60.7 毫米基线、300 赫兹同钟 IMU、鱼眼覆盖边缘视野——每一项都在替算法省掉一个歧义。<b>当一个问题在算法层面无解（尺度不可观测），正确动作是回到传感器层面加约束，而不是堆模型。</b>这个思路对具身智能绝大多数"数据不够"的困境都成立。</p>
+
+  <h3>六处必须打折的地方</h3>
+  <ol class="crit">
+    <li><b>"世界系 37.29 毫米"里混着 SLAM 的误差。</b>世界系精度靠视觉惯性 SLAM（cuVSLAM）把相机位姿接上去，而该 SLAM 自身的轨迹误差 ATE 就有 0.150 米、姿态误差 11.69 度。<b>手部相对相机的估计再准，叠到一个 15 厘米量级漂移的轨迹上，长程的绝对位置仍然不可信。</b>论文报的 W-MPJPE 是刚性对齐后的关节误差，不等于"机器人在房间里知道手在哪"。</li>
+    <li><b>野外没有 3D 真值。</b>20 小时的野外评测集<b>只有 2D 人工标注</b>，所以野外只能证重投影误差，三维精度只能在动捕室里证。而野外恰恰是这篇论文的卖点场景——这个证据缺口无法用现有数据补上。</li>
+    <li><b>训练标签是伪真值，飞轮有自举风险。</b>1000 小时标注全部来自几何优化流水线，模型再学它、再用学到的模型去标新数据。<b>系统性的偏差（比如某种手型、某种光照下的一致误差）会被飞轮不断强化而不是纠正</b>，只有动捕和人工两项抽检能拦住它，覆盖面有限。</li>
+    <li><b>只有手，没有物体、没有接触。</b>重建出的是手部运动学，不知道手碰到了什么、用了多大力。而灵巧操作里"接触"往往才是关键变量；这也是它下游只能做"参考轨迹"、不能直接监督力控的原因。</li>
+    <li><b>61% 的绝对值并不高，且只在仿真里验。</b>成功率 61% 是仿真中抓取-抬升-放置的平均值，真机只做了"迁移试验"（全部 5 类物体跑通，未给成功率）。<b>7.6 倍是相对提升，不是可用性证明。</b></li>
+    <li><b>自研硬件与工程栈抬高复现门槛。</b>CyberCap 是自制设备，配套有标定流程、鱼眼模型、VIO、蒸馏管线、飞轮。想直接用现成手机或普通双目相机复刻，会同时丢掉同步、同钟、标定三项前提，效果无法对标。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>这篇最值得记住的不是 61%，而是一个提问方式：<b>当模型学不会的时候，先问"我的测量里有没有米"。</b>单目视频里手的大小和远近是同一个未知数，任何网络都无法凭画面把它分开——这不是能力问题，是投影本身丢掉了那一维。WinDEX 的全部工程（基线、同钟、三角化、加速度惩罚、双出口蒸馏）都是在把丢掉的那一维一支一支捡回来。<b>对做具身智能的人，这个判据可以直接迁移：凡是"数据看起来很多但模型学不动"的场合，先怀疑标签的度量是否成立，再怀疑模型。</b>尺度这种东西，从来是测出来的。</p>
+  <p class="src">原文：WinDEX: Metric 3D Hand Motion Reconstruction in the Wild for Dexterous Teleoperation and Policy Learning，Hongyu Ma 等，arXiv 2611.21143，2026-11-16。涉及概念：MANO 参数化手模型、KB 鱼眼模型、双目三角化、视觉惯性 SLAM、MAP 因子化、Geman–McClure 鲁棒核、二阶时域差分、可微三角化、因果流式推理、策略蒸馏、数据-模型飞轮。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ 论文篇 · arXiv 2611.21143</footer>
+</div></body>
+</html>
