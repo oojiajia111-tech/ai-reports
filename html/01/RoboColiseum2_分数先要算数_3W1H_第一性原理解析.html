@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分数先要算数，才谈得上高低——RoboColiseum 评测体系的第一性原理拆解</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>分数先要算数，才谈得上高低<span class="sub">RoboColiseum 技术报告 · 系统辨识 · Real2Sim · 四引擎组合仿真 · Season Ⅰ/Ⅱ · 双预算与防刷榜</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-13</div>
+    <div><b>关键词</b> 具身 Benchmark · 系统辨识 · Real2Sim · 多物理后端 · 刚柔耦合 · Agent vs Policy · 执行预算 · 隐藏测试集</div>
+    <div><b>一句话</b> 榜单最大的风险不是排错，而是分数本身不代表能力</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>一个 Benchmark 可信不可信，不在于它有多少个任务，而在于三件事有没有被钉死：尺子准不准、考生是不是同一类、题目会不会被提前摸到。RoboColiseum 恰好把这三件事分开做——先用系统辨识和 Real2Sim 让仿真分数和真机对得上（相关系数 0.9686），再把评测拆成八个维度、给 Agent 与 Policy 分设榜单并限定推理预算，最后用隐藏集、动态集和人工审核堵住刷榜。结论很直接：分数只有过完这三道关口才是信息，否则只是噪声。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么拆</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：把"仿真可信 + 评测可比"做成一套基础设施</h2>
+  <p>先说它要回应的现实。<b>GPT-6 Astra、Claude Fable 5.2 这类通用模型已经进入机器人控制，评测现场出现了新物种：Coding Agent 会自己写控制代码、调机器人接口、看反馈再改。可大部分具身榜单还是按"Policy 输出动作块"的范式设计的。</b>范式变了，题没变，分数就开始失效。</p>
+  <p>《RoboColiseum: Co-evolution of Simulation, Evaluation, and Models》这份技术报告做了三件互相咬合的事：</p>
+  <table>
+    <tr><th>层级</th><th>解决什么</th><th>关键证据</th></tr>
+    <tr><td>仿真保真</td><td>仿真的分数能不能代表真机</td><td>16 项任务、22 组配对，真机 vs 仿真得分 <b>r = 0.9686</b></td></tr>
+    <tr><td>引擎组合</td><td>刚体、布料、纸张、袋子不能一个求解器包办</td><td>PhysX / Newton / MuJoCo / libuipc 四后端 + 统一协议</td></tr>
+    <tr><td>评测体系</td><td>能力维度、执行预算、防刷榜</td><td>Season Ⅰ 四 Track → Season Ⅱ 八 Track；隐藏集+动态集+人工审核</td></tr>
+  </table>
+  <p>结果也给出了几个反直觉的数字：<b>Agent 组里总体第一的 Claude Fable 5.2 拿 18.30 分，而灵巧手这一项最高只有 5.19（Gemini 4 Argon）；总体第二的 Astra 在灵巧手直接是 0 分；总体第四的 Gemini 却在灵巧手排第一。</b>Policy 组则相反，三个模型在灵巧手上都有得分（π0.5 拿 16.79），差距清晰得多。</p>
+  <div class="box bad">
+    <b>这些数字真正的含义不是"谁强"，而是"总分根本不能互相替代"。</b>一张榜若只报 Overall，上面四句话里三句会被抹掉——这正是这份报告想证明的事：能力是分维度的，评测必须按维度拆开报。
+  </div>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：三道关口，任何一道漏了，分数就失去意义</h2>
+
+  <h3>关口一：尺子本身不准，测出来的数就没有物理含义</h3>
+  <p>仿真是评测的尺子。可仿真里动力学参数、接触模型、摩擦、控制器设置全是"设"出来的，不是"测"出来的。<b>如果仿真的电机力矩和真机差一截，那仿真里 90% 的成功率说明不了任何事——可能只是这个虚拟世界比现实好推。</b>所以第一步不是设计任务，而是把尺子校准：辨识机器人动力学、辨识物体接触参数，再用真机和仿真的配对任务验证两者给分是否一致。</p>
+
+  <h3>关口二：考生不是同一类，分数就不可比</h3>
+  <p>Policy 拿到观察、吐出一段动作、执行、再看下一帧；Agent 可以反复观察、调用模型推理、改代码、重新规划。<b>两者的"可花费资源"差了量级。</b>如果同榜排名，Agent 天然可以靠多轮试错换成功率，Policy 只能一次成型。这不是能力差异，是考试规则差异。<b>要可比，必须先把执行预算写进协议</b>——而且不只是动作步数，还要限推理调用次数。</p>
+
+  <h3>关口三：题目能被提前摸到，分数就能被"做"出来</h3>
+  <p>报告点名了三个传统具身榜单的漏洞：<b>执行预算不公平、模拟器向 Agent 泄露任务完成信息、针对测试任务开发的 Skills 被直接带进评测。</b>第三条尤其隐蔽——模型不是学会了操作，而是背下了这道题。开源布局与测试布局若完全一致，方案可以针对实例调参；一旦如此，榜单测的就是"过拟合能力"。</p>
+  <div class="box good">
+    <b>三道关口的顺序不能颠倒：</b>尺子不准 → 分数没有物理含义；考生不同类 → 分数没有可比性；题目可被摸到 → 分数没有外推性。三者缺一，排名再精细也是自娱自乐。
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么拆：从电机电流一路修到排行榜</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：辨识机器人——从电机电流反推关节力矩</div>
+    <div class="d">对 G2 crsB 双臂做动力学辨识，核心是把<b>电机电流与刚体动力学、类库仑摩擦、黏性阻尼、等效电枢惯量、偏置项</b>用一个式子串起来。<b>辨识是分阶段的，每阶段只激励一种效应：</b>先匀速激励估摩擦与阻尼；再用正弦激励估等效电枢惯量；最后固定前两者，用耦合 Fourier 激励拟合刚体惯性参数与偏置。<b>这个顺序不能乱——同时激励全部参数，它们会互相补偿，解出来的值谁也说不清对应什么物理量。</b>X5 因不支持力控，改用简化模型。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：验收要看力矩，不能只看位置跟踪</div>
+    <div class="d">这是全文最容易被忽略、也最值得抄的一句方法论：<b>仿真里用位置 PD 控制，位置反馈会持续修正关节偏差，所以哪怕动力学模型有误差，位置跟踪看起来依然很好。</b>换句话说，位置 RMSE 小 ≠ 动力学对。所以报告同时算两种残差：位置 RMSE（15 次长时序运行、21 个有效激励单元，0.035°–1.002°）和电流推算力矩与模型预测力矩之间的力矩残差。<b>还有一处细节：仿真传感器力矩读数经过观测器历史做后处理修正，但该修正只作用于读数，不改物理受力和控制过程——读数修正不能冒充物理修正。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：辨识物体——五种资产、有界搜索、两段目标</div>
+    <div class="d">物体侧选水壶、口香糖盒、海绵、羽毛球、笔，覆盖搬运、柔顺接触、交接三类场景。在固定执行设置与质量先验下，<b>用有界搜索拟合有效接触参数，必要时调几何、质心和初始姿态</b>。目标函数是两项加权：训练阶段的位置观测误差，加保持阶段的夹爪 RMSE，两个分母只做量纲归一化，不代表真实噪声水平。不同场景换目标：口香糖盒与海绵用保持阶段夹爪误差，交接任务则把 RGB 观测、夹爪目标与可行性判据一起优化。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：Recorded-command Replay——把"物体怎么动"交给物理引擎</div>
+    <div class="d">把真机记录的关节与夹爪位置目标直接灌进仿真，<b>机器人照着记录动，物体则完全由接触力、摩擦、重力自己算出来。</b>这一步是整条链的关键设计：如果连物体轨迹也照抄记录，那仿真只是回放动画，什么也没验证。参数为约 100 Hz 目标更新、1 ms 物理子步，分源环境拟合、冻结参数迁移、原生 PhysX 适配三种设置比较。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：Real2Sim 配对实验——用相关性给"仿真可信"定级</div>
+    <div class="d"><b>16 项任务、22 组机器人—任务配对，比较真机与仿真的任务得分，Pearson 相关系数 0.9686。</b>这个数字是整份报告的许可证：有了它，后面用仿真大规模评测才站得住。注意它证明的是"排序一致"（相关性），不是"数值相等"——仿真分数可以整体偏高或偏低，只要排序不乱，用于比较模型就够了。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 6 步：四个引擎各管一段，物理与渲染彻底解耦</div>
+    <div class="d">桌面抓取要刚体碰撞，叠衣服要布料弯曲，折纸要塑性折痕，抽垃圾袋要褶皱+自接触+拉伸——<b>没有单一求解器能全包。</b>于是把 PhysX、Newton、MuJoCo、libuipc 通过统一协议接入：协议只交换控制指令、关节状态、刚体位姿、仿真时间和形变几何，物理端维护状态、渲染端读状态出图，两边可以用不同更新频率、独立进程隔离依赖。<b>材料则按形变机制分模型：布料与袋子用三角壳，纸张加塑性弯曲保留折痕，体积软体用稳定 Neo-Hookean 四面体有限元，刚体用仿射体动力学。</b>MuJoCo 与 libuipc 组合时是单向耦合：机器人位姿速度传给 IPC 算柔性物体，IPC 的接触力不回传。</div>
+  </div>
+
+  <h3>评测体系：八个维度 + 三道防作弊</h3>
+  <p><b>Season Ⅰ 四 Track</b>：指令遵循、空间推理、通用操作、抗扰动，给 VLA / WAM / Agent 三类范式一个共同底座。<b>Season Ⅱ 加四类</b>：灵巧手操作（剪刀入环、取书、叠碗、盖杯盖、双手搬包裹）、全身协同（底盘+躯干+双臂）、精细操作（投硬币、盖笔帽、插吸管）、跨本体迁移。</p>
+  <p>防刷榜是三层：<b>① 隐藏测试集</b>——开源布局与服务器布局同分布但不同实例，用开源版调试、用隐藏版计分；<b>② 动态隐藏集</b>——每次提交都变，其得分不计入总分，只用来和正式集对照，差异过大就限制上榜，等于用"两套卷子的分差"探测你是否背题；<b>③ 人工审核</b>——查特权信息与评测 Hack。评分侧则加<b>双预算</b>（执行步数 + Agent 推理次数）与<b>端到端完成奖励</b>：中间步骤能拿进展分，但只有预算内完整做完才给额外奖励。</p>
+  <div class="box good">
+    <b>端到端奖励这一条最值钱。</b>它专门区分两种表现：一种在局部步骤刷高分却永远收不了尾，另一种稳稳做完。长时序任务里"最后放歪了"极其常见，只累计进展分就会系统性高估这类方案。
+  </div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>核心公式：三个式子对应三道关口</h2>
+
+  <div class="fml">
+    <div class="name">① 电流—力矩辨识：把"电机里流了多大电流"翻译成"关节上有多大力矩"</div>
+    \[ k_{i}\,I \;=\; M(q)\,\ddot{q} + C(q,\dot{q})\,\dot{q} + g(q) \;+\; \tau_{f}(\dot{q}) \;+\; I_{a}\,\ddot{q} \;+\; b, \qquad \tau_{f}(\dot{q}) \;=\; f_{c}\tanh(\kappa\,\dot{q}) + f_{v}\,\dot{q} \]
+    <div class="exp">\(I\) 是电机电流，\(k_i\) 是固定的电流—力矩系数；\(M\) 是质量矩阵，\(C\dot q\) 是科氏力与离心力项，\(g\) 是重力项，三者合起来就是刚体动力学；\(\tau_f\) 是摩擦（类库仑项 \(f_c\) 用 tanh 平滑、黏性项 \(f_v\) 与速度成正比），\(I_a\) 是等效电枢惯量，\(b\) 是偏置。<b>大白话：</b>左边是"电机实际上使了多大劲"，右边是"这些劲都花到哪去了"——一部分推关节（刚体动力学）、一部分喂给了摩擦、一部分被电机转子自己的惯量吃掉、剩下是零点偏置。<b>为什么摩擦要用 tanh 而不是符号函数：</b>符号函数在零速处不连续，优化会抖；tanh 是它的平滑替身，本质还是"速度为零时摩擦能顶住、一动就转成阻力"。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 两种残差：位置跟踪会掩盖动力学误差</div>
+    \[ \mathrm{RMSE}_{\tau} \;=\; \sqrt{\frac{1}{N}\sum_{n=1}^{N}\big(\tau^{\mathrm{model}}_{n}-\tau^{\mathrm{meas}}_{n}\big)^{2}}, \qquad \mathrm{RMSE}_{q} \;=\; \sqrt{\frac{1}{N}\sum_{n=1}^{N}\big(q^{\mathrm{sim}}_{n}-q^{\mathrm{real}}_{n}\big)^{2}} \]
+    <div class="exp">\(\tau^{\mathrm{meas}}\) 是由电流推算出来的力矩，\(\tau^{\mathrm{model}}\) 是模型预测力矩；\(q^{\mathrm{sim}}\) 与 \(q^{\mathrm{real}}\) 分别是仿真与真机的关节位置。<b>大白话：</b>第一个式子问"力算得对不对"，第二个式子问"位置跟得紧不紧"。<b>关键在于这两个指标会给出相反的假象：</b>位置环是闭环的，模型算错了力，控制器看到偏差就补一脚，位置照样跟得很准。所以位置 RMSE 只有 0.035°–1.002° 这么漂亮，也不能证明动力学辨识成功——必须另算力矩残差。<b>这是所有做 sim-to-real 的人都该抄的一条验收纪律：闭环会自己掩盖上游的错。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 评测分数：进展 + 完成奖励 − 预算超支</div>
+    \[ S \;=\; \underbrace{\sum_{k} r^{\mathrm{prog}}_{k}}_{\text{中间进展}} \;+\; \underbrace{R^{\mathrm{done}}\cdot \mathbb{1}\!\left[\text{完成} \wedge n_{\mathrm{act}}\!\le\! B_{\mathrm{act}} \wedge n_{\mathrm{inf}}\!\le\! B_{\mathrm{inf}}\right]}_{\text{预算内才算完成}} \;-\; \underbrace{\lambda\,\Phi\!\left(n_{\mathrm{act}}-B_{\mathrm{act}},\, n_{\mathrm{inf}}-B_{\mathrm{inf}}\right)}_{\text{超支扣分}} \]
+    <div class="exp">\(r^{\mathrm{prog}}_k\) 是各步骤的进展分，\(R^{\mathrm{done}}\) 是完成奖励，\(n_{\mathrm{act}}\) 是动作执行步数、\(n_{\mathrm{inf}}\) 是 Agent 推理调用次数，\(B\) 是对应的预算（阈值来自训练数据），\(\Phi\) 是超支惩罚函数。<b>大白话：</b>干到一半有分，但"做完"这笔大分只在既完成又没超预算时才发；超了就要扣。<b>为什么必须双预算：</b>只限动作步数，Agent 可以靠"多想几轮"绕过去；只限推理次数，又拦不住"多动几下碰运气"。两个都限住，"可花费的试错额度"才对齐，Agent 和 Policy 才勉强同场竞技。<b>这个式子的本质是把"能力"定义成"在给定资源内把事情做完"，而不是"只要最后做成了就算"。</b></div>
+  </div>
+
+  <div class="box good">
+    <b>三式连读：</b>① 让仿真的力是真的，② 让"真"可以被验证（别被位置环骗），③ 让"分数"表达能力而不是表达试错额度。<b>这份报告真正的贡献不是排了名，而是把"分数凭什么算数"逐层钉成了可执行的判据。</b>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：一份评测方法论的样板，也留下了几处没盖完的章</h2>
+
+  <h3>四样真正值得带走的东西</h3>
+  <div class="box good">
+    <b>第一，"先证尺子，再排名次"的次序。</b>Real2Sim 的 0.9686 是整份榜单的许可证：没有这个数，后面所有排名都悬空。<b>任何做 Benchmark 的团队都该先回答"我的仿真是真的吗"，而不是先回答"我的榜有几个任务"。</b>
+  </div>
+  <p><b>第二，把执行预算写进协议。</b>面对会写代码、会反复试错的 Agent，旧榜的"成功率高就是强"彻底失效。<b>动作步数 + 推理次数双预算 + 端到端完成奖励</b>，是目前看到的最务实的一组约束——它把"资源消耗"变成能力定义的一部分。</p>
+  <p><b>第三，用"两套卷子的分差"探测背题。</b>动态隐藏集不计入总分、只与正式集对照，分差过大就限制上榜。这个设计比单纯"换一套隐藏题"更狠：它检测的不是你会不会，而是你的能力是否依赖特定实例。</p>
+  <p><b>第四，四引擎按材料分治 + 物理渲染解耦。</b>三角壳管布与袋、塑性弯曲管纸痕、Neo-Hookean 四面体管体积软体、仿射体管刚体——<b>这套"按形变机制选模型"的分法，可以直接搬到任何需要刚柔混合的仿真工程里。</b>而物理与渲染走独立进程、不同更新频率，则是工程上很实用的一刀。</p>
+
+  <h3>七处必须打折的地方</h3>
+  <ol class="crit">
+    <li><b>物体接触参数只是"当前配置下的有效值"，不是真值。</b>报告自己写明：机器人动力学、几何形状、初始状态、相机标定会共同影响拟合，<b>不同参数之间还可能互相补偿</b>。所以那组接触与阻尼数字，换一套执行设置就不保证还可信。</li>
+    <li><b>参数搜索是否全局最优，无法判断。</b>候选参数网格、掩码与选择规则尚未完整归档，读者只能接受结果，不能复现搜索过程——这在技术报告里是个明显的复现缺口。</li>
+    <li><b>个别资产的证据很薄。</b>羽毛球只有三个有效深度点；笔的改善幅度小于标注不确定性。也就是说"多资产验证"里，至少两项的结论没有统计力量。</li>
+    <li><b>MuJoCo 与 libuipc 是单向耦合，机器人"感觉不到"布料。</b>IPC 算出的接触力不回传给 MuJoCo。做拉扯、拖拽类任务时，机器人拉布的阻力不会反映到自身动力学上——<b>这类任务上仿真会系统性地"太轻松"。</b></li>
+    <li><b>两个榜单不能直接比。</b>Agent 靠运行时推理，Policy 用每任务 200 条示教做混合 SFT，训练与执行条件都不同。报告自己也强调不能拿两个 Overall 得出"哪条路线更强"。<b>看到有人拿这两组分数互踩，就是误读。</b></li>
+    <li><b>Agent 组灵巧手分数低到接近噪声。</b>最高 5.19/100，多个模型是 0 或 0.07。在这种量级上谈"谁灵巧手更强"，区分度很可能来自偶然成功一两次，而不是稳定的能力差异。</li>
+    <li><b>Sandbox 只是场景演示。</b>家居、便利店、餐厅、酒店、办公室五类环境目前给的是示例与任务演示，<b>更大规模的开放世界覆盖、多阶段任务评测及具体评分协议尚未定义</b>。这意味着"从固定任务走向开放场景"还只是方向，不是成果。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>这份报告最值得记住的，不是任何一行的分数，而是一个提问顺序：<b>看到榜单，先问"仿真经不经得起真机"，再问"选手的预算一不一样"，最后问"题目有没有被人提前摸过"。</b>三问答完，分数才有资格被比较。RoboColiseum 用 0.9686 的相关性、双预算和三层隐藏机制，把这三个问题各自落成了可执行的检查项——<b>它真正在做的，是把"评测"从发奖状变成做测量。</b>对一个正在被 Agent 改写规则的领域，这件事比多刷几个点的成功率重要得多。</p>
+  <p class="src">原文：《大 Bench 时代，RoboColiseum 如何构建具身评测？》，公众号 human five，2026-11-13。涉及概念：System Identification、Real2Sim、类库仑摩擦与黏性阻尼、等效电枢惯量、Recorded-command Replay、多物理后端、libuipc、三角壳/Neo-Hookean/仿射体、单向耦合、Season Ⅰ/Ⅱ、隐藏测试集、动态隐藏集、执行与推理双预算、端到端完成奖励。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ 来源：公众号 human five</footer>
+</div></body>
+</html>
