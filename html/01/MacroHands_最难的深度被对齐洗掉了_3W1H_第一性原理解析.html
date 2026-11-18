@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MacroHands：把"对齐"拿掉，误差现原形 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>MacroHands：把"对齐"拿掉，误差现原形<span class="sub">Macrodata Labs · 单目 / 双目 · Cam-MPJPE 32.2 → 13.1 毫米 · 遮挡召回 80% vs 59% · 他人手误检 0.2% vs 23.6% · 相机漂移约 DROID-SLAM 的 1/4</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-15</div>
+    <div><b>关键词</b> 第一视角视频 · 3D 手部追踪 · 相机位姿 · Cam-MPJPE · 数据管线</div>
+    <div><b>一句话</b> 对齐会把最难的深度洗掉，所以主指标必须不对齐</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>第一视角视频要变成机器人动作，第一步得知道手在相机坐标系里的<b>真实位置</b>——不是形状，是深度。但主流评测都先做 Procrustes 对齐再报误差，而对齐会吸收旋转、平移和尺度，<b>恰好把最难的深度洗掉</b>。MacroHands 的立论很干脆：真实视频没有可用于对齐的真实值，所以主指标必须是不对齐的 Cam-MPJPE。换到这把尺子上，差距立刻拉开——SHOW3D 上 32.2 毫米对 HaWoR 的 55.9 毫米，双目版做到 13.1 毫米；而两者的对齐指标是 8.4 与 10.0，几乎一样。这说明差距不在手型建模，在深度。再加一把卷尺就能验证：许多模型的手腕深度误差不是几厘米，而是 10 到 20 厘米。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 关键指标</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一条数据管线的入口环节</h2>
+  <p>先定位它的位置。机器人要学操作，需要"动作"——策略每一步输出的指令，比如手或夹爪下一步该移到哪里。遥操作能直接录下这些动作；<b>第一视角视频只展示人怎么完成任务，动作得从视频里反推</b>。反推的第一步是手部追踪，第二步是把追踪到的人手运动重定向到机器人手上。</p>
+  <p>Macrodata Labs 的 <b>MacroHands</b> 就做这一步：面向第一视角视频的 3D 手部与相机路径估计模型，两个版本——</p>
+  <div class="step">
+    <div class="t">Mono：任意单相机视频</div>
+    <div class="d">直接从普通视频预测佩戴者每只手的 21 个 3D 关节（1 个手腕 + 每指 4 个关节），输出在相机坐标系里。</div>
+  </div>
+  <div class="step">
+    <div class="t">Stereo：双目设备的两个视角</div>
+    <div class="d">用两个前置相机之间那点轻微位移，把深度从"靠外观猜"变成"靠视差测"。</div>
+  </div>
+  <p>它同时估计<b>相机自身位姿</b>——每一帧里头戴相机的位置和朝向。这一点容易被忽略但很关键：只有知道相机怎么动，才能把手从"相对相机"搬进"相对世界"，从而把头部运动和手部运动分开。整条链路是：</p>
+  <div class="box good">
+    <b>手部 21 关键点（相机系）＋ 相机位姿 → 手部轨迹（世界系）→ 重定向 → 机器人动作</b><br>
+    任何一环的误差都会往下一环传，而且会被放大：手抖几毫米是形状问题，深度差几厘米就是"伸向错误的位置"。
+  </div>
+  <p>这篇是<b>产品博客</b>而不是论文，全部内容围绕评测展开：三套公开 Benchmark 比手部精度，一套自建内部 Benchmark 比"能不能找对那只手"，三套带 IMU 的设备比相机轨迹，最后用一个统一指标衡量"机器人实际学到的东西准不准"。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：三道坎，第一道是尺子</h2>
+
+  <h3>第一视角数据在涨，但它不含动作</h3>
+  <p>作者给了一组很直白的商业侧证据：截至 2026 年 6 月，Mecka 的年化收入超过 1 亿美元；microagi 的 Shift 推出六个月后年化收入也到 1 亿美元以上。技术侧，NVIDIA 的 EgoScale、Dyna 的 Dyna-2（在超过 100 万小时第一视角视频上预训练）都展示了实际潜力。</p>
+  <p>但钱和数据都在涨的这件事，卡在同一个地方：<b>视频里只有人手怎么动，没有"动作"这个标签</b>。所以手部追踪不是锦上添花的前处理，它是整条数据产线的入口。入口不准，后面全部作废。</p>
+
+  <h3>三道坎：找错手、找不到手、找对但深度错</h3>
+  <table>
+    <tr><th>坎</th><th>真实场景里的样子</th><th>对训练的后果</th></tr>
+    <tr><td><b>找错手</b></td><td>画面里其他人的手伸过来；赤脚出现在画面里很像手</td><td>数据里出现佩戴者从未做过的动作</td></tr>
+    <tr><td><b>找不到手</b></td><td>手被工具挡在后面；戴了工作手套；部分遮挡</td><td>记录出现空缺，可用视频比例下降</td></tr>
+    <tr><td><b>深度错</b></td><td>形状对、位置偏，手离相机越远偏得越多</td><td>机器人学会伸向错误的位置</td></tr>
+  </table>
+  <p>这三道坎里，作者认为<b>第三道被行业系统性低估了</b>，因为评测指标把它的证据掩掉了。这就是全文最值得记住的地方。</p>
+
+  <h3>为什么"对齐"会洗掉最难的深度</h3>
+  <p>手部误差通常用 MPJPE（每关节平均位置误差）汇报。但这个指标有三种口径，差别极大：</p>
+  <div class="step">
+    <div class="t">root-relative MPJPE：以手腕为基准对齐</div>
+    <div class="d">把手腕挪到真值手腕上，再比各关节。<b>平移被吸收了</b>——手整体在哪已经不重要。</div>
+  </div>
+  <div class="step">
+    <div class="t">PA-MPJPE：Procrustes 对齐（旋转 + 平移 + 尺度）</div>
+    <div class="d">再额外允许最优旋转和尺度。<b>大小也被吸收了</b>——手离相机多远这件事被彻底抹平，只剩形状。</div>
+  </div>
+  <div class="step">
+    <div class="t">Cam-MPJPE：完全不对齐</div>
+    <div class="d">直接在相机坐标系里比。<b>深度必须自己估对</b>，没有任何东西可以吸收误差。</div>
+  </div>
+  <div class="box bad">
+    <b>核心洞察</b>：大多数论文只报前两种口径，而它们恰好允许模型"把手缩放到正确大小再贴到正确位置"。<br>
+    可是<b>真实视频没有可用于对齐的真实值</b>——你不知道那只手本来该多大、该在哪。所以一个在 PA-MPJPE 上表现很好的模型，到了真实产线上可能连"手在 30 厘米还是 50 厘米"都分不清。
+  </div>
+  <p>作者的应对不是争论，而是<b>换一把尺子并公开数据</b>：主指标用 Cam-MPJPE，同时仍然报 PA-MPJPE，理由是后者能单独衡量手型质量。这个做法很干净——两种口径并排给，读者自己就能看出差距在哪。</p>
+  <div class="box good">
+    <b>并排一读就明白了</b>：SHOW3D 上 MacroHands-Mono 的 Cam-MPJPE 是 32.2 毫米，HaWoR 是 55.9 毫米，差 1.7 倍；<br>
+    但两者的 PA-MPJPE 是 8.4 与 10.0 毫米，只差 1.2 毫米。<br>
+    <b>形状几乎一样好，位置差一大截——差的全在深度。</b>
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：一套评测体系，四个尺度</h2>
+
+  <h3>① 用"没训过"的公开集比手部精度</h3>
+  <p>三套 Benchmark，重点放在 SHOW3D：Quest 3 采集，93 个场景、32 人、143,900 个手部样本，来自公开版本中具有手部位姿的全部 32 名参与者。参与比较的基线都用其公开代码与权重、作者推荐设置，不重训不调参，输入帧与 MacroHands 完全相同。另外两套是 HOT3D（6 段序列）和 ARCTIC s05（34 段记录，单目）。</p>
+  <table>
+    <tr><th>方法（SHOW3D，单目）</th><th>Cam-MPJPE 均值（毫米）</th><th>召回率（%）</th><th>PA-MPJPE（毫米）</th></tr>
+    <tr><td><b>MacroHands-Mono</b></td><td><b>32.2</b></td><td><b>98.0</b></td><td><b>8.4</b></td></tr>
+    <tr><td>HaWoR</td><td>55.9</td><td>81.9</td><td>10.0</td></tr>
+    <tr><td>EgoHand-v1</td><td>61.5</td><td>81.6</td><td>9.3</td></tr>
+    <tr><td>WiLoR</td><td>63.9</td><td>71.3</td><td>10.0</td></tr>
+    <tr><td>HaMeR</td><td>65.8</td><td>74.1</td><td>10.5</td></tr>
+    <tr><td>ACE-Ego-Hand</td><td>86.3</td><td>56.9</td><td>11.3</td></tr>
+    <tr><td>WildHands</td><td>136.9</td><td>4.3</td><td>17.0</td></tr>
+  </table>
+  <p>这张表有两处值得盯住。第一，<b>召回率的离散度比精度更刺眼</b>：WildHands 的召回只有 4.3%，也就是说一百只手它只找到四只——这已经不是精度问题，是数据能不能用的问题。第二，<b>HaWoR 每五只手就漏掉一只</b>（81.9%），而这些漏掉的手在产线上就是被丢弃的视频段。</p>
+  <p>唯一的落后出现在 ARCTIC：ACE-Ego-Hand 18.7 毫米，MacroHands 19.4 毫米。作者自己点明原因——<b>那个基线在 ARCTIC 训练集上训过</b>，而 MacroHands 一帧都没见过。</p>
+
+  <h3>② 加第二个相机：提升几乎全在深度</h3>
+  <p>双目版是全文实验设计最漂亮的地方：它给了一个<b>受控对照</b>，因为两个版本唯一的差别就是"多一个视角"。</p>
+  <table>
+    <tr><th>数据集</th><th>单目 Cam-MPJPE</th><th>双目 Cam-MPJPE</th><th>降幅</th></tr>
+    <tr><td>SHOW3D</td><td>32.2 毫米</td><td><b>13.1 毫米</b></td><td>约 1/2.5</td></tr>
+    <tr><td>HOT3D</td><td>12.2 毫米</td><td><b>10.6 毫米</b></td><td>小幅</td></tr>
+    <tr><td>SHOW3D 第 90 百分位</td><td>65.0 毫米</td><td><b>24.7 毫米</b></td><td>约 1/2.6</td></tr>
+    <tr><td>HOT3D 第 90 百分位</td><td>23.8 毫米</td><td><b>19.2 毫米</b></td><td>小幅</td></tr>
+  </table>
+  <p>而两者的 PA-MPJPE 是 <b>8.5 与 8.4 毫米</b>——几乎完全相同。这就把结论钉死了：<b>第二个相机带来的全部是距离信息，手型一点没变</b>。反过来也说明，单目版剩下的那 32.2 毫米误差里，绝大部分是深度。</p>
+  <div class="box good">
+    <b>为什么第 90 百分位比均值更重要</b>：SHOW3D 上均值降 2.5 倍，第 90 百分位降 2.6 倍——<b>最难的 10% 帧改善幅度和平均一样大</b>，说明不是靠在容易样本上刷分。<br>
+    反过来说，如果一条产线上有 10% 的视频因为深度错而被丢弃，那就是 10% 的数据白采了。
+  </div>
+  <p>顺带一个反直觉发现：其他专为双目设计的模型相比单目基线提升很小。Meta 的 UmeTrack 在 SHOW3D 上是 46.4 毫米，单目 HaWoR 是 55.9 毫米；HOT3D 上 UmeTrack 46.2 毫米，HaWoR 48.4 毫米。<b>第二个相机给了，但没用上。</b></p>
+
+  <h3>③ 自建一套"找对那只手"的 Benchmark</h3>
+  <p>公开集都在摄影棚或受控环境采，测不出真实场景里最要命的问题：<b>模型会不会去追别人的手</b>。作者自建了一套内部片段 Benchmark，人工标注佩戴者每只手的包围框并在左右手之间区分，同时标注画面里其他人的手（约占全部标注手部的三分之一）。片段还按场景打标签：出现脚、遮挡、手套、画面里没有佩戴者的手。</p>
+  <table>
+    <tr><th>方法</th><th>AP50（%）</th></tr>
+    <tr><td><b>MacroHands-Mono</b></td><td><b>75.8</b></td></tr>
+    <tr><td>HaWoR</td><td>43.3</td></tr>
+    <tr><td>HaMeR</td><td>34.4</td></tr>
+    <tr><td>WiLoR</td><td>29.6</td></tr>
+    <tr><td>ACE-Ego-Hand</td><td>26.8</td></tr>
+    <tr><td>MINT</td><td>26.4</td></tr>
+  </table>
+  <p>更关键的是错误的方向性：</p>
+  <table>
+    <tr><th>指标</th><th>MacroHands</th><th>最强基线</th><th>读法</th></tr>
+    <tr><td>检测框落在他人手上的比例</td><td><b>0.2%</b></td><td>23.6%（HaWoR / HaMeR / WiLoR）</td><td>约 1/100</td></tr>
+    <tr><td>只有别人手的片段中，检测框落在他人手上</td><td><b>0%</b></td><td>89%</td><td>该不输出的时候没输出</td></tr>
+    <tr><td>找到佩戴者手（总体）</td><td><b>83%</b></td><td>51%</td><td>精确率 84% 对 66%</td></tr>
+    <tr><td>戴手套时</td><td><b>79%</b></td><td>48%</td><td>手套是硬场景</td></tr>
+    <tr><td>有遮挡时</td><td><b>80%</b></td><td>59%</td><td>与公开集结论一致</td></tr>
+  </table>
+  <p>那 89% 是最能说明问题的一格：在一整段看不到自己手、只看到别人手的视频里，正确做法是<b>什么都不输出</b>。基线仍然把别人的手当成你的手报上来，比例高达 89%。<b>这种错误不是精度不够，是数据被污染</b>——训练集会凭空多出佩戴者从没做过的动作。</p>
+
+  <h3>④ 相机位姿：两个时间尺度，都不许调尺度</h3>
+  <p>作者把相机路径拆成两个尺度看，理由很实在：整段记录里路径不能漂，否则重建场景、转仿真都会歪；单个一秒内必须够准，因为策略通常就在这个长度上学 Action Chunk。</p>
+  <table>
+    <tr><th>指标（双目 + IMU）</th><th>MacroHands</th><th>DROID-SLAM</th><th>差距</th></tr>
+    <tr><td>ATE，Monado Index</td><td><b>5.7 厘米</b></td><td>23.6 厘米</td><td>约 1/4</td></tr>
+    <tr><td>ATE，Aria Gen 2</td><td><b>18.9 厘米</b></td><td>74.0 厘米</td><td>约 1/4</td></tr>
+    <tr><td>RPE 1 秒平移，HOT3D（无 IMU）</td><td><b>0.96 厘米</b></td><td>1.22 厘米</td><td>略优</td></tr>
+  </table>
+  <p>这里有一个刻意为之的取舍：<b>不做事先的尺度拟合</b>。SLAM 论文常先把预测路径旋转平移缩放拟合到参考路径上再算 ATE，但单目相机最难的恰恰就是尺度——移动 10 厘米和移动 100 厘米，仅凭图像可能看起来完全一样。所以 MacroHands 只做一次刚体对齐（旋转 + 平移），不调尺度，并单独报尺度误差：</p>
+  <div class="box good">
+    <b>尺度误差这一格最有信息量</b>：双目 1.1%，单目 6.6%，双目 DROID-SLAM 1.5%，而单目 DROID-SLAM 在 66% 到超过 800% 之间，MASt3R-SLAM 85.3%，VGGT-SLAM 31.4%。<br>
+    <b>单目 SLAM 的尺度可以错到 8 倍</b>——这种误差不会在"对齐后 ATE"里显示出来，但对机器人是致命的。
+  </div>
+
+  <h3>⑤ 最后压成一个数：Action MPJPE</h3>
+  <p>前面所有指标都是零件级。作者用一个指标把整条链路压成一个数：对每一帧，取其后一个 Action Chunk 内的手部运动，<b>用各方法自己估的相机路径确定预测位置，用真实相机路径确定真值位置</b>，以起始帧相机系为参考，不对齐、逐关节比较。</p>
+  <p>这个设计很狠：<b>手在图像里看着对，但如果它跟着一条漂移的、尺度错的相机路径一起动，照样算错</b>。它测的是"机器人真正会学到的东西"。</p>
+  <table>
+    <tr><th>1 秒 Action Chunk</th><th>Action MPJPE</th></tr>
+    <tr><td>MacroHands-Stereo（HOT3D）</td><td><b>13.6 毫米</b></td></tr>
+    <tr><td>MacroHands-Mono（HOT3D）</td><td>15.9 毫米</td></tr>
+    <tr><td>HaWoR（自带 SLAM，HOT3D）</td><td>65.9 毫米</td></tr>
+    <tr><td>MacroHands-Mono（ARCTIC）</td><td><b>26.9 毫米</b></td></tr>
+    <tr><td>HaWoR（ARCTIC）</td><td>67.8 毫米</td></tr>
+  </table>
+  <p>13.6 毫米对 65.9 毫米，约 4 到 5 倍。这个数字是整个博客的核心主张：<b>在手部追踪和相机位姿两个环节上各领先一点，乘起来就是一个量级。</b></p>
+
+  <h3>⑥ 一把卷尺就能验：作者自己推荐的第一个测试</h3>
+  <p>这是全文最实用、也最"不讲情面"的一段。作者直说<b>Benchmark 污染是真问题</b>：带 3D 手部标注的数据集屈指可数，大多数模型都拿那几个能当 Benchmark 的数据集来训练；训练集与测试集的相机、人物、房间相匹配，模型只要学会这些记录里常见的手部大小和距离，分数就不会差。</p>
+  <p>要严格检验得进动捕棚自己采留出集，既贵又慢。但作者说，模型之间的差距大到<b>一个简单得多的测试就够用了</b>：</p>
+  <div class="step">
+    <div class="t">尺子测试（五分钟版）</div>
+    <div class="d">找一部相机内参已知的手机和一把卷尺，<b>关掉视频防抖</b>（防抖会裁剪和平移图像，原有内参就失效了）；录制自己沿卷尺把手腕依次放在 10、20、30、40、50 厘米处的视频；用手机真实内参跑模型，把估计的手腕深度和卷尺读数对比。<br>
+    这种测量精度只有 1 到 3 厘米，但足够了——因为<b>许多其他模型的手腕深度误差不是几厘米，而是 10 到 20 厘米</b>，而且手离相机越远误差越大。在 10 厘米处，手几乎进不了画面，六个基线里有四个直接没有输出。</div>
+  </div>
+  <p>顺带一个外部参照，用来校准"精度"这个词的分量：即使是动作捕捉也达不到亚毫米——贴在皮肤上的标记点会相对手指骨骼滑动；专用手部捕捉设备报告的中位误差是 <b>6 到 8 毫米</b>。所以任何宣称"亚毫米精度"的说法，先对照这个物理上限。</p>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>关键指标：三个定义决定了三种世界观</h2>
+
+  <div class="fml">
+    <div class="name">① Cam-MPJPE：不对齐，所以深度必须自己对</div>
+    \[ \mathrm{Cam\text{-}MPJPE} \;=\; \frac{1}{|\mathcal{J}|}\sum_{j\in\mathcal{J}} \big\| \hat{\mathbf{p}}_j - \mathbf{p}_j \big\|_2 \]
+    <div class="exp">
+      \(\hat{\mathbf{p}}_j\) 与 \(\mathbf{p}_j\) 分别是第 \(j\) 个关节的预测与真值 3D 位置，两者都直接取自<b>评分相机的坐标系</b>，单位为毫米，<b>不做任何对齐</b>。<br>
+      \(\mathcal{J}\) 是参与评分的关节集合：只有当一只手至少有 4 个关节位于主相机图像内时才对这只手评分，而这只手所有已标注关节（含画面外的）都计入——这样双目模型的评分样本与单目模型完全相同。<br>
+      <b>为什么它比 PA 更接近真实</b>：对齐需要真实值来做参照，而真实视频里没有真实值。产线上你能拿到的只有"模型说手在 34 厘米处"，没有"手其实在 34 厘米处"可比。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 尺度误差：专门抓"对齐会洗掉"的那一项</div>
+    \[ \varepsilon_{\text{scale}} \;=\; \Big|\, \operatorname{median}_{t:\,\|\Delta \mathbf{p}^{\mathrm{gt}}_t\| > \tau} \frac{\|\Delta \hat{\mathbf{p}}_t\|}{\|\Delta \mathbf{p}^{\mathrm{gt}}_t\|} \;-\; 1 \,\Big| \]
+    <div class="exp">
+      \(\Delta \hat{\mathbf{p}}_t\) 与 \(\Delta \mathbf{p}^{\mathrm{gt}}_t\) 是第 \(t\) 个 1 秒时间步内相机的预测位移与真实位移，\(\tau\) 是位移下限阈值（用于排除几乎不动的时段，否则比值没有意义）。<br>
+      <b>读法</b>：预测距离比真实长 10% 或短 10%，误差都是 10%。<br>
+      <b>它为什么必须单独报</b>：单目 DROID-SLAM 这一项在 66% 到超过 800% 之间——也就是说它可能把"走了 10 厘米"算成"走了 90 厘米"。这种错误在"先做尺度拟合再算 ATE"的口径里<b>完全看不见</b>。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ Action MPJPE：把两个环节的误差乘在一起</div>
+    \[ \mathrm{Action\text{-}MPJPE} \;=\; \frac{1}{|\mathcal{J}|}\sum_{j\in\mathcal{J}} \Big\| \, T\big(\hat{\mathbf{P}};\,\hat{\mathbf{c}}_{t_0\to t_0+H}\big)^{-1}\hat{\mathbf{p}}^{(t)}_j \;-\; T\big(\mathbf{P};\,\mathbf{c}_{t_0\to t_0+H}\big)^{-1}\mathbf{p}^{(t)}_j \,\Big\|_2 \]
+    <div class="exp">
+      \(\hat{\mathbf{c}}\) 与 \(\mathbf{c}\) 分别是<b>各方法自己估的相机路径</b>与真实相机路径，\(T(\cdot)\) 表示把该帧的关节位置变换到<b>起始帧 \(t_0\) 的相机坐标系</b>；\(H\) 为 Action Chunk 长度（报告中用 1 秒与 2 秒）。<br>
+      <b>关键在最后一步：不对齐。</b>手部形状对、但相机路径漂了或尺度错了，这个数就会变大——因为它比较的是"世界系里的手"，而这正是机器人策略要学的东西。<br>
+      <b>这个指标也解释了为什么不能用 SHOW3D 测</b>：该数据集公开的相机位姿在 93 个场景中有 25 个漏掉了大幅度头部转动，手部标注仍准但相机路径不可用。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限</h2>
+
+  <div class="box good">
+    <b>核心价值</b>：它做的是<b>把评价标准拨回物理现实</b>——真实视频没有真值可对齐，所以唯一有效的指标是不对齐的。这一拨之后，同一个模型在两种口径下的排名会变，而"变的那部分"正是产线上会废掉数据的那部分。对做数据管线的人来说，<b>"先关掉防抖、用卷尺测一次深度"这个五分钟测试，比读十篇 Benchmark 排名更有用</b>。
+  </div>
+
+  <h3>诚实的局限</h3>
+  <div class="step">
+    <div class="t">局限一：这是产品博客，没有方法</div>
+    <div class="d">全文一个网络结构、一条损失函数、一句训练数据规模都没有。所有成绩都来自厂商自评，<b>既无法复现，也无法审阅</b>。"优于所有开源基线"这句话的外延，取决于基线版本、超参和评测脚本——这些都没有随文公开。读它应该读"评测框架"和"失败模式"，而不是读"它有多强"。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限二：最亮的那张表，用的是自己的训练划分</div>
+    <div class="d">SHOW3D 一栏写着"参与比较的模型均未在该数据集上训练"，但采样细节里同时说明这 96 个场景"<b>属于训练集</b>，也是唯一公开了手部位姿的数据划分"。也就是说：MacroHands 用过这个划分，基线没用过。<b>这个不对称对自己有利</b>，作者在细节里披露了没藏，但读者不能把 32.2 对 55.9 当成完全同条件的对比。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限三：内部 Benchmark 不公开，"0.2% vs 23.6%"无法第三方复核</div>
+    <div class="d">检测那组指标（AP50 75.8、他人手误检 0.2%、只有别人手时 0%）全部来自自有数据，作者明确说"由于包含内部数据，我们无法公开"。这是最漂亮也最难验证的一组数字——它恰好是自己最占优的地方。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限四：单目版仍越过了自己划的红线</div>
+    <div class="d">结论里作者写：真实视频中"达到或超过 5 厘米的深度误差会让机器人学会伸向错误的位置"。而 SHOW3D 上 Mono 的 Cam-MPJPE 是 <b>32.2 毫米</b>，第 90 百分位是 <b>65 毫米</b>——均值贴着红线、尾部越过了红线。<b>换句话说，单目方案的可用性是被尾巴限制的，而尾巴恰恰落在"最需要它准"的那些困难帧上。</b></div>
+  </div>
+  <div class="step">
+    <div class="t">局限五：Action MPJPE 的对比对象是开源 pipeline，不是同级产品</div>
+    <div class="d">13.6 对 65.9 这个 4 到 5 倍，对手是"HaWoR + 它自带的 SLAM"这条开源组合，而 HOT3D 只有 6 段序列、0.21 小时。这个量级的领先能否代表"对其他商业方案也领先"，文中没有证据。</div>
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>把"指标选择"当成核心论点，是最聪明也最需要警惕的一步。</b>换一个对自己更有利的口径再宣布领先，本身可以是一种修辞。这篇之所以站得住，是因为它同时给了 PA-MPJPE（8.4 对 10.0，承认手型相近）和完整的失败模式——如果只给 Cam-MPJPE 而不给 PA，这个论点就不可信了。</li>
+    <li><b>"其他双目模型提升很小"这个发现值得单独跟进。</b>UmeTrack 46.4 毫米对单目 HaWoR 55.9 毫米，只好了 17%；而 MacroHands 从 32.2 降到 13.1，好了 60%。同样的第二视角、同样的视差信息，为什么差这么多？<b>大概率是双目监督信号与检测/追踪耦合方式不同</b>，但博客没讲。这是全篇最有价值却最没解释的一处。</li>
+    <li><b>尺子测试的门槛被低估了。</b>它假设你知道手机的真实内参、能关掉防抖、手腕摆放位置可复现。实际做起来，"手在 50 厘米处"这个前提本身就依赖拍摄者的空间感。它是好测试，但不是"五分钟能自动化跑完"的测试。</li>
+    <li><b>召回率与精确率的权衡没有交代。</b>MacroHands 找到 83% 的手、精确率 84%；如果放宽阈值，是否还能保持 0.2% 的他人手误检？这两个数是一起动的，只报一对工作点会掩盖权衡曲线。</li>
+    <li><b>最该抄走的是那句判据</b>：漏掉一只手＝丢一段视频；追到别人的手＝往数据里塞一段假动作。<b>前者是量的损失，后者是质的污染</b>，而后者更致命却长期不被指标捕捉。任何做第一视角数据管线的人，都应该把"他人手误检率"当成一级指标。</li>
+  </ul>
+
+  <p class="src">来源：公众号 human five《MacroHands:从egocentric video中估计 3D 手部与相机位姿》（2026-11-15）· 原文 Macrodata Labs 产品博客《MacroHands: 3D hands and camera pose from egocentric video》</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div></body>
+</html>
