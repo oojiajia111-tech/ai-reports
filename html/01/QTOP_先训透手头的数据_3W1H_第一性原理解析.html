@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QTOP：算力还是数据，先算清这笔账 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>QTOP：算力还是数据，先算清这笔账<span class="sub">高通 AI 研究 · 分位数优势 · 分布 Critic · 29 自由度 G1 · 算力翻倍 -5.59% vs 数据翻倍 -3.31% · 真机误差降 8%</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-18</div>
+    <div><b>关键词</b> 人形动作跟踪 · 分位数优势 · 分布 Critic · 算力与数据预算 · QTOP</div>
+    <div><b>一句话</b> 绝对回报不能跨动作比较，那就把它换成相对排名</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>动作跟踪的预算该往哪投？直觉是数据越多越好。QTOP 把动作库从 4 小时拉到 24 小时、把训练从几百 GPU 小时推到 1300 小时，拟合出一张误差曲面：<b>在约 700 GPU 小时以内的常规规模，训练算力每翻一番误差降 5.59%，动作数据每翻一番只降 3.31%</b>。瓶颈不在模型容量，而在多动作混训的信号冲突——同一个 70 分，对直走可能只是第 20 百分位，对复杂转身却是第 80 百分位；标量 Critic 把一段动作的价值估准，就会把另一段改偏。作者把 Critic 换成回报分布，用分位数优势把绝对回报折算成 -1 到 1 的相对排名。真机上，相同预算下关键身体点误差从 37.2 毫米降到 34.2 毫米。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 关键公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一篇讲"钱该花在哪"的论文，不是新网络</h2>
+  <p>先说清楚它回答的问题。训练通用全身跟踪策略，这几年各家在算力和数据上的账算得并不一样：BeyondMimic 先训专家再蒸馏，英伟达的 SONIC 直接把大规模动作库和算力一起拉满，Humanoid-GPT 把多个动作专家蒸馏进同一个策略，最近的 SuperMimic 又用可微世界模型把训练压到单卡几小时。</p>
+  <p>当训练开销被不断打下来，问题就回到了最朴素的并行仿真强化学习里：<b>动捕数据到底需要多还是少？下一笔预算该用来扩充动作库，还是增加仿真训练量？</b></p>
+  <p>高通 AI 研究团队的 <b>QTOP</b>（论文全名 Scaling Humanoid Motion Tracking with Quantile Critics，arXiv 2611.20791）没有换网络结构，也没有换仿真器。它做了两件事：</p>
+  <div class="step">
+    <div class="t">① 把预算变量单独拎出来测</div>
+    <div class="d">固定网络架构和训练算法，只动两个变量——动作数据时长、训练 GPU 小时，在 4、12、24 小时三档数据上跑出完整的误差曲线，拟合出一张关于算力与数据的误差曲面。</div>
+  </div>
+  <div class="step">
+    <div class="t">② 从训练信号下手，把 PPO 的优势估计改掉</div>
+    <div class="d">把标量 Critic 换成输出<i>回报分布</i>的 Critic，再用分位数把绝对回报折算成 -1 到 1 的相对排名。改的是"怎么评价一段轨迹"，不是"策略长什么样"。</div>
+  </div>
+  <p>所以它更像一份<b>预算说明书</b>加一个针对性的补丁：前者告诉你钱该往哪投，后者告诉你为什么那个方向还没被榨干。</p>
+  <p>论文的测试设置沿用 BeyondMimic 的跟踪框架：29 自由度宇树 G1，控制器 50 Hz，单回合 500 步（10 秒）。一个刻意的设计是——<b>策略只输入当前帧的参考关节位置与速度、躯干朝向误差、本体状态和上一步动作，不拼接未来参考帧</b>，这样部署时不会引入额外延迟。代价是策略看不到后续轨迹，即便当前观测相似，后面接上的也可能是完全不同的动作走向与接触状态。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：两类资源不是一回事，冲突出在信号里</h2>
+
+  <h3>数据与算力作用在不同的地方</h3>
+  <p>这两类资源常被混为一谈，其实分工很清楚：</p>
+  <table>
+    <tr><th>资源</th><th>决定什么</th><th>增加后发生什么</th></tr>
+    <tr><td><b>动捕数据</b></td><td>策略有哪些参考动作可以学</td><td>扩展它见过的速度、姿态和接触变化</td></tr>
+    <tr><td><b>GPU 小时</b></td><td>策略在仿真里能练多久</td><td>同一段参考被反复跟踪，收集自己踩偏、失衡、没及时转身时的反馈</td></tr>
+  </table>
+  <p>同一段动捕可以拿来训练很多轮，这是关键的不对称：<b>数据是可复用的，算力是消耗性的</b>。所以"加数据"和"加算力"的边际收益本来就不该相等。</p>
+
+  <h3>那为什么几百 GPU 小时还没训透 4 小时的数据</h3>
+  <p>这是全文最值得琢磨的一问。4 到 24 小时的动作库并不大，为什么几百 GPU 小时都还没把它训透？作者给出的答案是<b>多动作混训时的内部优化损耗</b>——而且不是模糊的"难训"，是可以量出来的：</p>
+  <div class="box good">
+    <b>关键测量</b>：在同一个模型参数快照上，分别计算各段动作的梯度余弦相似度。Actor 的跨动作梯度基本集中在 0 附近，而 <b>Critic 的梯度相似度区间直接散开到 -0.5 至 +0.5</b>。<br>
+    直读这个结果：把一段动作的价值估准，往往会把另一段动作的价值改偏；失真的价值残差又会反过来干扰 Actor 更新。
+  </div>
+  <p>这就把问题定位到了具体位置：<b>不是 Actor 学不会，是 Critic 在替所有动作说同一句话。</b></p>
+
+  <h3>为什么标量 Critic 必然冲突</h3>
+  <p>动作跟踪看起来用的是同一套奖励：机器人跟上参考里的身体位置和朝向，奖励就更高。但直走和一边抬腿一边转身，对控制器提出的要求并不一样；参考动作切换后，机器人会遇到新的支撑脚、关节速度和身体姿态，<b>不同动作能拿到的回报尺度差异很大</b>。</p>
+  <p>标准 PPO 里，广义优势估计（GAE）把 Critic 压成一个标量均值，用标量残差驱动更新。一个数字要同时代表"直走拿 70 分"和"复杂转身拿 70 分"的含义，而这两个 70 分在各自动作的分布里位置完全不同：</p>
+  <div class="box bad">
+    <b>同一个绝对回报，在两个动作里可以有相反的训练含义</b><br>
+    两次执行都拿到 70 分。对普通直走，70 分可能只在第 20 百分位——这次完成得比预计的差；对复杂转身，70 分可能在第 80 百分位——这次反而做得好。<br>
+    标量优势只会说"70 分，正的"，它无法表达这个差别。
+  </div>
+  <p>这就是全篇的第一性缺口：<b>绝对回报本身不可跨动作比较，能比较的只有它在各自分布里的相对位置。</b></p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：让 Critic 输出分布，再把位置读成优势</h2>
+
+  <h3>三步改造，都在训练信号上</h3>
+  <div class="step">
+    <div class="t">① Critic 输出分布，而不是一个数</div>
+    <div class="d">在一组固定支撑点上输出概率，预测"当前观测与参考指令下的局部回报分布"。轨迹还没结束时，先用这个分布的<b>数学期望</b>替 PPO 估出剩余回报——所以它同时保留了标量价值基线的功能。</div>
+  </div>
+  <div class="step">
+    <div class="t">② 更新策略时，去分布里查这段回报落在哪个分位</div>
+    <div class="d">通过相邻支撑点线性插值，查出这段回报落在预测分布的哪个分位（0 到 1 之间），再线性映射到 <b>-1 到 1 之间的分位数优势</b>——高于中位数为正，低于中位数为负。跨动作尺度悬殊的回报残差，被收束成有界的相对排名。</div>
+  </div>
+  <div class="step">
+    <div class="t">③ 和 GAE 各取一半，接回原来的 PPO</div>
+    <div class="d">先用 GAE 预热 <b>500 次迭代</b>，然后把标准化后的 GAE 优势和分位数优势<b>各取一半</b>。组合后的优势按整批轨迹归一化，再送进原来的 PPO 裁剪目标。实验采用 Muon 优化器。</div>
+  </div>
+  <p>第 ③ 步值得单独说：这是一个<b>温和替换</b>而不是推翻重来。分位数优势只占一半权重，说明作者并不打算丢掉绝对回报的信息——标量价值仍然负责"这个动作整体值多少"，分布只负责修正"相对同类动作这次算好还是差"。</p>
+
+  <h3>先证明信号真的变均衡了</h3>
+  <p>作者做了一个很干净的中间验证：固定同一个策略和一批来自 <b>32 种动作</b>的轨迹，只替换优势估计方法。跨检查点平均：</p>
+  <ul>
+    <li>各动作<b>优势幅值的变异系数下降 68%</b></li>
+    <li><b>Actor 梯度范数的变异系数下降 39%</b></li>
+  </ul>
+  <p>这两个数字描述的是"不同动作对更新的贡献变得更均衡"。注意它们还不是性能指标——跟踪误差才用来检验这种均衡能否换来更准的动作。这个顺序是对的：先证机制，再证效果。</p>
+
+  <h3>逐项拆解：到底是谁在起作用</h3>
+  <p>为了分清是 Muon、分布 Critic 还是分位数优势在起作用，论文在 mjlab 中做了逐项拆解。各方法统一采用约 1150 万参数的 4 层 MLP，固定 <b>200 GPU 小时</b>预算（约合单机 8 张 A100 训练 24 小时）。对照从标准 PPO（Adam）出发，依次换用 Muon、引入分布 Critic 但仍按均值算 GAE，最后再加入分位数优势。</p>
+  <p>以未见过的 MOSAIC 光学动捕（约 3.1 小时，重定向到 G1 后动作质量相对一致）为例，按相对躯干的身体关键点误差（R-MPKPE，统计骨盆、躯干和四肢共 14 个关键刚体）算：</p>
+  <table>
+    <tr><th>配置</th><th>MOSAIC 关键点误差</th><th>相比上一行的变化</th><th>读法</th></tr>
+    <tr><td>PPO（Adam）</td><td>41.96 毫米</td><td>—</td><td>基线</td></tr>
+    <tr><td>+ Muon 优化器</td><td>41.70 毫米</td><td><b>-0.26</b></td><td>几乎可忽略</td></tr>
+    <tr><td>+ 分布 Critic（仍按均值算 GAE）</td><td>39.53 毫米</td><td><b>-2.17</b></td><td>主要收益来源</td></tr>
+    <tr><td>+ 分位数优势（完整 QTOP）</td><td><b>38.12 毫米</b></td><td><b>-1.41</b></td><td>再进一层</td></tr>
+  </table>
+  <p>自采惯性动捕（下蹲、跳跃、做饭等）也有同样的走势：标准 PPO 的 <b>43.59 毫米</b>降到完整 QTOP 的 <b>37.70 毫米</b>。两组数据来源一致的方向性，说明收益不是某一种动捕特性的产物。</p>
+  <div class="box good">
+    <b>这张表最诚实的一点：收益主要来自"把 Critic 变成分布"（-2.17），而不是"换优化器"（-0.26）。</b><br>
+    很多论文会把优化器的微小提升和主贡献混在一起报，这篇把三者依次叠加、逐项隔离，读者能自己判断哪一步值得抄。
+  </div>
+
+  <h3>一个反直觉的细节：全局位置反而略差</h3>
+  <p>表里还有一处必须点出来。完整 QTOP 在两组数据上的关键点误差和末端朝向误差都最低，但<b>全局末端位置误差最低的是"只用分布 Critic 均值计算 GAE"的版本</b>：在 MOSAIC 上，完整方法 36.66 厘米，只用均值的版本 32.71 厘米。</p>
+  <p>怎么解释？策略的输入是参考指令与本体观测，手脚在世界坐标系下的偏移会随时间积累。<b>分位数优势改善了局部姿态的相对排名，但相对排名本身不携带"我现在整体漂到哪了"的信息</b>——一个动作在自己分布里排第 80 百分位，也可能是在整体偏移了几厘米的前提下排的。所以看跟踪表现时，局部姿态和全局位置必须分开看。</p>
+
+  <h3>异策略算法在这类任务上差得很远</h3>
+  <p>论文也给了异策略的对照，结论很硬：SAC 用接近 PPO 的超参数就能启动，但很早进入平台期；FastTD3 本身也带分布 Critic，作者专门调用<b>基于 GPT-5.5 的编程 Agent 跑了 100 轮训练</b>，允许它自动搜超参甚至修改代码实现，最终 R-MPKPE 仍停在 <b>64.32 毫米</b>（QTOP 为 38.12 毫米）。团队还试过绕开 Critic 的多任务算法 <b>MT-GRPO</b>，但它必须跑完 500 步完整回合才能估计回报，计算开销难以承受。</p>
+  <p>这组对照的意义不在"异策略不行"，而在<b>任务形态决定算法边界</b>：长达 500 步、参考指令每步都在切换的连续跟踪，对样本外推和长时域价值估计的要求，恰好是异策略方法最吃力的地方。</p>
+
+  <h3>真机：同预算下跟得更准</h3>
+  <p>高通在宇树 G1 上部署了 PPO 和 QTOP。两个策略都用 <b>24 小时动作数据</b>和约 <b>1000 GPU 小时</b>训练，再用外部工作站以 50 Hz 推理。真机评估用了 <b>32 段</b>未见过的动作，包括不同风格的走路、货架补货、擦白板、打台球和做饭，每段长 5 至 15 秒，从第一帧的参考姿态开始，两种方法各跟踪三次。</p>
+  <table>
+    <tr><th>指标</th><th>PPO</th><th>QTOP</th><th>变化</th></tr>
+    <tr><td>真机 R-MPKPE</td><td>37.2 毫米</td><td><b>34.2 毫米</b></td><td><b>低约 8%</b></td></tr>
+    <tr><td>全部受驱动关节平均绝对误差</td><td>0.0872 弧度</td><td><b>0.0814 弧度</b></td><td>同步改善</td></tr>
+  </table>
+  <p>两个指标各自回答一个问题：关键点误差统计训练奖励里选定的身体部位（躯干、手臂、腿上的代表性位置），关节误差则覆盖全部受驱动关节，直接比较实际关节角与参考角。两项都变小，说明身体部位跟得更准，整体关节动作也有改善。</p>
+  <p>两段分布外演示最能说明差别：</p>
+  <ul>
+    <li><b>武术出拳闪避</b>这类上身高速运动，PPO 版的 G1 需要多迈几步维持平衡，站位逐渐漂移；QTOP 能稳在原位跟完动作。</li>
+    <li><b>擦白板</b>时两者外观差别没那么显眼，但 QTOP 的手部末端落点更准。对移动操作来说，手能不能准确定位到接触面，比整段动作看起来顺不顺更直接决定接触成败。</li>
+  </ul>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>关键公式：三个式子串起全文</h2>
+
+  <div class="fml">
+    <div class="name">① 分位数优势：把绝对回报读成相对排名</div>
+    \[ A^{Q}_t \;=\; 2\,F_{\theta}(G_t) - 1, \qquad F_{\theta}(G_t)=\Pr_{R\sim p_{\theta}(\cdot\mid o_t,c_t)}\big[R \le G_t\big] \]
+    <div class="exp">
+      \(p_{\theta}(\cdot\mid o_t,c_t)\) 是 Critic 在观测 \(o_t\) 与参考指令 \(c_t\) 下预测的局部回报分布，\(F_{\theta}\) 是它的累积分布函数，\(G_t\) 是待评价的目标回报（GAE 用的回报目标）。<br>
+      <b>线性映射的含义</b>：\(F_{\theta}=0.5\) 对应优势 0（正好在分布中位数），\(F_{\theta}=1\) 对应 +1（好于所有预测），\(F_{\theta}=0\) 对应 -1。<br>
+      <b>为什么要有界</b>：不同动作的回报尺度差异很大，取分位后所有动作的优势都被压进 -1 到 1，跨动作的残差不再互相污染。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 与 GAE 各取一半：温和替换</div>
+    \[ A_t \;=\; \tfrac{1}{2}\,\hat{A}^{\mathrm{GAE}}_t \;+\; \tfrac{1}{2}\,A^{Q}_t \]
+    <div class="exp">
+      \(\hat{A}^{\mathrm{GAE}}_t\) 是标准化后的 GAE 优势，\(A^{Q}_t\) 是上式得到的分位数优势。<br>
+      <b>预热策略</b>：先用纯 GAE 训练 500 次迭代，等价值估计有了基本形状，再引入分位数优势；否则分布头在冷启动阶段的预测没有意义。<br>
+      <b>组合后仍按整批轨迹归一化</b>，再送入标准 PPO 裁剪目标——所以整套改动能直接挂在现有 PPO 实现上，不必动损失结构。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 误差曲面的形式（据正文描述的重述，非论文原式）</div>
+    \[ E(g,\,d) \;=\; E_{\infty} \;+\; a\,g^{-\alpha} \;+\; b\,d^{-\beta} \;+\; c\left(\frac{d}{g}\right)^{\gamma} \]
+    <div class="exp">
+      \(g\) 为训练 GPU 小时，\(d\) 为动作数据时长（小时），\(E\) 为跟踪误差（R-MPKPE）。<br>
+      <b>三项各管一件事</b>：\(a g^{-\alpha}\) 是算力不足的惩罚；\(b d^{-\beta}\) 是数据不足的惩罚，它同时压低了理论误差下限 \(E_\infty\)；<b>交叉项 \(c(d/g)^{\gamma}\) 是关键</b>——当数据相对算力过大时，多动作混训的优化难度上升，会反过来加回误差。这正好解释了"数据能压下限，但算力不够时加数据反而更难训"。<br>
+      <b>可靠性检验</b>：轮流拿掉一种数据规模，只用另外两种拟合，再去预测留出的那一档，平均绝对误差约 <b>0.9 毫米</b>。说明这个关系能在 4、12、24 小时三档之间做插值预测——但<b>只在这三档之内被验证过</b>。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限</h2>
+
+  <div class="box good">
+    <b>核心价值</b>：它把一个长期靠经验拍板的决策变成了可测量的曲线——<b>在千卡时以内的常规规模，先把算力用来训透手头的数据，比去扩充动作库更划算</b>（算力翻倍 -5.59% vs 数据翻倍 -3.31%）。同时它给出的机制解释是可复用的判据：如果一个多任务策略训不透，先去看 Critic 的跨动作梯度相似度，而不是先加数据。
+  </div>
+
+  <h3>两笔外部参照，值得一起看</h3>
+  <p>作者折算了 SONIC 已报告的数据做参照：SONIC 在约 2 万 GPU 小时预算下把动作库从 22 小时扩到 556 小时，<b>数据每翻一番误差仅降 0.53%</b>；而在 2000 至 21000 GPU 小时区间，<b>每翻一番算力误差能降 3.10%</b>。</p>
+  <p>两篇论文的误差定义和预算量级不同，不能直接横比高低。但在<b>各自实验内部</b>，都是算力收益明显大于数据收益——这个方向性的一致，比任何单一数字都有说服力。</p>
+
+  <h3>诚实的局限</h3>
+  <div class="step">
+    <div class="t">局限一："数据收益小"只在 4 到 24 小时这个区间被测量</div>
+    <div class="d">这是最需要打折的一条。整个研究的最高测试只到约 <b>1300 GPU 小时</b>、数据最多 <b>24 小时</b>。作者自己也指出，算力更充足时，更大数据集的收益<b>仍可能增加</b>。所以正确表述不是"数据没用"，而是"在这个预算区间，数据的边际收益低于算力"。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限二：曲面拟合是描述性的，不是机理性的</div>
+    <div class="d">0.9 毫米的外推误差是在三档数据之间做留一验证得到的，不能证明这条曲线可以外推到 100 小时或 1 万 GPU 小时。交叉项的形式是拟合出来的，不是从优化理论推出来的。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限三：分位数优势改善了局部姿态，全局漂移反而略差</div>
+    <div class="d">MOSAIC 上全局末端位置误差 36.66 厘米，而只用分布 Critic 均值的版本是 32.71 厘米。相对排名不携带"整体漂到哪了"的信息。这一条论文如实报了，但它对移动操作的影响可能不小——手伸出去差几厘米，接触就失败。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限四：真机只测了 32 段、每段 3 次、5 至 15 秒</div>
+    <div class="d">这是跟踪精度的评估，不是任务成功率的评估。擦白板、货架补货这类任务"在不同位置上能完成多少次"，还需要专门统计任务结果。8% 的误差改善能否转化成任务成功率，论文没有回答。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限五：改的是训练信号，不改推理</div>
+    <div class="d">这既是优点也是边界：部署延迟不变（好事），但也意味着<b>策略本身的能力上限没有被动过</b>。如果瓶颈在观测信息不足（比如只给当前帧参考、看不到未来），更好的训练信号只能把这个上限制约的损失往下压一点，不能突破它。</div>
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>"算力优先"的结论依赖"手头已经有 4 到 24 小时高质量动捕"这个前提。</b>而现实中更常见的情况是动捕数据本身不足，那时结论会反过来——所以这句话不能当普适教条搬走，要先看自己站在曲线的哪一段。</li>
+    <li><b>Muon 只贡献 0.26 毫米（41.96 → 41.70），几乎可忽略。</b>这说明真正的收益来自分布化 Critic（2.43 毫米），这个拆解做得很干净，也反过来说明：如果只是照搬"换个新优化器"，在这个任务上几乎没有意义。</li>
+    <li><b>分布 Critic 的代价没有充分披露。</b>要输出一组支撑点上的概率，Critic 头部的容量与训练稳定性是否打折？论文给了优势幅值变异系数降 68%，但没给分布头自身的拟合误差。分位数优势的效果依赖分布估得准，这一步的误差会直接传导。</li>
+    <li><b>FastTD3 那个 100 轮 GPT-5.5 编程 Agent 的实验，读法要小心。</b>它说明的是异策略在 500 步长回合、参考每步切换的任务上存在结构性困难，<b>不等于"异策略方法不行"</b>。把自动搜超参的失败当成算法优劣的证据，会过度外推。</li>
+    <li><b>最具复用价值的一条判据其实不在论文标题里</b>：多任务训练卡住时，先测 Critic 的跨动作梯度余弦相似度。如果它散开到 ±0.5，问题在价值估计的尺度冲突，加数据只会让冲突更复杂。这是一个五分钟就能做的诊断。</li>
+  </ul>
+
+  <p class="src">来源：公众号 human five《SuperMimic让训练更省算力，后续人形机器人动作跟踪该堆算力还是堆数据？》（2026-11-18）· 论文 QTOP: Scaling Humanoid Motion Tracking with Quantile Critics, arXiv:2611.20791 · 高通 AI 研究（Markus Peschl、Dana Kianfar、Daniel Dijkman）</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div></body>
+</html>
