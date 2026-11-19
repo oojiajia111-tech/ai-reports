@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>旋钮与海拔——VLA 微调里"能被改"比"现在准"更重要</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>把模型练准，还是把模型留出可改的余地？<span class="sub">π0.5 · LEAP 16-DoF 手 · RoboCasa · 五种微调配方 · DSRL 扩散引导 · 冻结 VLM 只训动作专家</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-18 · arXiv 2611.23676</div>
+    <div><b>关键词</b> VLA 微调 · 灵巧手迁移 · 扩散引导强化学习 · 可引导性 · checkpoint 选择 · LoRA · 动作专家 · RoboCasa</div>
+    <div><b>一句话</b> 会做不等于好改：SFT 成功率最高的那个模型，往往是最难被引导的那个</div>
+    <div><b>机构</b> Artur Kuramshin 等，Mila / Université de Montréal，cs.RO，2026-11</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>训练的直觉是：成功率越高，模型越好。这篇论文把这条直觉拆了。它先做监督微调，再冻结全部权重，只在"初始噪声"这一层做强化学习。结果反直觉：微调阶段成功率 76% 的配置，被引导后只剩 7%；成功率只有 6% 到 12% 的配置，反而能升到 95% 以上。原因不神秘——扩散策略的每个动作块都由"观测加一个噪声"决定，监督微调的目标是让任何噪声都收敛到演示那一个动作，也就是把这个唯一可调入口一点点吃掉。而引导恰恰要靠它。所以微调越彻底，模型越准，也越拧不动。选 checkpoint 的标准不该是"现在多准"，而是"还留了多少余地"。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：一次只改"哪些参数能动"的对照实验</h2>
+  <p>先说要解决的麻烦。<b>π0.5 这类 VLA 是在平行夹爪数据上训出来的，它压根没见过五指手。</b>现在要它开一辆 16 自由度的 LEAP 手去按咖啡机按钮、去拧灯泡——等于让一个只会用两根手指的人突然用整只手干活。而灵巧手的遥操作数据极难采，手上只有几十条演示：按按钮 56 条、拧灯泡 33 条。</p>
+  <p>常规做法是微调，然后拿强化学习再提一提。这篇论文盯住的却是一个更前面、更便宜的问题：<b>微调的时候，到底该让哪些参数动？</b>于是它把这件事拆成五个配方，隔离四个维度——要不要动语言模型、要不要动视觉编码器、骨干和动作专家是全量训还是加适配器。</p>
+  <table>
+    <tr><th>配方</th><th>谁在动</th><th>可训练参数</th><th>占比</th></tr>
+    <tr><td><b>Expert-only</b></td><td>只训动作专家（attention/MLP 投影、adaRMS 调制、时间嵌入、动作投影）</td><td>430M</td><td><b>13.3%</b></td></tr>
+    <tr><td>Frozen-LM</td><td>动作专家 + 视觉编码器 SigLIP + 多模态投影器</td><td>845M</td><td>26.1%</td></tr>
+    <tr><td>Full-FT</td><td>全部参与动作生成的参数</td><td>3.24B</td><td>100%</td></tr>
+    <tr><td>LoRA</td><td>在语言模型与动作专家上加 rank-32 适配器，视觉与动作投影全量训</td><td>468M</td><td>14.4%</td></tr>
+    <tr><td>LoRA-LM</td><td>只给语言模型加适配器，动作专家全量训</td><td>887M</td><td>27.4%</td></tr>
+  </table>
+  <p>同模型、同数据、同超参、同一个强化学习算法，唯一变量是"梯度能流到哪"。第一阶段监督微调跑 2 万步，每 2000 步存一个 checkpoint；第二阶段把权重全部冻死，用一个很小的噪声策略去调动作。然后拿每个 checkpoint 去做同一件事，看谁最终走得最远。</p>
+  <div class="box good">
+    <b>这个实验设计本身就是结论的一半：</b>它把"模型能力"和"模型可改性"分成了两个可独立测量的量。<b>绝大多数论文只报第一个，这篇报第二个，并证明第二个不能由第一个推出来。</b>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：三堵墙，解释了"准"与"改得动"为什么反向</h2>
+
+  <h3>墙一：扩散策略只有一个可调入口，而 SFT 的工作就是把入口堵上</h3>
+  <p>flow matching 策略生成一个动作块的方式是：抽一个噪声，然后沿速度场把它推成动作。<b>整个动作块等于"观测"加"噪声"的函数，噪声是唯一那个可以被事后拨动的旋钮。</b>而监督微调的目标是什么？是让给定观测下，任何噪声最终都收敛到演示里的那一个正确动作。<b>换句话说，训练越成功，模型越会把噪声忽略掉——它学会了"不管你给我什么起点，我都给你同一个答案"。</b>这不是 bug，这正是收敛的定义。</p>
+  <p>于是逻辑就卡死了：<b>强化学习想要拨的那个旋钮，恰好是监督学习努力磨平的那个东西。</b>模型练得越干，旋钮越松、越无效。</p>
+
+  <h3>墙二：可引导性不是"最高点有多高"，是"周围那片地有多宽"</h3>
+  <p>论文里的强化学习不微调任何权重，它只学一件事：<b>在什么噪声上，这个冻结的模型会做出成功的动作。</b>所以它能拿到的上限，完全取决于噪声空间里"成功区域"占多大体积——是概率质量，不是峰值。<b>而监督微调从来不优化这个体积，它只优化峰值那一个点。</b>这就是为什么两个指标会脱钩：一个在量海拔，一个在量平原。</p>
+  <p>论文里还有一个极漂亮的证据。DSRL 实际用的不是逐位置独立的噪声，而是<b>一个 32 维向量平铺到全部 32 个动作步上</b>，等于给整段动作加一个"共同方向"。于是"模型对这个共享噪声有多不敏感"被直接量了出来：<b>LoRA 在 1.8 万步时，这种共享噪声下的成功率是全场最高的 76%，而它被引导后只剩 7%。</b>反过来 Expert-only 在同一噪声下只有 8%，却能引导到 95%。<b>"对噪声麻木"既是高成功率的来源，也正是不可引导的定义。</b></p>
+
+  <h3>墙三：动得越多，通用表征越被任务专属表征替换</h3>
+  <p>VLM 存的是"这是什么物体、这是哪只手"的通用知识，动作专家存的是"这个状态该怎么动"的分布。<b>只训动作专家，等于换手不换眼：眼睛仍然认识世界，手重新学。</b>而一旦放开语言模型或视觉编码器，几十条演示就会把它们拽向"这个按钮、这个角度、这个光照"。论文里最刺眼的一组数字正是这个：Frozen-LM 在按按钮任务上，4 千步时 SFT 成功率 46%，引导后 98%；训到 1.8 万步 SFT 涨到 78%（全场最高），引导后掉到 78%，外推只剩 43%。<b>同一个配方，SFT 涨了 32 个点，引导结果掉了 20 个点。</b></p>
+  <div class="box bad">
+    <b>三堵墙合起来是一条公理链：</b>① 扩散策略的全部随机性只走噪声这一个口；② 监督微调的本质是消除这种随机性；③ 引导的本质是利用这种随机性；④ 所以"训得好"与"改得动"在同一根轴上朝相反方向。<b>这不是调参能绕开的，是目标函数层面的对立。</b>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：四步，从采数据到选 checkpoint</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：先用几十条演示，把"新手上路"的数据凑出来</div>
+    <div class="d">在 RoboCasa 仿真里把平行夹爪换成 16 自由度 LEAP 手，用 Meta Quest 3 采手臂姿态、Rokoko 数据手套采手指关节做遥操作。<b>按按钮任务 56 条演示、7928 帧、20 赫兹；拧灯泡任务 33 条演示、31842 帧、30 赫兹。</b>样本量小到必须承认：这不是在训一个通用操作模型，是在测"少样本迁移时，哪种改法最不伤模型"。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：五个配方各跑一遍，把"能动多少"当成自变量</div>
+    <div class="d">五个配方共享全部超参：2 万步、batch 32、AdamW、余弦衰减、峰值学习率 2.5e-5（LoRA 参数用 2.5e-4，高十倍）、动作块预测 32 步执行 16 步。<b>每个配方只训一次。</b>这一步的产物不是"最好的模型"，是 5 个配方乘 4 个 checkpoint 组成的 20 个候选——一张待筛选的表。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：冻死权重，只学"往哪个噪声上拨"</div>
+    <div class="d">DSRL 的做法可以一句话讲完：<b>把模型的参数全部锁死，然后训练一个小策略，专门输出"初始噪声应该长什么样"。</b>这个小策略只看一张 64×64 的第三人称图和本体感觉，用 SAC 训，10 个 Q 头取均值，50 万环境步预算。<b>奖励极简：每步负一，成功终止。</b>因为动作块是 32 步，实际是"一个 32 维噪声向量平铺到 32 个位置，执行前 16 步，再重新决策"——比逐位置独立采样粗糙得多，但换来的是整段动作共享一个方向，物理上更连贯。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：用"训练摆放 vs 外推摆放"和"两种噪声"把结论钉住</div>
+    <div class="d">每个任务只沿一根轴挪动物体位置：两个摆放给强化学习训，另外两个摆在它见过的范围之外，用来测外推。<b>评测还特意分两种噪声：逐位置独立的（模型训练时的分布）和平铺共享的（DSRL 实际用的形态）。</b>这个双评测很关键——它把"SFT 成功率高"这件事拆成了"真的会做"和"对共享噪声麻木"两种可能，而后者正是不可引导的伪装。</div>
+  </div>
+
+  <h3>成绩单：三组数字，一个方向</h3>
+  <table>
+    <tr><th>对照</th><th>SFT 阶段成功率</th><th>引导之后</th><th>说明</th></tr>
+    <tr><td>LoRA 1.8 万步（按按钮）</td><td><b>76%</b>（共享噪声，全场最高）</td><td>训练摆放 55% / 外推 <b>7%</b></td><td>最准的那个，最拧不动</td></tr>
+    <tr><td>Expert-only 1.8 万步（按按钮）</td><td>20% / 共享噪声 8%</td><td>训练摆放 <b>95%</b> / 外推 <b>90%</b></td><td>最不准的那个，最能改</td></tr>
+    <tr><td>Expert-only 8 千步（拧灯泡）</td><td>12% / 外推 2%</td><td>训练摆放 <b>100%</b> / 外推 <b>88%</b></td><td>其余四个配方同期外推全在 33% 以下</td></tr>
+    <tr><td>Frozen-LM 4 千步 → 1.8 万步（按按钮）</td><td>46% → <b>78%</b>（同配方越训越准）</td><td>98% → <b>78%</b>，外推 85% → 43%</td><td>同一配方内，SFT 涨、引导跌</td></tr>
+  </table>
+  <div class="box good">
+    <b>四行连起来看：</b>跨配方比，"准"与"能改"反向；同一配方内纵向比，"越训越准"与"越训越僵"同步。<b>两个方向都指向同一件事——SFT 成功率不是可引导性的代理指标，甚至可能是它的反向指标。</b>论文据此给出的建议很干脆：冻结视觉语言模型、完整训练动作专家，并且不要用 SFT 的 rollout 成功率去挑配方或 checkpoint；要挑就挑"最早能定性复现出演示技能"的那一个。
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：三个式子，说清"旋钮在哪、谁在拧、能拧多远"</h2>
+
+  <div class="fml">
+    <div class="name">① 生成与训练：动作块是"观测 + 噪声"的函数，SFT 只对这个函数做点估计</div>
+    \[ \mathbf{A}_t \;=\; f_\theta\!\left(\mathbf{o}_t,\ \mathbf{A}^{0}\right),\qquad \mathbf{A}^{0}\sim\mathcal{N}(\mathbf{0},\mathbf{I}) \]
+    \[ \mathcal{L}_{\mathrm{SFT}}(\theta)\;=\;\mathbb{E}_{\tau\sim\mathcal{U}[0,1],\,\mathbf{o},\mathbf{A}^{0}}\left\|\, v_\theta\!\left(\mathbf{A}^{\tau},\tau,\mathbf{o}\right)\;-\;\left(\mathbf{A}^{1}-\mathbf{A}^{0}\right)\right\|^{2} \]
+    <div class="exp">第一行是推理：给定观测 \(\mathbf{o}_t\) 和一个从标准正态抽出来的噪声块 \(\mathbf{A}^{0}\)，模型把它推成动作块 \(\mathbf{A}_t\)（32 步，每步 32 维）。<b>注意这里只有一个随机入口——整个动作块的全部不确定性都压在 \(\mathbf{A}^{0}\) 上。</b>第二行是训练：沿"噪声到演示动作"的直线路径回归速度场 \(v_\theta\)。\(v_\theta\) 是被训的那张网，\(\tau\) 是路径上的位置。<b>大白话：SFT 在教模型"不管从路径上哪一点出发，都朝演示那个终点走"。</b>目标函数里根本没有出现"噪声该有多大影响力"这一项——它只关心终点对不对。这就是墙一在数学上的样子：<b>训练目标对噪声敏感度完全无约束，而优化过程会自然把它压到最低。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 引导：把 MDP 整个搬到噪声空间去，参数一个都不动</div>
+    \[ \mathbf{w}:=\mathbf{A}^{0},\qquad \mathbf{A}_{t}\;=\;f_{\theta}\!\left(\mathbf{o}_{t},\mathbf{w}\right)\ \ (\theta\ \text{冻结}),\qquad \pi_\phi(\mathbf{w}\mid \mathbf{o}_t) \]
+    <div class="exp">这一步是全文的枢纽：<b>原本"选动作"的决策问题，被改写成"选噪声"的决策问题。</b>强化学习策略 \(\pi_\phi\) 的动作不再是关节角，而是那个 32 维噪声向量 \(\mathbf{w}\)；环境的转移不再是物理仿真，而是"冻结的解码器 \(f_\theta\) 加上真实环境"。因此 \(\phi\) 学到的一切，都只能通过 \(\mathbf{w}\) 这一个口子影响行为。<b>大白话：模型被当成一台不能拆的机器，你只能拧它面板上唯一那个旋钮。</b>这也解释了为什么"配方"比"checkpoint"更决定成败——配方决定的是"这个旋钮还连着线吗"。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 上限：可引导性就是成功区域在噪声分布下的概率质量</div>
+    \[ J(\pi_\phi)\;=\;\mathbb{E}_{\mathbf{o}\sim d^{\pi}}\mathbb{E}_{\mathbf{w}\sim\pi_\phi(\cdot\mid\mathbf{o})}\left[\sum_{t}\gamma^{t}R\!\left(\mathbf{s}_{t},\,f_{\theta}(\mathbf{o}_{t},\mathbf{w})\right)\right],\qquad \mathcal{S}(\mathbf{o})=\left\{\mathbf{w}\;:\;f_\theta(\mathbf{o},\mathbf{w})\ \text{成功}\right\} \]
+    <div class="exp">第一式是 SAC 要最大化的回报，注意里面没有任何 \(\theta\)——<b>可训练的自由度全在 \(\pi_\phi\) 上，模型本身是常量。</b>第二式定义了"成功区域" \(\mathcal{S}(\mathbf{o})\)：在给定观测下，哪些噪声能让这次执行成功。<b>于是整件事可以一句话说完：能引导到的上限，就是 \(\mathcal{S}(\mathbf{o})\) 在 \(\mathcal{N}(\mathbf{0},\mathbf{I})\) 下占的概率质量。</b>\(\mathcal{S}\) 越大越厚，策略越好找方向；\(\mathcal{S}\) 缩成一个点，策略就只能靠运气。<b>而 SFT 的梯度恰恰在收缩 \(\mathcal{S}\)——它把"任意噪声都成功"逐步换成了"只有一个噪声成功"。</b>这不是猜测，是上面那个损失函数的必然结果。论文实测的负相关，就是这个几何事实的实验投影。</div>
+  </div>
+
+  <div class="box good">
+    <b>三式连读：</b>①说明"旋钮"在哪、SFT 怎么把它磨平；②说明引导只能拧这一颗旋钮、拧不动就彻底没戏；③说明"拧得动多远"等于"成功区域的体积"，而这个体积正好被 SFT 压小。<b>整条推理链没有一步依赖实验结果——结果是用来验证它的。</b>这也是为什么这篇论文的结论可以迁移：任何"先监督、后强化"的两阶段流程，都藏着同一个隐藏代价。
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限：它换掉了一个默认指标，但证据还很窄</h2>
+
+  <h3>三样真正值得带走的东西</h3>
+  <div class="box good">
+    <b>第一，一个能直接改流程的判据：选 checkpoint 别看成功率，看"还能不能改"。</b>落地形式很朴素——在监督微调时多存几个早期 checkpoint，别只留最后一个；评估时不要只看 rollout 成功率，还要看"同一份权重在不同噪声下行为是否分化"。<b>如果不同噪声给出几乎一样的动作，说明旋钮已经失效，这个 checkpoint 再好也不适合接手强化学习。</b>
+  </div>
+  <p><b>第二，"冻结得越多反而越能改"这条反常识的工程结论。</b>算力直觉总是"能训的都训上"，这篇给出反例：只训 13.3% 的参数（动作专家）不仅效果最好，还可引导性最高；改语言模型或视觉编码器的三种配方全部垫底。<b>原因不是参数少所以省，而是"保住了通用表征，就保住了外推的地形"。</b>这条对任何要在小数据上做领域迁移的团队都成立。</p>
+  <p><b>第三，把"随机性"从噪声源重新理解成资源。</b>通常我们想把推理的随机性消掉，让机器人稳定。<b>这篇提醒：随机性在第二阶段是唯一的控制通道。</b>想清楚"我后面还要不要用这个随机性"，会直接改变第一阶段的训练目标——比如是否该保留一点噪声敏感性、是否该在损失里加一项"对不同噪声要给出不同动作"。<b>这是把两阶段流程当成一个整体来设计，而不是各管一段。</b></p>
+
+  <h3>六处必须打折的地方</h3>
+  <ol class="crit">
+    <li><b>每个配方只训了一次 SFT。</b>3 个随机种子只覆盖了强化学习侧的方差，没覆盖微调本身的方差。而论文最核心的对比是"76% 对 8%"这种量级差，<b>单次训练能不能撑住这个结论，作者自己在局限性里承认需要重复实验。</b></li>
+    <li><b>早期 checkpoint 的成功率可能被仿真漏洞虚高。</b>论文明确写到：拧灯泡任务最早的 checkpoint 是<b>用掌部蹭着灯泡转</b>，靠仿真器的成功判定蒙过去的，并没有真正抓握。而"选最早的 checkpoint"正是它的推荐。<b>推荐方向与已知的评测污染指向同一处，这个风险必须警惕。</b></li>
+    <li><b>全部结论只在仿真里，两个任务，没有真机。</b>两个任务各只沿一根轴挪动位置，所谓"外推"只是两个离散摆放，不是真正的分布外。<b>"外推 88%"这句话的强度，取决于你怎么定义外推。</b></li>
+    <li><b>数据量小到无法区分"配方效应"和"任务偶然"。</b>33 条与 56 条演示、单任务单物体，五个配方在四个 checkpoint 上的排序，很可能有一部分是这两个任务的特殊性。<b>16 自由度手在 π0.5 预训练里完全不存在，这种"跨具身零基础"的迁移，对已有手部数据的场景未必适用。</b></li>
+    <li><b>DSRL 的噪声形态与训练分布不一致。</b>训练时噪声逐位置独立，引导时却把一个向量平铺到全部 32 步。论文用"共享噪声评测"来对齐这个差异，但这本身说明<b>引导是在模型没见过的输入形态上工作</b>，成功率有一部分来自"分布外但恰好有效"，稳定性无法保证。</li>
+    <li><b>缺一个离线指标。</b>论文自己指出：监督微调阶段没有任何指标能预测引导结果，于是只能靠"每个配方都真跑一遍强化学习"来筛。<b>这恰恰是它最想解决的问题，也是它没有解决的问题</b>——二十个配置乘五十万步的代价，普通团队付不起。</li>
+  </ol>
+
+  <h3>一句话收尾</h3>
+  <p>这篇最值得记住的不是"冻结 VLM"这个具体配方，而是它换掉的那个默认指标。<b>我们习惯用"现在做得多好"来评价一个中间模型，却很少问"它还能被改到什么程度"。</b>在监督学习和强化学习接力完成的流水线里，第一棒的目标函数会悄悄决定第二棒还有没有跑道。<b>这条判据可以迁移到所有"预训练 + 后训练"的场景：后训练要的不是一个完美的起点，而是一个还愿意被推动的起点。</b>把模型练准是一种能力，把模型留出可改的余地，是另一种——而且这一种，通常没人记在成绩单上。</p>
+  <p class="src">原文：Finetuning VLAs for Dexterous Manipulation: The Right Checkpoint Is All You Need，Artur Kuramshin、Charlotte Cloutier、Michael Przystupa、Kirsty Ellis、Mohammad S. Akhter、Glen Berseth，arXiv 2611.23676，2026-11-18。涉及概念：π0.5 双系统 VLA、PaliGemma 骨干、flow matching 动作专家、LEAP 16 自由度手、RoboCasa、LoRA 低秩适配、adaRMS 时间步调制、DSRL 噪声空间 MDP 提升、SAC、稀疏奖励、噪声空间成功区域、checkpoint 选择。</p>
+</section>
+
+<footer>3W1H · 第一性原理解析 ｜ 论文篇 · arXiv 2611.23676</footer>
+</div></body>
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JEPA 的瓶颈不在预测，而在怎么规划 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>JEPA 的瓶颈不在预测，而在怎么规划<span class="sub">600 次实验 · LeWM / Push-T · 完美物理只 +20pp，25 步子目标 +60pp · 22% → 85% · 四招都不改权重 · 目标是一组终止状态，不是一张图像</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-19</div>
+    <div><b>关键词</b> JEPA · 世界模型 · 分层规划 · 记忆图 · Push-T · 目标歧义</div>
+    <div><b>一句话</b> 模型够准了，卡住它的是用法</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>大家都以为 JEPA 世界模型做不好长程规划，是因为预测不够准。作者用 600 次实验把这件事证伪了：把预测器换成仿真器里的<b>完美物理</b>，成功率只涨约 20 个百分点；而把 75 步目标拆成一串 25 步子目标，涨了近 60 个百分点。<b>瓶颈不在"预测得多准"，而在"怎么用一个已经够准的模型去规划"</b>。顺着这个思路，四个不重训、不改权重的方法把 LeWM 在长程任务上的成功率从 22% 推到 85%：子目标串联、给记忆图的跨演示跳转收费、用对称变换填补记忆空洞，以及意识到<b>目标本该是一组终止状态，而不是一张图像的复制品</b>——光改最后这一点，就把成功率翻倍。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 关键公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一场针对 JEPA 规划方式的对照实验</h2>
+  <p>先交代背景。生成式世界模型靠生成未来像素来预测未来，LeCun 等人认为这很浪费——决定行动不需要大多数像素，而且它们本来就不可预测。另一条路线是 <b>JEPA</b>（联合嵌入预测架构），三个部件：</p>
+  <div class="step">
+    <div class="t">编码器</div>
+    <div class="d">把每一帧观测压成一个紧凑向量（嵌入），只保留对决策有用的部分。</div>
+  </div>
+  <div class="step">
+    <div class="t">预测器</div>
+    <div class="d">接收"当前嵌入 + 一个动作"，预测下一帧的嵌入。全程在嵌入空间里，不生成像素。</div>
+  </div>
+  <div class="step">
+    <div class="t">规划器</div>
+    <div class="d">在预测器里试几百条动作序列，挑出终止状态最接近目标嵌入的那一条。</div>
+  </div>
+  <p>实验对象是今年由 LeCun 参与团队发布的 <b>LeWM</b>（LeWorldModel，arXiv 2603.19312），主 Benchmark 是 <b>Push-T</b>：机器人推动一个 T 形积木到桌面上的绿色目标位置。作者在它上面跑了约 <b>600 次实验</b>，而且——<b>一次都没有重新训练模型</b>。</p>
+  <p>这点必须先强调，因为它决定了整篇文章的性质：<b>这不是一篇提出新架构的论文，而是一份关于"如何正确使用已训练世界模型"的实验报告</b>。四项发现全都只改规划器和评分方式，模型权重原封不动。</p>
+  <p>一个足以定调的对照：在相同的子目标条件下，原始 LeWM 的长程成功率 <b>78%</b>，换成仿真器的真实物理 <b>77%</b>。<b>一个几小时就能训完的小模型，在规划中的表现已经和真物理基本相同。</b></p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：不是模型不够准，是误差被误读了</h2>
+
+  <h3>25 步准、75 步崩，问题出在哪</h3>
+  <p>标准用法下，LeWM 在目标距离 25 步时成功率 <b>89.7%</b>，精确物理版本 90.5%，差不到一个百分点；可一旦拉到 75 步，就掉到 <b>22%</b>。</p>
+  <p>通常的解释是：<b>微小预测误差在长时程里累积，所以需要更好的模型</b>。作者在同一个 250 个长程任务上同时检验了这个解释和另一种可能：</p>
+  <table>
+    <tr><th>干预</th><th>75 步任务成功率</th><th>提升幅度</th><th>读法</th></tr>
+    <tr><td>原始 LeWM</td><td>22%</td><td>基准</td><td>—</td></tr>
+    <tr><td>把预测器换成仿真器精确物理</td><td>约 42%</td><td><b>+20pp</b></td><td>模型误差确实有一份</td></tr>
+    <tr><td>把 75 步拆成 25 步一段的子目标</td><td><b>85%</b></td><td><b>+约 60pp</b></td><td>规划方式才是大头</td></tr>
+  </table>
+  <div class="box good">
+    <b>核心洞察</b>：LeWM 的有效规划时域就是约 25 步，<b>超过它的部分不该硬让模型去"看得更远"，而应该把长任务切成多个它擅长的短任务</b>。<br>
+    这就是分层规划——高层选子目标，低层负责到达。它长期被视为世界模型的开放难题，而在 Push-T 上它带来的收益是换成完美物理的<b>三倍</b>。
+  </div>
+  <p>有人会想：多搜几次不就行了？作者测了——把规划器跑四次、保留代价最低的那条，四倍计算量换来<b>不到一个百分点的提升</b>，因为四次运行几乎总是一起成功或一起失败。<b>误差是相关的，不是独立的，堆采样次数解决不了系统性的时域问题。</b></p>
+
+  <h3>一个被测试设计掩盖的问题</h3>
+  <p>作者随后发现，标准 Push-T 测试比看起来简单：它会取一条演示，从中间某状态出发，把同一条演示固定步数之后的状态设为目标。但<b>每条演示最后都把积木停在同一位置</b>，所以每个测试目标都落在演示已经走过的路径上。</p>
+  <p>结果是：<b>标准测试中 84% 的目标，在记忆图里已经有另一条演示留下的几乎相同的状态</b>。题目其实在考"从记忆里找一条见过的路"。</p>
+  <table>
+    <tr><th>测试口径</th><th>成功率</th></tr>
+    <tr><td>官方 50 个 episode，目标距离 50 步</td><td>68%</td></tr>
+    <tr><td>同样方式抽样的 250 个新 episode</td><td><b>44%</b></td></tr>
+  </table>
+  <p>只换规划器的随机种子，250 个 episode 里就有 <b>38 个</b>在成功与失败之间翻转。<b>50 个样本的测试，噪声已经和信号同量级。</b>于是作者构造了更难的测试：起始状态来自一条演示，目标来自另一条，没有任何单条演示能把两者连起来，且积木必须在最后 10 步一直停在目标位置才算成功。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：四招，都不碰权重</h2>
+
+  <h3>① 从专家演示抽子目标：22% → 85%</h3>
+  <p>最直接的一招：既然模型在 25 步内很准，就从专家演示中每隔 25 步抽一帧当子目标，让规划器一段一段走。75 步长程任务从 <b>22% 提到 85%</b>，与"直接拿到理想子目标的规划器"基本持平。</p>
+  <p>但真实部署的机器人不会有专家演示。于是有了第二招。</p>
+
+  <h3>② 带跳转代价的潜在记忆图：摆脱专家演示</h3>
+  <p>LeWM 的编码器把演示里的每一帧变成嵌入，约 <b>46 万个状态</b>。作者把它们连成一张图：每个状态既连同一条演示里的后续状态，也连其他演示中嵌入距离近的状态。规划器在图上找一条从当前到目标的路径，把路径上的状态当子目标。</p>
+  <p>这件事成立的前提是<b>嵌入距离具有物理意义</b>。作者验证：给定一个机器人 25 步内能到达的子目标和一个到不了的子目标，嵌入距离有 <b>87%</b> 的概率把可达的那个排得更近。<b>嵌入空间同时也是一张可达性地图。</b></p>
+  <p>第一版有个隐蔽 bug：从两条不同演示之间"跳转"的代价，被算成和实际执行一步一样。于是搜索会疯狂跳演示，拼出积木物理上根本走不了的路径——1,015 条规划里有 <b>318 条</b>用了六次以上跳转。修法很朴素：<b>给每次跨演示跳转加代价</b>。同样的 250 个任务，75 步成功率从 <b>62% 提到 85%</b>，追平了用专家子目标的规划器。</p>
+
+  <h3>③ 用对称变换填补记忆空洞：45% → 56%</h3>
+  <p>记忆图的效果取决于覆盖范围。删掉目标附近所有已存状态，成功率从 <b>93% 塌到 32%</b>。</p>
+  <p>Push-T 恰好有个性质：把整个桌面平移、旋转或镜像，推动积木的物理规律不变。于是当目标附近没有记忆时，可以取别处的演示片段做变换，填进空洞再规划。结果恢复到 <b>85%</b>；更难的测试从 <b>45% 提到 56%</b>。更省的是：<b>用 1% 的演示加上它的变换副本，效果约等于用 10% 的演示</b>。</p>
+  <p>按目标相对演示轨迹的方向拆开看，效果差异非常说明问题：</p>
+  <table>
+    <tr><th>目标方向</th><th>普通记忆</th><th>加入变换记忆</th></tr>
+    <tr><td>沿演示轨迹方向</td><td>69%</td><td>—</td></tr>
+    <tr><td>横跨演示轨迹</td><td>39%</td><td><b>54%</b></td></tr>
+    <tr><td>与演示轨迹相反</td><td>27%</td><td><b>46%</b></td></tr>
+  </table>
+  <p>越偏离见过的方向，变换记忆越有用——但也只补到 46%，这正是作者说的"剩余开放问题"。</p>
+
+  <h3>④ 代价函数"错了"：目标不是一张图像</h3>
+  <p>这是最值得单独拎出来的一条。作者做了个交互演示，把积木放在任意位置、选任意目标。有一次机器人已经把积木推到距目标 14 像素（算完成），<b>却又把积木推离目标，继续去追目标图像里推杆的位置</b>。</p>
+  <p>原因很直白：更难的测试里目标是专家演示中的帧，<b>那张图像里不仅有积木，还有当时推杆恰好所在的位置</b>。如果规划器拿整张目标图像去比，它自然会连推杆也一起匹配。</p>
+  <p>为了排除模型因素，作者在相同 50 个任务上跑<i>精确物理</i>规划器，只改代价函数比什么：</p>
+  <table>
+    <tr><th>精确物理规划器 · 代价函数比较对象</th><th>成功次数</th></tr>
+    <tr><td>积木 + 推杆</td><td>9 / 50</td></tr>
+    <tr><td><b>只比积木</b></td><td><b>39 / 50</b></td></tr>
+  </table>
+  <p>30 个任务由失败变成功，<b>没有一个是反过来</b>；纯随机出现这种结果的概率约十亿分之二。这里用的是真实仿真物理，不是预测——<b>四倍的提升完全来自目标的构造方式</b>。</p>
+  <p>那怎么让 LeWM 忽略推杆？它靠嵌入距离打分，目标图像的嵌入把积木和推杆混在一起，没法单独指认。作者试了个取巧办法：把目标图像复制成 16 个版本，积木位置都相同、只有推杆位置取自不同演示帧，然后对每个预测取最近的一张算代价。<b>无需重训，更难题上的成功率从 11% 翻到 23%。</b></p>
+  <div class="box good">
+    <b>可推广的判据</b>：目标应该是<b>一组终止状态</b>，不是一张图像的副本。<br>
+    "把杯子放上架子"——只要杯子到位，手臂停在哪都算完成；但一张目标图像会选定一个特定手臂位置，逼着规划器去匹配它。<br>
+    好的目标应当<b>接受所有能完成任务的终止状态，同时保留任务自身的约束</b>（比如结束时停止运动）。
+  </div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>关键公式：把四招写成目标函数</h2>
+
+  <div class="fml">
+    <div class="name">① JEPA 规划：在嵌入空间里选终止状态</div>
+    \[ a_{0:H}^{*} = \arg\min_{a_{0:H}} \; \big\|\, \hat{z}_{H} - z_{\text{goal}} \,\big\|, \qquad \hat{z}_{t+1}=f_\phi(z_t,a_t) \]
+    <div class="exp">
+      \(z_t=E_\theta(o_t)\) 是编码器给出的观测嵌入，\(f_\phi\) 是预测器，\(\hat{z}_H\) 是规划时域末端的预测嵌入，\(z_{\text{goal}}\) 是目标嵌入。<br>
+      <b>这一行是整个问题的舞台</b>：四招里的 ①② 改的是"goal 从哪来"，③ 改的是"可用的 z 有多少"，④ 改的是"距离到底该比什么"。模型 \(E_\theta, f_\phi\) 一个字都不动。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 分层规划：把长目标拆成短目标链</div>
+    \[ \text{success}(75) \;\approx\; \text{success}(25)^3 \quad\text{vs}\quad \text{flat success}(75) \]
+    <div class="exp">
+      若每段的成功率近似独立，75 步拆成三段 25 步的乘积应显著高于一次性规划 75 步。<br>
+      <b>实测</b>：一次性 22%，分段后 85%（分段用的是演示子目标，所以比纯独立假设更乐观）。<br>
+      <b>反证</b>：把规划器跑四次取最好，提升不到 1pp——说明失败高度相关，<b>不是独立同分布的噪声</b>。盲目增加 test-time compute 解决不了时域问题。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 带跳转代价的图搜索</div>
+    \[ G^{\lambda}(s) = \min_{s'\in\mathcal{N}(s)} \Big[\, c(s,s') + \lambda\,\mathbb{1}\{s'\notin\text{same demo as }s\} + G^{\lambda}(s') \,\Big] \]
+    <div class="exp">
+      \(\mathcal{N}(s)\) 是状态 \(s\) 在嵌入空间里的近邻（同演示后续帧 + 跨演示近邻），\(\mathbb{1}\{\cdot\}\) 是跨演示跳转标记，\(\lambda>0\) 是跳转代价。<br>
+      <b>\(\lambda=0\) 时的失效模式</b>：搜索会串联大量跨演示跳转，拼出物理上不可达的路径（1,015 条规划中 318 条用了 ≥6 次跳转）。<br>
+      <b>加 \(\lambda\) 后</b>：路径被迫沿着真实演示前进，75 步成功率 62% → 85%。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 目标集合评分：把推杆位置边缘化掉</div>
+    \[ c(\hat z,\,z_{\text{goal}}) = \min_{k\in\{1..K\}} \big\|\, \hat z - z_{\text{goal}}^{(k)} \,\big\|, \qquad z_{\text{goal}}^{(k)}=\big(\text{same object},\,\text{pusher}^{(k)}\big) \]
+    <div class="exp">
+      \(K=16\) 个目标副本，物体位置相同、推杆位置取自不同演示帧；取最近的一个作为代价。<br>
+      <b>本质</b>：这是对"无关变量"的边缘化——用一个候选集合近似表达"哪些终止状态都算成功"。<br>
+      <b>效果</b>：更难测试上 LeWM 从 11% 提到 23%（翻倍）；而在精确物理上把推杆从代价里彻底拿掉，是 9/50 → 39/50（4.3 倍）。<br>
+      <b>代价</b>：仍是近似——16 个推杆位置来自已有演示，覆盖不到演示之外的终止状态。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限</h2>
+
+  <div class="box good">
+    <b>核心价值</b>：这是一次漂亮的<b>瓶颈归因</b>。面对"长程失败"，最常见反应是"模型不够大、数据不够多、再训一版"。作者用对照实验把问题拆成"预测精度"和"规划用法"两份，证明大头在后者——而且四招全部零训练成本、可直接迁移到同类 JEPA 模型。<b>先确认瓶颈在哪，再决定花算力还是花工程，这个顺序本身就是最大的价值。</b>
+  </div>
+
+  <h3>诚实的局限</h3>
+  <div class="step">
+    <div class="t">局限一：一切结论都在 Push-T 这一个仿真任务上</div>
+    <div class="d">Push-T 是二维桌面上推一个 T 形积木，状态空间小、物理简单、还有完美的对称性可用（第三招完全依赖这个对称性）。<b>换成三维、可变形物体或多接触任务，平移旋转镜像那套未必成立</b>。作者也只说"应当能迁移到以相同方式规划的更大规模 JEPA"，是推测不是验证。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限二：这是个人实验博客，不是同行评议论文</div>
+    <div class="d">原文是作者个人页面上的实验复盘（项目页 haddyalchaer.com/jepa），没有完整论文的方法章节、超参表和消融规范。"600 次实验"的具体统计口径、置信区间、失败案例分布都要靠读者自己判断。<b>结论值得认真读，数字不宜直接引用为基准。</b></div>
+  </div>
+  <div class="step">
+    <div class="t">局限三：四招之间有耦合，收益未必可简单相加</div>
+    <div class="d">85% 这个数字分别由"专家子目标"和"带代价记忆图"两招独立达到，第四招的 11%→23% 又是在更难题上单独测的。<b>作者没有报告四招全开的总成绩</b>，也没说在标准任务上叠加是否会过拟合到 90%+。分项收益清楚，组合收益未知。</div>
+  </div>
+  <div class="step">
+    <div class="t">局限四：剩余失败集中在演示从未到达的方向</div>
+    <div class="d">最难测试上最好的规划器也只有 56%，失败大多发生在目标方向与演示方向相反时。作者指出需要一个能提出<b>超出演示范围的子目标</b>的高层系统，并点名 H-JEPA——但实测 H-JEPA 在 Push-T 上与平坦 LeWM 相当或略好。<b>也就是说，"分层"这个答案在论文级模型上还没兑现。</b></div>
+  </div>
+  <div class="step">
+    <div class="t">局限五：诊断标准测试的那部分，锋利但适用范围窄</div>
+    <div class="d">"84% 的目标在记忆里已有近似状态"依赖 Push-T 每条演示都停在同一位置这个特性。其他 Benchmark 不一定有这个漏洞。<b>它提醒的是"检查你的测试目标是不是恰好都在训练轨迹上"，而不是"所有基准都不可信"。</b></div>
+  </div>
+
+  <h3>批判性审视</h3>
+  <ul class="crit">
+    <li><b>"完美物理只比 JEPA 好 20pp"这个结论要限定条件</b>：它是在<b>给定了理想子目标</b>的前提下测的。不给子目标时差距更大（22% 对约 42%）。作者的表述没问题，但读者容易记成"世界模型和真物理一样准"，那是过度概括。</li>
+    <li><b>第四招最有价值，也最像"调 Bug"而不是"做研究"</b>：目标图像里混进了推杆位置，这是数据构造问题，不是世界模型的理论缺陷。但它的推广结论很硬——<b>目标必须表达为终止状态集合</b>——这条对任何做目标条件策略的人都成立。</li>
+    <li><b>"16 个目标副本"是权宜之计</b>：它靠已有演示里的推杆位置来覆盖，天然覆盖不到新姿态。真正干净的做法是让目标表示本身解耦"物体状态"和"智能体状态"，而不是在评分阶段枚举。</li>
+    <li><b>样本量的批评要双向看</b>：作者说官方 50 episode 的 68% 到 250 episode 掉到 44%，随机种子还能翻转 38 个——这是对整个社区小样本评测的警告。但他的新测试每组也只有约 83 个任务（"每一行约 83 个任务"），同样不算充裕。</li>
+    <li><b>最该抄走的是那句方法论</b>：先做"换成完美物理"的对照。如果换了模型提升不大，就别急着训更大的模型，去查规划器、目标定义和测试集构造。这个判断五分钟就能搭，收益可能比一次训练大得多。</li>
+  </ul>
+
+  <p class="src">来源：公众号 human five《600 次实验后：JEPA 世界模型的规划瓶颈在哪？》（2026-11-19）· 实验复盘 haddyalchaer.com/jepa · 涉及 LeWM（arXiv 2603.19312）与 H-JEPA（arXiv 2610.06805）</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div></body>
+</html>
