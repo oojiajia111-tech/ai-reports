@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>别让人去适应机器人——三处鸿沟决定示教值不值钱 · HALO 3W1H 第一性原理拆解</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>别让人去适应机器人——三处鸿沟决定示教到底值不值钱<span class="sub">HALO · 全身移动操作数据采集 · 直接示教 + 低阻力平台 · 定向轮把非完整约束焊进硬件 · 仿射标定与延迟对齐 · 异步动作块 RTC</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-19</div>
+    <div><b>论文</b> arXiv 2611.16439 · HKUST × Robbyant</div>
+    <div><b>一句话</b> 示范采集的天花板不是算法，是「人能不能自然地干活」</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>训练机器人做全身移动操作，卡点不在策略网络，在示范数据：<b>你没法让一个人一边自然走路、一边用真实的机器手臂干活。</b>现有接口都在这三件事里做取舍——感知、移动、本体；Mobile ALOHA 有底盘却占了人的站位，VR 有控制却看不见细节，UMI 类方案动作自然但要事后重定向。HALO 的判断是：这些取舍看似算法问题，其实都能挪到硬件上解决。只拆掉底盘、保留机械臂、用定向轮把约束焊进结构，剩下的差异就只剩一个低维映射加一段延迟标定。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一套「让人以最自然的方式，采出机器人能用的动作」的采集系统</h2>
+
+  <p>先说它要采的东西长什么样。任务是<b>全身移动操作（loco-manipulation）</b>：把椅子推到桌子底下、拆一组乐高、穿一根扎带、从货架取箱再搬到传送带。<b>这些任务的共同点不是难在手上，而是难在「手和脚必须同时协调」</b>——你要一边走一边抓，走快了抓不稳，抓稳了走不动。</p>
+
+  <p>要学这种协调，示范数据必须同时包含「底盘怎么动」和「两只手怎么动」，而且两者在时间上要对齐。<b>麻烦在于：能记录底盘运动的接口，通常都要求人放弃自然的移动；能让人自然移动的接口，通常都拿不到底盘动作。</b>HALO 的全部设计都在解这个矛盾。</p>
+
+  <table>
+    <tr><th>接口</th><th>能移动</th><th>第一视角</th><th>力反馈</th><th>自然移动</th><th>免重定向</th><th>底盘可精确控</th></tr>
+    <tr><td>GELLO（主从臂）</td><td>✗</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✗</td></tr>
+    <tr><td>Mobile ALOHA</td><td>✓</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td></tr>
+    <tr><td>VR 遥操作</td><td>✓</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td></tr>
+    <tr><td>外骨骼</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✗</td><td>✗</td></tr>
+    <tr><td>UMI / HoMMI</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✗</td><td>✗</td></tr>
+    <tr><td><b>HALO</b></td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
+  </table>
+
+  <p>这张表是全文的核心诉求：<b>它是唯一一列全打勾的。</b>但真正值得学的不是「它全占」，而是它怎么做到的——按自己的话，是「对 UMI 思路的选择性应用」：<b>UMI 把整个机器人本体从采集里移掉（换来动作自然，代价是必须重定向）；HALO 只移掉对人体运动约束最大的那部分，也就是底盘，而把能直接给出真实关节动作和力反馈的机械臂留下。</b></p>
+
+  <div class="box good">
+    <b>一句话概括它的取舍哲学：</b>凡是能用机械结构表达的约束，就不要留给求解器。<b>约束放进硬件是一次性的，放进求解是每一帧都要付的。</b>
+  </div>
+
+  <p>结果层面，它把「采集效率」当成一个可量化的指标：与 Mobile ALOHA 相比，推椅子提速 <b>2.9 倍</b>、拆乐高提速 <b>2.8 倍</b>（后者成功率还高 20 个百分点），成功示教的平均时长最多缩短 <b>66%</b>。学出来的策略在穿扎带上达到 <b>30%</b>（两个基线都是 0%），拆乐高 <b>75%</b>（30/40），六阶段长程移动操作 <b>73.3%</b>（11/15）。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：不是三处「不方便」，是三处会钻进数据里的偏差</h2>
+
+  <h3>鸿沟一（感知）：你的手不在机器人手的位置</h3>
+  <p>主从臂方案里，操作者握着主臂，从臂在几十厘米之外干活。<b>这几十厘米的错位不是舒适度问题，是信息问题</b>：操作者看不到末端和物体之间的细微接触，也就没有力反馈。结果是他<b>没法判断自己刚才那一下到底抓稳没抓住</b>。这种示范被记录下来，标签是「成功」，但动作本身是在信息缺失下做出的。<b>策略学到的就不只是动作，还有那种「凭猜」的决策方式。</b></p>
+  <p>论文的验证很干脆：穿扎带任务里，Mobile ALOHA 和 VR 的示范成功率都很低，学出来的策略成功率是 <b>0%</b>；HALO 是 30%。作者的解释是操作者离扎带太远、看不清操作细节。<b>注意这个因果链——不是模型学不会，是示范里根本没有那个精度。</b></p>
+
+  <h3>鸿沟二（移动）：底盘占的正是人要站的地方</h3>
+  <p>动力底盘要载人，就必须占据操作者的活动空间。于是操作者要么站在底盘上（重心受限、步态不自然），要么站在旁边（够不到）。<b>更隐蔽的后果是：他必须显式地控制底盘。</b>而人在同时做「走路」和「拿东西」时，走路是<b>下意识</b>的——一旦被迫把它变成显式操作（推摇杆、点按钮），注意力就从手上被抽走了。</p>
+  <p>HALO 的处理很粗暴：<b>采集时把底盘整个拆掉。</b>人推着一个低阻力平台走，平台跟着身体动。推力数据说明这个改动有多大——完整部署系统要 <b>47.3 N</b>，Mobile ALOHA <b>13.0 N</b>，HALO 采集平台只要 <b>2.3 N</b>。<b>从「推一辆车」变成「推一个购物车」，底盘控制就从显式任务退回了身体直觉。</b></p>
+
+  <h3>鸿沟三（本体）：动作在人的坐标系里，不在机器人的关节里</h3>
+  <p>UMI 类方案记录的是人手的位姿，要变成机器人动作必须做重定向（retargeting）。<b>重定向是个优化问题，而优化问题就会失败：</b>人手够得到的位置，机械臂不一定到；人能扭的角度，关节不一定能转。每一次重定向失败，都是一条无效示范。<b>而 HALO 记录的是真实机械臂的关节角——因为操作者握着的就是那条臂。</b>于是本体差异被压缩到只剩一层：画面里会拍到操作者的手。</p>
+
+  <div class="box bad">
+    <b>三处鸿沟的共同结构：</b>它们都不是「采得不够多」，而是<b>采的时候就已经偏了</b>。数据量补不回偏差——一万条在信息缺失下做出的示范，还是一条都没有正确示范。<b>所以采集接口的设计，直接决定了策略的能力上限。</b>
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：四步，每一步都在「把差异挪到更容易处理的地方」</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：重做末端——为了能贴着干活，把手柄和剪式机构全砍掉</div>
+    <div class="d">ALOHA 原来的末端不是为「手抓着手」设计的：手柄限制了靠近桌面时的工作空间，剪式机构不利于施大力。<b>改法是把末端做成紧凑、高接触面积的结构——尺寸从 242 mm 缩到 105 mm（小一半以上），可用俯仰角增加约 40 度。</b>开源版还做了模块化：电机、手指安装座、可换手指互相解耦，手指形状按任务换，驱动和安装结构不动。<b>这一步的哲学：要想让人给出「贴身的力」，接口本身必须先贴身。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：拆底盘，但用定向轮把「非完整约束」焊回去</div>
+    <div class="d">这是全文最漂亮的一招。<b>部署用的是 AgileX Tracer AGV 2 差速底盘——差速底盘不能横着走（非完整约束）。采集平台用被动轮，但在驱动轮轴线上加了两只定向轮，于是平台在机械上被约束到和部署底盘同一个运动空间。</b>这意味着<b>人推着平台走出来的每一条轨迹，天生就是底盘能执行的</b>，不需要事后做运动学校正。对比之下，HoMMI 那类方案要靠优化求解底盘运动。<b>一句话：能用两只轮子解决的事，不要用一个优化器去逼近。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：把剩下两处偏差处理掉——视觉修手，动力学标定</div>
+    <div class="d"><b>①视觉：</b>直接示教时操作者的手必然出现在画面里，而自主执行时没有。做法是「手部分割 → 时序掩码传播 → 视频修复」：用 CaRE-Ego 在关键帧预测左右手掩码作为 SAM2 的提示，在每个重叠片段内先反向、再正向传播掩码，跨片段融合概率、去小连通域、填洞、膨胀，最后用 DiffuEraser 结合光流做补全。<b>消融显示这一步不是锦上添花：推椅子任务上成功率从 55% 提到 85%，直接 +30 个百分点。</b><br><br><b>②动力学：</b>被动平台的动力学和动力底盘不同，测到的运动不能直接当动作。做法是标定部署底盘「指令速度 → 编码器观测运动」的响应，估出<b>动作-状态延迟</b>并做时间对齐；再拟合一个从平台轮速到部署底盘速度的仿射映射。<b>关键在于只用底盘速度、不用位姿做动作表示，避免积分误差累积。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：策略侧几乎什么都不改——16 维直接拼，异步执行</div>
+    <div class="d">这是最反直觉的一步：<b>作者用预训练的 π0.5 做全参数微调，观测是头部 1 路 + 腕部 2 路图像加关节位置、底盘线速度/角速度；动作把左臂关节与夹爪、右臂关节与夹爪、底盘线速度与角速度<b>直接拼成 16 维向量</b>，没有任何分层协调结构。</b>结果就是能协调。作者明确对比了「用规划器或全身控制器分别管底盘和手臂」的分层路线：<b>当移动和操作必须同时演化时，把耦合的动作放在同一个向量里统一建模更有效。</b><br><br>执行侧用异步实时动作分块（RTC）：执行当前块的同时预测下一块，并以「已提交的动作前缀」为条件保证块间连续。训练时随机取 0–9 个初始动作作为干净前缀，这部分不计入流匹配损失。<b>消融很说明问题：同步执行 H=8 时成功率 0%，H=25 才 35%；异步 H=8 达到 85%，但 H=10 又掉到 70%。</b>——<b>重规划太频繁会破坏时间一致性，太稀疏又跟不上新观测，中间有个甜点。</b></div>
+  </div>
+
+  <div class="box good">
+    <b>一个容易被忽略的细节：动作空间的选择取决于底模。</b>从 VLM（PaliGemma）初始化时，末端位姿空间更好（12.5% vs 7.5%）；换成预训练的 π0.5，关节空间反超（75.0% vs 47.5%）。<b>原因是直接示教采到的本来就是原生关节动作，不需要任何逆运动学转换</b>——预训练模型能吃下这种表示。<b>这提醒一件事：数据表示和底模是配套的，单独讨论哪个「更好」没有意义。</b>
+  </div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>核心公式：三个式子，把「人的运动」翻译成「底盘能执行的动作」</h2>
+
+  <div class="fml">
+    <div class="name">① 被动平台 → 部署底盘：一个低维仿射映射加一段延迟</div>
+    \[ \begin{bmatrix} v \\ \omega \end{bmatrix} \;=\; \begin{bmatrix} k_{vL} & k_{vR} \\ k_{\omega L} & k_{\omega R} \end{bmatrix}\begin{bmatrix} u_L \\ u_R \end{bmatrix} \;+\; \begin{bmatrix} d_v \\ d_\omega \end{bmatrix}, \qquad \text{action}_t \leftarrow \text{obs}_{t-\Delta} \]
+    <div class="exp">\(u_L,u_R\) 是编码器测到的平台左右轮速度，\(v,\omega\) 是部署底盘的线速度与角速度，四个 \(k\) 和两个偏置 \(d\) 由在部署系统上成对采集的数据拟合出来；\(\Delta\) 是标定出的动作-状态延迟。<b>大白话：</b>人推的是个轻飘飘的被动车，机器人底盘是个有电机、有响应的重车，两者对「同样的推法」的反应不一样。但因为定向轮已经把运动学约束对齐了，<b>剩下的差异只是一个线性缩放加一点滞后</b>——所以六个参数加一个延迟就够，不需要整车动力学模型。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 异步动作分块：以「已提交的前缀」为条件预测下一块</div>
+    \[ a_{t+d\,:\,t+d+H-1} \;\sim\; \pi\!\left(\cdot \,\middle|\, o_t,\ a_{t\,:\,t+d-1}\right) \]
+    <div class="exp">\(o_t\) 是最新观测，\(d\) 是以控制步计的推理延迟，\(H\) 是预测长度，\(a_{t:t+d-1}\) 是已经提交、正在执行的动作前缀。<b>大白话：</b>机器人不是「想好了再动」，而是「一边动一边想下一段」。条件在已提交的前缀上，是为了让新块的开头和正在执行的那一段接得上——不然接缝处会跳。<b>为什么这事儿对全身移动操作特别要紧：</b>底盘有惯性、手臂要精定位，一次推理停顿（同步执行）就会让底盘多走一段、手多停一下，而这个错位恰好是「手和脚协调」最怕的东西。消融里同步 H=8 的成功率是 0，就是这个原因。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 统一动作向量：把「走」和「拿」拼进同一个 16 维</div>
+    \[ a_t \;=\; \big[\, q^{\text{L}}_{t},\ g^{\text{L}}_{t},\ q^{\text{R}}_{t},\ g^{\text{R}}_{t},\ v_t,\ \omega_t \,\big] \in \mathbb{R}^{16} \]
+    <div class="exp">\(q\) 是七维关节目标，\(g\) 是夹爪指令，\(v,\omega\) 是底盘速度，双臂加底盘正好 16 维。<b>大白话：</b>没有「先规划路径、再控制手臂」这种分层，就是让网络自己去学「走到哪儿时手该到哪儿」。<b>这个设计的代价是它依赖数据里真的有耦合</b>——如果采集时底盘和手臂是分开操作的，网络学不到耦合，只能学到「先走后拿」。<b>所以第 2 步（拆底盘、留手臂、人自然走）不是配套优化，而是这个 16 维向量能成立的前提。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 训练配置（可复现参数）</div>
+    \[ \text{AdamW},\quad \eta = 5\times10^{-5},\quad \text{warmup}=100,\quad B=128,\quad \text{steps}=5\text{k},\quad H_{\text{pred}}=25 \]
+    <div class="exp">全参数微调 π0.5，批大小 128，训练 5k 步，动作预测长度 25；不用预训练初始化的模型用同样配置训 10k 步。<b>大白话：</b>这套参数本身就是一条信息——<b>数据足够干净时，微调成本低到「5k 步就够」</b>。反过来说，如果你要靠几万步才能学会一个任务，先怀疑数据接口，而不是先加大训练量。</div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：它买的是「采集效率」，不是「更强的策略」</h2>
+
+  <h3>它真正贡献了什么</h3>
+  <ul>
+    <li><b>把数据采集的瓶颈从算法挪到了机械设计。</b>定向轮复现非完整约束这一招，等于用两只轮子替掉了一个优化器，而且一次设计、永久生效。<b>这是「硬件里做约束」最好的教学案例。</b></li>
+    <li><b>给出了「示范的时间结构会传进策略」的直接证据。</b>同样的时间预算，基线采得慢、停顿多，学出来的策略就失败。RTC 的消融从另一个方向证实：执行中的停顿直接破坏底盘与手臂的协调。<b>这条规律比任何成功率数字都更有迁移价值。</b></li>
+    <li><b>16 维直接拼接打败了分层协调。</b>对「全身控制必须先有全身控制器」这个默认假设，这是一次明确的否证——至少在「移动与操作必须同时演化」的任务上是这样。</li>
+    <li><b>消融做得干净。</b>视觉后处理 +30 个百分点、推理模式 6 组对照、动作空间 2×2 交叉（底模 × 表示），每一项都指向一个具体的决策，而不是笼统地「我们的方法更好」。</li>
+  </ul>
+
+  <h3>必须打的折扣</h3>
+  <ol class="crit">
+    <li><b>它没有变强，只是变便宜。</b>穿扎带 30% 的成功率仍然很低，六阶段长程 73.3% 意味着四次里有一次失败。<b>论文的贡献是「同样时间采到更多有效示范」，不是「策略本身变强了」</b>。别把采集效率的提升误读成能力提升。</li>
+    <li><b>2.9 倍提速的对照条件很苛刻，也很特殊。</b>所有方法由<b>同一个此前没用过任何被评估接口的操作者</b>完成——这个设计公平，但也意味着<b>结果里包含大量「学习成本」差异</b>。换成熟练操作者，Mobile ALOHA 的劣势可能缩小。作者没有报这个变量。</li>
+    <li><b>「拆掉底盘」带来的好处，有一部分是省力而不是保真。</b>推力从 47.3 N 降到 2.3 N 确实让移动变自然，但被动平台也彻底失去了底盘的动力学（质量、摩擦、响应）。<b>这些差异被一段仿射映射加延迟掩盖，而不是被消除</b>——快速移动或负载变化时，这个线性近似会不会失效，论文没有压力测试。</li>
+    <li><b>手部去除依赖两个外部模型（CaRE-Ego + SAM2 + DiffuEraser）。</b>这套流水线在快速运动、双手交叠时是否稳定，只给了「均能去除」的定性描述。<b>而它的失效是灾难性的——修复区域会变成伪影，策略会把伪影当物体。</b></li>
+    <li><b>依然依赖真机硬件。</b>作者自己列在局限里：保留了机械臂，就没有 UMI 类方法「在任意场景随手采」的可扩展性。<b>换句话说，它把「可扩展性」换成了「动作保真度」——这是一个明确的取舍，不是免费的改进。</b></li>
+    <li><b>头部相机视角固定，而人会主动调视线。</b>这是被作者点明的局限，但它比看起来更严重：<b>人在操作中大量依赖「歪头看一眼」来获得关键视角</b>，固定视角等于把这一整类信息删掉了。作者提出的解法是引入主动感知，但那已经是另一篇论文的工作量。</li>
+    <li><b>泛化性的证据是「推椅子」这一个任务。</b>2–3 米的初始位姿随机化确实远超 Mobile ALOHA 的 5–10 厘米，但作者也承认这种泛化可能来自基于速度的底盘控制「鼓励了反应式推」——<b>也就是说，它学到的可能是一条好用的反应式策略，而不是一个可泛化的世界理解</b>。这个区别在换任务时才会暴露。</li>
+  </ol>
+
+  <div class="box good">
+    <b>一句话总结：</b>HALO 的洞见可以压缩成一句——<b>示范数据的质量上限，在你按下录制键之前就已经定了。</b>它没有发明新策略、没有新损失函数、没有新架构，只做了三件事：让人的手贴着干活、让人的脚自然走、把约束焊进轮子。<b>而这三件事换来的，是同一小时里采到的有效示范多了近三倍。</b>在数据仍然是具身智能最贵的那一项的今天，这个杠杆比任何模型改动都直接。
+  </div>
+</section>
+
+<footer>
+  本篇由公众号「human five」2026-11-19 文章《HALO：面向全身移动操作的人本对齐数据采集系统》整理<br>
+  论文：HALO: Human-Aligned Data Collection for WhoLe-body MObile Manipulation · arXiv 2611.16439 · HKUST × Robbyant
+</footer>
+
+</div></body>
+</html>

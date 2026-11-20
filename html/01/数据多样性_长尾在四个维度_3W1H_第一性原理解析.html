@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>两万小时里，模型只记住了「在哪个房间」 · 机器人数据多样性 3W1H 第一性原理拆解</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>两万小时里，模型只记住了「在哪个房间」<span class="sub">Scale AI 机器人数据多样性研究 · 有效数量 · 四个维度都是长尾 · Vendi Score · 最近邻一致性 κ · 纯视觉编码器学到的是场景不是动作</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-18</div>
+    <div><b>正文规模</b> 1.49 万字 · 译自 Scale AI 官方博客</div>
+    <div><b>一句话</b> 数据时长是最好报的数字，也是最没有信息量的数字</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>报数据集习惯报时长，但时长只说明「录了多久」，不说明「见过多少种情况」。把两万小时拆成四个维度去数有效类别，结论很难看：797 个任务实际只相当于 194 个等规模类别，86 个动词只相当于 17 个——<b>put 一个词就占了 19%</b>。更关键的是模型侧：纯视觉编码器的最近邻首先匹配「在哪个房间」（κ 最高 0.64），匹配动词只有 0.14。也就是说，它学到的表征是「我在哪」，不是「我在干什么」。而那个对动词最敏感的模型，语言输入里本来就带着动词。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一次对「机器人数据到底有多丰富」的体检</h2>
+
+  <p>这不是一篇提出新方法的论文，是一份<b>测量报告</b>。Scale AI 拿出自己 20,000 小时的遥操作数据（Mobile ALOHA 形态：双臂 + 轮式底盘），问了三个很少有认真回答的问题：<b>这个数据集到底有多少种任务、多少种动作、多少种物体、多少种场景？它们是不是均匀分布？模型从里面实际学到了什么？</b></p>
+
+  <p>先看体检对象的规模：</p>
+
+  <table>
+    <tr><th>指标</th><th>数量</th><th>备注</th></tr>
+    <tr><td>录制视频</td><td>344,625 段</td><td>每段对应一个完整任务</td></tr>
+    <tr><td>子任务</td><td>9,924,297 个</td><td>每段配一行文字标注，如「将量杯放入容器中」</td></tr>
+    <tr><td>任务类别</td><td>797 个</td><td>最大类 zip bag 仅占 5.7%</td></tr>
+    <tr><td>采集站点</td><td>231 个</td><td>覆盖 11 种场景类型</td></tr>
+    <tr><td>物体标签</td><td>3,696 个</td><td>最大类 towel 占 6.2%</td></tr>
+    <tr><td>只出现一次的子任务文本</td><td>超过 100 万条</td><td>长尾长到什么程度，这个数字最直观</td></tr>
+  </table>
+
+  <p>然后它做了一件很聪明的事：<b>不满足于「有多少类」，而是问「等效于多少类」</b>。因为 797 个任务里如果有一个占了一半数据，那这个数据集在实践上并不比「2 个任务」丰富多少。<b>衡量工具叫有效数量（Effective Number），本质是类别分布的熵再取指数。</b></p>
+
+  <div class="box good">
+    <b>一句话概括它的方法论贡献：</b>它把「数据多样性」从一句形容词，变成了四个可数的数字 + 一个可比较的模型侧指标。<b>从此「我们的数据很多样」这句话，必须配上有效数量和最近邻一致性才能成立。</b>
+  </div>
+
+  <p>模型侧的做法同样值得学：<b>用五种模型把每个子任务编码成向量，再看「最近邻是否同标签」。</b>五种分别是纯文本的 VLM text（Qwen3-VL-Embedding）、视频世界模型 WM（V-JEPA 2.1）、视频版的 VLM video、单帧图像模型 DINO（DINOv3）、以及 VLA 策略 π0.5 的视觉语言部分。<b>这套设计的好处是：它测的不是「模型能力」，而是「表征里到底装了什么」。</b></p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：三件事，解释了为什么「加时长」救不了数据</h2>
+
+  <h3>原因一：时长可以线性增长，多样性不行</h3>
+  <p>再录两万小时，最容易的做法是<b>在已有的 231 个站点里继续录同样的任务</b>——因为已经布好了机位、找好了人、备好了物体。<b>时长翻倍，但有效数量可能几乎不动。</b>而模型需要的是「没见过的情况」，不是「同样的第一百遍」。这就是为什么有效数量这个指标重要：<b>它把「我们在同一个房间里又录了一千条」这种增长，直接归零了。</b></p>
+
+  <h3>原因二：长尾不是任务的专利，动词和物体更长</h3>
+  <p>以往研究长尾，目光基本都盯着任务分布。这份报告把四个维度都数了一遍，发现<b>动词维度最扁平（有效数量只有 17）、物体维度的尾巴最长（3,696 个标签等效 162 个，多数只出现寥寥数次）</b>。这个发现的实际含义是：<b>你的机器人在 797 个任务上训练过，但它可能只做过十几种「动作类型」</b>——put 一个动词占了 19%，而「递交」这类需要双手协同的动词虽然形成了紧密的聚类，绝对数量却很少。<b>任务多样性骗人，动词多样性才决定手上的本事。</b></p>
+
+  <h3>原因三：视觉编码器天生更擅长「认地方」</h3>
+  <p>这是全文最硬的一条。<b>纯视觉模型的最近邻一致性里，场景类型是 0.512~0.642，任务只有 0.103~0.317，主要操作物体 0.144~0.423，而动词只有 0.141。</b>为什么？因为<b>场景是静态的、稳定的、占满整幅画面的，而动作是局部的、短暂的、只发生在手的周围一小块区域</b>。一个用图像重建或对比学习训出来的编码器，最省力的做法就是把整幅图压成一个「房间指纹」——这个指纹对场景极其有效，对动作几乎无效。</p>
+  <div class="box bad">
+    <b>三条原因合起来指向一个反直觉的结论：</b>数据的瓶颈不在「多少小时」，而在「多少种动词 × 多少个物体 × 多少个房间」的<b>乘积式覆盖</b>；而模型侧还有一个独立的瓶颈——<b>它的表征可能根本没有瞄准动作</b>。两个瓶颈是分开的，加数据只能解第一个。
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：四步测量法，从「数类别」到「看表征」</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：四个维度、两个统计量——类别数 + 有效数量</div>
+    <div class="d">维度选的是任务、动词、物体、场景类型。<b>对每个维度同时报「类别总数」和「有效数量」，两个数字的差距就是长尾的程度。</b>结果：任务 797 → 194，动词 86 → 17，物体 3,696 → 162，场景 11 → 不适用（只有 11 类，无需折算）。<b>这套双数字报告法应该成为报数据集的标准动作</b>——只报 797 会让人以为覆盖很广，补上 194 才知道真相。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：绕开标注，直接从像素里数一遍物体</div>
+    <div class="d">文字标注里出现的物体，和画面里真实出现的物体不是一回事。所以他们对每段视频的<b>第一帧跑物体检测器</b>，在全数据集上发现 1,372 种不同物体，每帧平均 7 个：桌子出现在 71% 的首帧里，植物 42%，瓶子 33%。<b>但有个重要的自我限制：因为是移动操作数据，第一帧只覆盖了全部物体的 39%</b>——后面镜头一晃，物体就都变了。<b>论文把这个缺陷直接写出来，而不是假装首帧能代表全过程，这是诚实的做法。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：把「同一种物体」再拆开——修饰词的多样性</div>
+    <div class="d">「毛巾」是一条数据还是几十条？答案是后者：<b>出现频率最高的 12 种物体，文本标注分别为每种加了 83 到 506 个不同的修饰词</b>（颜色、材质、状态），而且每种物体都出现在 231 个站点中的至少 39 个。<b>这一层拆解很重要：它说明「物体类别数」这个指标本身还是低估了视觉多样性</b>——同一个类目下的外观差异，可能比两个类目之间还大。场景侧同理：厨房有 82 种不同背景物体，工业房间只有 14 种。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：把任务内部的多样性也量化——Vendi Score 与七维打分</div>
+    <div class="d">为了公平比较，每个任务只随机抽 200 段（消除大任务偏差），在 7 个维度上打分：站点数、场景类型数、光照数、任务物体数、背景物体数、动词数，外加一个 <b>Vendi Score</b>（衡量「2000 个片段里真正不同的内容有多少」）。最后把七个维度的百分位排名平均，得到总分。<b>结果：Put supplies away 是最多样化的任务——涉及 24 种物体（中位任务只有 2 种）、127.5 个背景物体（中位 59.7）、Vendi 43.1（中位 16.1）。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：换到模型侧——最近邻一致性告诉你表征在学什么</div>
+    <div class="d">对每个子任务的向量取最近的 10 个邻居，看这些邻居是否同标签，得到 κ（0 = 和随机一样，1 = 全部同标签）。<b>关键设计：只从「其他采集站点」里找邻居</b>，避免匹配到同一个房间里的重复录制。<b>这一步是整个方法里最见功力的一处——它把「模型是否理解动作」变成了一个可计算的数，而不是靠可视化图看颜色块。</b>结果按维度钉死：VLM video 最强在任务（0.317）和物体（0.423）；DINO 最强在场景（0.642）；WM 最强在区分站点（能解释 0.37 的方差，是 VLM video 0.17 的两倍）但对任务/物体/动词反而最弱；π0.5 最强在动词（0.763）。</div>
+  </div>
+
+  <div class="box good">
+    <b>顺带一个方法论警告，论文自己写了：</b>UMAP 那种二维可视化会骗人——不同的东西压到二维后可能挤在一起，也可能被拉开。<b>所以所有结论都建立在原始向量上的最近邻计算，而不是看那几张彩色图。</b>凡是用二维图下结论的文章，都该被怀疑一次。
+  </div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>核心公式：三个指标，分别回答「有多丰富」「有多不同」「学到了什么」</h2>
+
+  <div class="fml">
+    <div class="name">① 有效数量：把「类别数」折算成「等效类别数」</div>
+    \[ N_{\text{eff}} \;=\; \exp\!\left(-\sum_{i=1}^{K} p_i \ln p_i\right) \;=\; \exp\!\left(H(p)\right) \]
+    <div class="exp">\(p_i\) 是第 \(i\) 个类别占据的数据比例，\(K\) 是类别总数，\(H\) 是香农熵。<b>大白话：</b>如果所有类别一样大，这个式子就等于类别总数；一旦少数类别吃掉大部分数据，它就会往下掉。<b>为什么必须取指数？</b>因为熵的对数会把差距压扁，指数回来之后数字才和「类别数」同一个量纲，好比较。所以「797 类任务等效 194 类」的意思是：<b>你这份数据在多样性上，大概相当于「194 个各占 1/194 的任务」</b>。这个折算对动词最狠——86 个动词只等效 17 个。<span class="src">（注：这是 Hill number of order 1，也叫一阶 Hill 数。）</span></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② Vendi Score：不看标签，只看「样本彼此有多不像」</div>
+    \[ \mathrm{VS} \;=\; \exp\!\left(-\sum_{j=1}^{n} \lambda_j \ln \lambda_j\right), \qquad \lambda_j \;=\; \frac{1}{n}\,\mathrm{eig}_j\!\left(\frac{K}{n}\right) \]
+    <div class="exp">\(K\) 是 \(n\) 个样本两两之间的相似度矩阵（这里用 VLM video 的 embedding 算余弦相似度），\(\lambda\) 是归一化后的特征值。<b>大白话：</b>把「每个样本和其他样本有多像」写成一个矩阵，如果大家互相都很像，这个矩阵就接近「全 1」，熵很小，Vendi Score 就低；如果大家各不相似，特征值摊得开，分数就高。<b>它比有效数量强在哪：</b>它不需要预先定义类别标签，所以能捕捉「同一条毛巾的不同折叠方式」这类标签表达不出来的差异。<b>代价是它只能在同一个 embedding 模型内部比，跨模型比没有意义</b>——因为相似度本身就是模型定义的。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 最近邻一致性 κ：表征到底把什么放在一起</div>
+    \[ \kappa_{\ell} \;=\; \frac{1}{|\mathcal{S}|}\sum_{s\in\mathcal{S}} \frac{1}{k}\sum_{j\in \mathrm{NN}_k(s)} \mathbb{1}\!\left[\ell(s)=\ell(j)\right] \;-\; \kappa^{0}_{\ell}, \qquad k=10 \]
+    <div class="exp">对每个子任务 \(s\) 找它的 \(k\) 个最近邻 \(\mathrm{NN}_k(s)\)（<b>且限定来自其他采集站点</b>），统计这些邻居里标签 \(\ell\) 相同的比例，再减掉随机水平 \(\kappa^0\)。<b>大白话：</b>如果模型真的「懂」某个属性，那么它认为相似的样本，应该在这个属性上也相似。<b>所以 κ 是在问：在模型的脑子里，「动词」这一类信息被放在一起了吗？</b>答案是没有——纯视觉模型的动词 κ 只有 0.141，而场景 κ 有 0.64。<b>这几个数字合起来，就是「它只记住了在哪个房间」的严格表述。</b></div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：它是一次诚实的体检，也是一次有限的自证</h2>
+
+  <h3>它真正贡献了什么</h3>
+  <ul>
+    <li><b>给了行业一套「数据多样性」的量化语言。</b>有效数量 + Vendi Score + κ，三个数各自回答一个不同的问题，而且都能算、能复现、能横向比。<b>以后再看数据集宣传，先问这三个数。</b></li>
+    <li><b>把「模型侧」拉进了数据讨论。</b>以前谈数据只谈分布，这份报告把「表征里装了什么」也变成了数据质量的一部分。<b>这是一个真正的视角升级：数据的价值不只由它自己决定，还由谁在读它决定。</b></li>
+    <li><b>方法上的自我约束很到位</b>：只从其他站点找邻居、每个任务等量抽样 200 段、所有结论基于原始向量而非 UMAP 图。<b>这三条都是为了防「看起来很有道理」的假象。</b></li>
+    <li><b>主动公布了不利结果</b>：首帧只覆盖 39% 的物体、WM 在最关心的三个维度上表现最弱、π0.5 的动词优势可能是因为输入里本来就有动词。<b>愿意写这些的文章，可信度天然更高。</b></li>
+  </ul>
+
+  <h3>必须打的折扣</h3>
+  <ol class="crit">
+    <li><b>这是厂商对自己数据的体检，没有跨数据集对照。</b>20,000 小时全部来自 Scale 自己的采集体系（Mobile ALOHA 形态、Trossen 双臂）。<b>所以它证明的是「机器人数据普遍是长尾」，不能证明「这份数据比别人好或差」</b>——因为它根本没测别人。</li>
+    <li><b>核心结论「长尾是否提升策略性能」被明确留成了开放问题。</b>报告最后一句就是这个。也就是说：<b>它测出了长尾，但没有证明长尾有害或有益。</b>这个缺口很关键——如果长尾对策略性能没影响，那整份体检的工程意义就只剩「描述」。</li>
+    <li><b>π0.5 的动词 κ 0.763 不能当作「VLA 理解动作」的证据。</b>作者自己写了：π0.5 的输入里包含文字标注，而标注里就有动词，所以这只说明模型<b>保留</b>了动作信息，不说明它能从像素<b>推断</b>动作。<b>这条自我否定非常关键，但很容易在传播中被丢掉——很多二手解读会直接写成「VLA 最懂动作」。</b></li>
+    <li><b>首帧分析的覆盖漏洞比 39% 更严重。</b>移动操作任务的物体大量在中途才出现（开柜子、翻抽屉），<b>而所有视觉 embedding（除 WM 外）都只用了第一帧</b>。这意味着 DINO 的 0.642 场景 κ、VLM video 的物体 κ，都可能被这个输入限制压低或扭曲。<b>把「编码器不行」和「只给了一帧」分开，需要一个额外实验，报告没有做。</b></li>
+    <li><b>κ 的绝对值很依赖 k 的选择和站点过滤方式。</b>k=10、只跨站点找邻居，这两个设定都会系统性改变数值。<b>报告没有给不同 k 下的敏感性分析</b>，所以 κ 适合做「模型之间横向比」，不适合当绝对阈值用。</li>
+    <li><b>「有效数量」这个指标隐含了一个强假设：所有类别等价。</b>但「把杯子放进水槽」和「递交工具」在技能上的差异显然不同。<b>用熵折算会把「难但稀少」和「简单但稀少」算成一样</b>，这对判断数据价值是有偏的。报告也承认大多数长尾研究只关注任务分布，但没有解决这个等价性问题。</li>
+    <li><b>最有用的那条建议，恰恰是最难执行的。</b>报告的隐含建议是「多录动词、多换物体、多换房间」，但真实采集的成本结构恰好相反——<b>换房间要重新布场，换物体要重新备料，而多录几遍同样的任务几乎免费。</b>所以这份体检指出了正确方向，却没有给出成本约束下的取舍方案。</li>
+  </ol>
+
+  <div class="box good">
+    <b>一句话总结：</b>它最有价值的不是任何一个数字，而是一个提问方式——<b>不要说「我们有多少小时」，要说「等效于多少种情况」；不要问「模型能不能做」，要问「它的相似性里装的是什么」。</b>两万小时的结论是：数据和模型各自有一个瓶颈，前者是动词与物体的长尾，后者是视觉表征天生偏向场景。<b>而加时长只能解前一个的一半。</b>
+  </div>
+</section>
+
+<footer>
+  本篇由公众号「human five」2026-11-18 文章《机器人数据多样性如何影响模型表征?》整理<br>
+  原文为 Scale AI 官方博客《Measuring Robot Data Diversity》（labs.scale.com）· 数据与引述均来自原文
+</footer>
+
+</div></body>
+</html>

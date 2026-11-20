@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>动作块该切多长——从流场里直接读出「哪一步开始不可信」 · DUAC 3W1H 第一性原理拆解</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>动作块该切多长——从流场里直接读出「哪一步开始不可信」<span class="sub">DUAC · 流匹配 VLA 的预测不确定度 · Jacobian-vector product · 闭式后验协方差 · 后验即插即用 · 免重训、免多次采样</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-18 · arXiv 2611.24178</div>
+    <div><b>关键词</b> 动作分块 · 自适应执行长度 · 流匹配 · 不确定度估计 · 雅可比向量积 · LIBERO / RoboCasa</div>
+    <div><b>一句话</b> 不确定度不用多采几次去投票，流场自己的发散程度就是答案</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>动作块切多长，本质是一个赌注：赌这条轨迹在未来若干步内还有效。切长了，环境早变了还在执行旧计划；切短了，每次重规划都要付推理延迟，还会打断块间的时间一致性——已有消融显示同步执行下 H=8 的成功率可以掉到 0，H=25 才回到 35%。所以真问题不是「选一个更大的 H」，而是「从第几步开始不可信」。DUAC 的答案是：不必多采几条动作去投票，直接看生成这条轨迹的速度场在每个点上发散得多厉害。<b>一次前向加一个雅可比向量积就够，不重训、不多采样。</b></p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据 <b>arXiv 2611.24178 摘要</b>（2026-11-18，Idan Ben-Ami、Arnon Netzer、Sarah Keren、Idit Diamant）与流匹配方法的标准框架撰写，<b>未读论文全文</b>。摘要明确给出了三条硬信息：一是从预训练 VLA 的速度场里抽「以轨迹为条件」的预测不确定度；二是建立在<b>闭式的流后验协方差</b>表述之上，用<b>雅可比向量积</b>从单条生成的动作块算出动作级不确定度；三是与 Adaptive Action Chunking（AAC）强相关但测的是不同东西。<b>凡涉及具体实现细节（阈值怎么定、协方差如何近似、各 benchmark 的具体增益）属于「按摘要与标准流匹配推导还原」，请以原文为准。</b>
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：把一个超参，换成一条可以逐帧读出的曲线</h2>
+
+  <p>先说清楚「动作块」这件事为什么存在。<b>现代 VLA（扩散策略、流匹配策略一系）不是一步一动，而是一次吐出一小段动作——比如未来 25 步。执行时只走前几步，然后重新推理下一段。</b>这么做有两个好处：动作更平滑（因为模型一次看到的是整段轨迹，而不是孤立的一帧决策），推理也不必每步都跑一遍大网络。</p>
+
+  <p>但「一次吐多少步」这个数，绝大多数工作是<b>写死的</b>：H=8、H=16、H=25，凭经验调。<b>而它其实是一个随场景剧烈变化的东西。</b>抓一个静止的杯子，未来 25 步几乎必然有效；追一个正在滚动的球，未来 5 步就可能全错。<b>用一个常数去覆盖所有这些情况，必然在两头都吃亏。</b></p>
+
+  <p>已有的解法叫 <b>AAC（Adaptive Action Chunking）</b>：多采几条候选动作块，看它们的动作熵——如果几条采样出来的轨迹彼此差很多，就说明模型心里没底，把 H 调小；如果几条都差不多，就放心执行长一点。<b>这个思路直觉上很对，但它有两个成本：一是要多次采样，推理开销成倍；二是它测的是「不同策略之间的差异」。</b></p>
+
+  <div class="box good">
+    <b>DUAC 的切入点：它不采样，它读流场。</b>流匹配模型生成动作的过程，是让一个噪声点沿速度场走到动作点。<b>如果这个速度场在某个区域「扇得很开」（相邻的起点会走到差很远的地方），那这个区域就是不可信的。</b>这种发散程度可以直接用雅可比（速度场对位置的导数）算出来，不需要多跑几次。<b>于是「不确定度」从一个统计量，变成了一个局部几何量。</b>
+  </div>
+
+  <p>论文报的结论是：在 LIBERO、LIBERO-Pro、LIBERO-Plus、RoboCasa 四套基准上，<b>用 DUAC 做自适应长度选择，任务成功率高、且不确定度估计的延迟低</b>；同时它与 AAC 强相关，但捕捉的是不同信息。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：三处不得不拆开的地方</h2>
+
+  <h3>矛盾一：长 H 省推理，短 H 保反应——两者不可兼得</h3>
+  <p>这不是调参问题，是结构性的。<b>H 越长，单位时间里跑的推理次数越少，动作越连贯；但模型对环境的响应越迟钝。</b>反过来，H 越短反应越快，但每次重规划都有延迟，而且相邻块之间的接缝会越来越多。<b>已有消融把这条曲线画得很清楚：执行长度存在一个中间甜点，两侧都会掉。</b>既然最优点随场景漂移，任何固定值都必然在某些时刻是错的——<b>所以问题只能靠「按情况改」来解决。</b></p>
+
+  <h3>矛盾二：想知道「有多不确定」，就得采很多次——代价直接乘在推理上</h3>
+  <p>AAC 的做法是<b>用采样代替思考</b>：多采几条，看它们散不散。这个做法在统计上很干净，但代价很难看——<b>你为了决定「要不要少算几步」，反而多算了好几倍。</b>而且采样估计的方差本身也需要足够多的样本才稳定。<b>在实时控制这条链上，任何「为了省时间而多花时间」的方案都要打问号。</b></p>
+
+  <h3>矛盾三：全局离散度不等于局部不可信——这是最关键的一处</h3>
+  <p>假设面前有一个「从左边绕」和「从右边绕」都能成功的场景。<b>模型采出来的几条轨迹会一条往左、一条往右，离散度很大；但每一条都是对的。</b>AAC 看到这个离散度，会判定「不确定，缩短 H」——<b>这是误判：它把「多个都对的方案」当成了「没有确定方案」。</b></p>
+  <p>DUAC 测的是另一件事：<b>在你已经选定的那条轨迹附近，速度场稳不稳。</b>如果轨迹周围的场是收敛的（附近所有起点都被吸到同一条路上），那这条轨迹就是可信的，哪怕别处还有另一条同样好的路。<b>作者把这个区别讲得很准：AAC 测的是「采样块之间的全局离散度」，DUAC 测的是「执行所选轨迹周围的局部不确定度」，因此 DUAC 对「多个都合法的策略」不敏感。</b></p>
+  <div class="box bad">
+    <b>这条区分的方法论价值大于它带来的性能提升。</b>它把「不确定」拆成了两种完全不同的东西：<b>一种是「我不知道该往哪走」（多峰），另一种是「我知道往哪走，但走起来会偏」（方差大）</b>。前者不该导致缩短 H——因为随便选一条都能到；后者才该。AAC 把两者混在一个数里，DUAC 只取后者。
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：四步，从「预训练好的速度场」到「一个整数 H」</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：什么都不改——后处理，模型原样不动</div>
+    <div class="d">摘要里最实在的一句是 <b>post-hoc</b>：不重训、不改结构、不额外训一个不确定度头。<b>这一条决定了它的落地成本——任何现成的流匹配 VLA 都能直接接上，不需要重跑训练。</b>对比之下，「训一个不确定度预测网络」这类方案要先造标签（哪些样本算不确定？），而标签本身就是个循环定义。<b>DUAC 绕开了这个循环：不确定度从场里直接算，不需要谁来标注。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：把「一次生成」看成「一个映射」，然后问这个映射有多敏感</div>
+    <div class="d">流匹配生成一条动作块，数学上是一个从初始噪声到动作序列的映射。<b>关键观察：如果初始噪声稍微变一点、最终动作就变很多，那这个生成过程就是不稳定的；反之则稳。</b>而「输入变一点、输出变多少」正是雅可比矩阵回答的问题。<b>把它写成协方差传播，就得到「闭式的流后验协方差」——这也是标题里那个 formulation 的来源。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：不算整个雅可比——用雅可比向量积，只算你要的那一个方向</div>
+    <div class="d">完整雅可比是「输出维 × 输入维」，对一条几十步、每步十几维的动作序列来说，规模立刻爆掉。<b>但目标是「这条轨迹方向上有多敏感」，等价于只问雅可比乘某个向量之后有多大——这正是 JVP（Jacobian-vector product）擅长的事：一次前向传播的反向模式就能拿到，不需要把矩阵显式写出来。</b><b>这一步是整篇能「低延迟」的技术根因</b>：复杂度从「和维度平方相关」降到「和维度线性相关」。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：把每个动作位置的不确定度累起来，切在超过阈值之前</div>
+    <div class="d">得到的是<b>动作级</b>的不确定度——不是整条块一个数，而是每个位置一个数。<b>于是选 H 变成一个前缀扫描：从第 1 步往后加，累积不确定度超过阈值就停，H 取停之前的位置。</b>这个设计的实际含义是：<b>它不只是在「长/短」之间二选一，它能给出「前 4 步可信、第 5 步开始崩」这种精细答案。</b>而精细答案恰好是异步执行最需要的东西——你可以只执行可信的前缀，把剩下的丢掉。</div>
+  </div>
+
+  <div class="box good">
+    <b>为什么说它「便宜」：</b>整条链路是「一次生成 + 一次 JVP + 一次前缀扫描」，没有采样循环、没有额外网络。<b>不确定度估计的延迟被压到和一次前向同量级</b>——这也是摘要强调 low uncertainty-estimation latency 的原因。在实时控制里，「估计自己要花多久」这件事本身就得足够快。
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：四个式子，从速度场走到一个整数</h2>
+
+  <div class="fml">
+    <div class="name">① 流匹配：动作块是一条从噪声走到动作的积分路径</div>
+    \[ \frac{d x_t}{d t} \;=\; v_{\theta}\!\left(x_t,\, t \mid o\right), \qquad x_0 \sim \mathcal{N}(0, I), \qquad a \;=\; x_1 \;=\; x_0 + \int_0^1 v_{\theta}\!\left(x_t, t \mid o\right) dt \]
+    <div class="exp">\(x_t\) 是时刻 \(t\) 的中间状态（一条还在成形的动作序列），\(v_\theta\) 是网络输出的速度场，\(o\) 是观测（图像 + 语言 + 本体状态），\(a\) 是最终动作块。<b>大白话：</b>从一团随机噪声出发，让速度场一步步把它「推」成一条合理的动作轨迹。<b>关键在 \(o\)：速度场是<b>以观测为条件</b>的</b>——所以同一条噪声，在不同观测下会被推到不同地方。这也解释了为什么「不确定度」必须相对某条轨迹来谈，而不是笼统地对整个模型谈。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 闭式流后验协方差：把「输入抖动」传播成「输出抖动」</div>
+    \[ \Sigma_{a} \;\approx\; J_{\varphi}\, \Sigma_{0}\, J_{\varphi}^{\top}, \qquad J_{\varphi} \;=\; \frac{\partial\, \varphi(x_0, o)}{\partial x_0} \]
+    <div class="exp">\(\varphi\) 是把初始噪声映射到动作的整条积分（也就是 ① 那个解），\(J_\varphi\) 是它对初始噪声的雅可比，\(\Sigma_0\) 是初始噪声的协方差（标准正态就是单位阵）。<b>大白话：</b>初始噪声本来就有一点随机性，这个随机性经过整条积分会被放大或缩小多少？<b>放大得多 = 生成过程不稳 = 这条轨迹不可信。</b>这个式子是「闭式」的，因为不需要真去采样估计——协方差是按雅可比做线性传播算出来的。<b>它之所以能写成闭式，前提是流匹配的生成过程本身是确定性的（给定噪声和观测，输出唯一）</b>——这一点和扩散模型不同，扩散里每一步都注入新噪声。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 动作级不确定度：用 JVP 只算你需要的那一个标量</div>
+    \[ u_k \;=\; \left\|\, J_{\varphi}\, \Sigma_0^{1/2}\, e_k \,\right\| \;\;\simeq\;\; \left\|\, \mathrm{JVP}\!\left(\varphi,\, x_0,\, \Sigma_0^{1/2} e_k\right) \right\| \]
+    <div class="exp">\(u_k\) 是第 \(k\) 个动作位置的不确定度，\(e_k\) 是第 \(k\) 个方向。<b>大白话：</b>不把整个雅可比矩阵算出来（那太贵），只问「沿这个方向轻轻推一下，输出会晃多厉害」。<b>JVP 的好处是一次反向传播就拿到一个方向的结果，成本与维度线性相关。</b>这就把「协方差传播」从数学上正确、工程上做不动，变成了能塞进实时循环的东西。<span class="src">（公式 ②③ 的协方差近似与投影形式，是按摘要所述「闭式流后验协方差 + JVP」的标准写法还原的，论文的具体近似方式请以原文为准。）</span></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 长度选择：前缀累积超过阈值就切</div>
+    \[ H^{*} \;=\; \max\left\{\, h \;\middle|\; \sum_{k=1}^{h} u_k \;\le\; \tau \,\right\}, \qquad H^{*} \in \left[\,H_{\min},\, H_{\max}\,\right] \]
+    <div class="exp">\(\tau\) 是容忍阈值，\(H_{\min}, H_{\max}\) 是工程上下限（防止切到 0 步或切到整块）。<b>大白话：</b>从第 1 步开始往右累加不确定度，一旦总额超过预算就停，停在哪儿就执行到哪儿。<b>为什么用累积而不是单点阈值：</b>单点阈值对噪声很敏感（某一步碰巧抖一下就砍掉整段），累积相当于做了一个温和的平滑。<b>而 \(H_{\min}\) 这个下限很重要</b>——如果允许切到 1 步，系统就退化成「每步都重规划」，那么块状执行的全部好处（平滑、省推理）都没了。</div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限：它把一个「手感」变成了「读数」</h2>
+
+  <h3>它真正贡献了什么</h3>
+  <ul>
+    <li><b>把「动作块长度」从超参变成观测量。</b>以前 H 是训练前拍的数字，现在它是每次推理时算出来的结果。<b>这一步的性质变化，比任何百分点都重要。</b></li>
+    <li><b>拆开了两种「不确定」。</b>多峰（有多条都合法的路）和方差大（这条路走起来会偏）在决策上的含义完全相反，AAC 把它们混成一个数，DUAC 只取后者。<b>这个区分本身就是一个可复用的洞察，哪怕不用它的方法。</b></li>
+    <li><b>零边际成本。</b>post-hoc、免重训、单次前向 + 一次 JVP。<b>这意味着它可以被叠加到任何已有的流匹配 VLA 上</b>，而不需要重新组织训练流程。工程上这类「加法型改进」的存活率远高于「换架构型改进」。</li>
+    <li><b>它给出了一个更普适的判断：预测不确定度可以住在生成过程的几何里。</b>不必额外训一个头、不必多次采样——只要模型本身是一个确定的映射，它的局部导数就是不确定度。<b>这个思路可以搬到任何「确定性地从噪声映射到输出」的生成模型上。</b></li>
+  </ul>
+
+  <h3>必须打的折扣</h3>
+  <ol class="crit">
+    <li><b>「与 AAC 强相关」这句话，既是卖点也是软肋。</b>如果两者高度相关，那 DUAC 的主要优势就只剩「更便宜」；而摘要没有给出「在 AAC 误判的那些场景（多条合法路径）上，DUAC 是否真的更好」的单独数字。<b>理论上应该更好，但那正是最需要被单独证明的一条。</b></li>
+    <li><b>阈值 τ 是个新超参，只是把问题挪了个位置。</b>原本要调 H，现在要调 τ 加 H_min/H_max。<b>如果 τ 也必须按任务手调，那「自适应」就只自适应了一半。</b>摘要没有说明 τ 是固定的、按 benchmark 调的、还是按某种归一化自动定的——这三种情况的意义完全不同。</li>
+    <li><b>四套基准高度同源。</b>LIBERO、LIBERO-Pro、LIBERO-Plus 本质上是同一套仿真环境的三个变体，加上 RoboCasa 也只有两个环境族。<b>「favorably among the evaluated methods」这个措辞本身也很谨慎——它没说 SOTA。</b></li>
+    <li><b>JVP 的代价被「低延迟」这个词轻轻带过了。</b>相对多次采样确实便宜，但它仍然要在生成图上多做一次反向传播。<b>在真实机器人上，控制频率往往卡在毫秒级，这个开销能不能进预算，取决于实现细节，摘要给不出答案。</b></li>
+    <li><b>「局部不确定度低」不等于「动作正确」。</b>如果模型的系统性偏差是平滑的（自信地错），速度场在轨迹附近可以非常稳定——<b>它稳，是因为模型一致地这么想，不是因为它对。</b>不确定度只覆盖「随机性导致的可信度下降」，不覆盖「偏差」。<b>这是所有不确定度方法的通病，但用它做执行决策时特别危险：你会在最该停下来的时候继续走。</b></li>
+    <li><b>它假设执行环境在 H 步内平稳。</b>机制是「看轨迹周围稳不稳」，但环境变化（物体被移动、人闯入）不会让速度场在<b>生成那一刻</b>变得不稳——它是生成之后才发生的。<b>所以 DUAC 测的是「模型对自己输出的信心」，不是「环境有没有变」。这两件事需要两套机制，别指望一个数全包。</b></li>
+    <li><b>只在仿真里验，真机上的价值待定。</b>四套 benchmark 全是仿真。<b>仿真里的「不确定」和真机上的「不确定」来源不同</b>——真机多了传感噪声、标定误差、延迟抖动，这些都不在速度场的几何里。<b>一个在仿真里低延迟的方法，接到真机上可能因为一次 JVP 就吃掉整个控制周期。</b></li>
+  </ol>
+
+  <div class="box good">
+    <b>一句话总结：</b>它没有让模型变准，它让模型<b>知道自己哪一步开始不准</b>。而这件能力在工程上往往比准确率更值钱——因为在真实产线上，<b>「提前 3 步停下来重规划」比「多 5 个百分点成功率」更能救命。</b>更值得记住的是它的方法论：不确定度不一定要靠采样去估计，<b>如果一个生成过程是确定的，那它的局部导数就已经把不确定度写在那里了。</b>
+  </div>
+</section>
+
+<footer>
+  论文：Adaptive Action Horizon Selection via Flow-Field Uncertainty（DUAC）· arXiv 2611.24178 · 2026-11-18<br>
+  Idan Ben-Ami, Arnon Netzer, Sarah Keren, Idit Diamant · 本篇依据摘要与流匹配标准框架撰写，未读全文
+</footer>
+
+</div></body>
+</html>
