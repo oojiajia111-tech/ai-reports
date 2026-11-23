@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>运动追踪之于人形机器人，就像下一个词预测之于语言模型——Sonic 与 GR00T 2 的第一性原理拆解</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>运动追踪之于人形机器人，就像下一个词预测之于语言模型<span class="sub">NVIDIA GEAR Lab 演讲 · 一个策略替代一堆专项策略 · Universal Humanoid Token Space · GR00T 2 先预测像素再预测动作 · 双脑（1 Hz 规划 + 50 Hz 执行）· 状态到动作延迟 2~3 毫秒</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-22</div>
+    <div><b>正文规模</b> 2.5 万字 · 演讲实录含完整 Q&amp;A</div>
+    <div><b>一句话</b> 人形机器人摔倒，不是控制器没调好，而是你把参考动作直接当成了目标姿态</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>人形机器人跟着一段舞蹈动作走会直接摔倒，原因不是控制器调得不好，而是参考动作里根本没有「保持平衡」这件事——那些让身体不摔的高频微调，一秒几十次，从来不写在示范数据里。所以正确的问法不是「怎么教会它走」，而是「给它什么任务，它自己会学会走」。答案是把控制改写成跟随：每一帧都递一份参考，让它追。任务变简单了，动作空间变大了，一个策略就能覆盖走路、跳跃、遥操作。而这套东西之所以能接到大模型上，全靠第二步——把运动压成离散 Token，让它成为世界模型和身体之间的插口。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一个「把动作当成一种语言来预测」的两层系统</h2>
+
+  <p>这是一场演讲的实录，讲者是 NVIDIA GEAR Lab 的 Zhengyi Luo（CMU 机器人学博士，导师 Kris Kitani）。他讲的东西可以拆成两层，很多人会把它混成一层：</p>
+
+  <ul>
+    <li><b>下层是 Sonic</b>——一个运动追踪器。你给它一份参考动作（人类动捕、VR 手柄、甚至另一段视频里估出来的动作），它以 50 Hz 输出全身各关节的控制指令，管的是不摔、稳住、跟得上。</li>
+    <li><b>上层是 GR00T 2</b>——一个世界动作模型（World Action Model，WAM）。它以大约 1 Hz 输出一串运动 Token，管的是「现在该做什么」。</li>
+  </ul>
+
+  <p>两层之间不传关节角度，也不传视频，只传一种东西：<b>Universal Humanoid Token</b>。这是整场演讲的技术枢纽，也是最容易被读者掠过的一句话——它决定了这套系统是「两个模型拼起来」还是「一个可扩展的架构」。</p>
+
+  <p>先把量级摊开，判断它在什么位置：</p>
+
+  <table>
+    <tr><th>项目</th><th>数值</th><th>含义</th></tr>
+    <tr><td>Tokenizer 空间</td><td>64 维 × 32 个等级</td><td>组合空间 32 的 64 次方，大到几乎等于连续</td></tr>
+    <tr><td>上层推理频率</td><td>约 1 Hz，每次规划约 1.6 秒 / 80 个 Token</td><td>一次「思考」管一小段动作</td></tr>
+    <tr><td>下层执行频率</td><td>50 Hz（Jetson Orin）</td><td>每 20 毫秒修正一次身体</td></tr>
+    <tr><td>状态到动作延迟</td><td>Sonic 约 2~3 毫秒；GR00T 2 Turbo 本体上约 124 毫秒</td><td>决定机器人「反应」是否已经过时</td></tr>
+    <tr><td>预训练数据</td><td>约 40 万小时第一人称人类运动视频</td><td>内部项目叫 Human 1 Million，目标 100 万小时</td></tr>
+    <tr><td>运动数据规模实验</td><td>约 7000 段运动的测试集</td><td>数据、模型、算力三条曲线同时上涨</td></tr>
+    <tr><td>遥操作数据成本</td><td>地面拾取 17 小时；桌面拾取约 100 小时；洒水清理约 3 小时</td><td>3 小时就能出非零成功率，这是核心卖点</td></tr>
+  </table>
+
+  <div class="box good">
+    <b>一句话定位：</b>它不是在回答「人形机器人怎么控制」，而是在回答一个更前置的问题——<b>人形机器人控制领域的「下一个词预测」是什么？</b>作者的答案是运动追踪。这个类比一旦成立，后面的所有设计（Token 空间、单策略、Scaling 曲线、双脑频率分工）都变成同一个逻辑的推论，而不是各自独立的技术选择。
+  </div>
+
+  <p>为什么这个类比值得认真对待？因为语言模型的可扩展性来自「任务形式极简、数据天然海量」。运动追踪恰好也满足这两条：任务形式是「每帧追一个参考」，数据是全世界现成的视频与动捕。而此前的做法——给走路写一套奖励、给开门写一套奖励——每次加一个技能都要重来一遍，这跟当年为每个 NLP 任务单独标注训练集是同一种困境。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：三个矛盾，没有一个能靠「调参」解决</h2>
+
+  <h3>矛盾一：平衡不在示范里，所以示范不能直接执行</h3>
+  <p>演讲里有个非常干净的演示：把一段参考动作直接当作 PD 控制器的目标姿态输入，机器人立刻摔倒。原因不是数据错了，而是<b>数据的信息量不够</b>。投影在膝关节上的曲线很能说明问题：虚线是参考动作，绿色是策略实际输出的控制指令——绿色曲线的频率高得多，夹着一堆微小的调整，而这些微调在原始数据里<b>一次都没有出现过</b>。</p>
+  <p>这是全篇最硬的一条物理事实：<b>平衡是一个闭环性质，不是一个轨迹性质。</b>同样的关节角度，在重心偏左 2 厘米时是稳的，偏右 2 厘米时就要摔；而「重心偏了 2 厘米」这件事，不存在于任何一段开环的示范数据里。所以任何「录制 → 回放」的方案，本质上都在赌初始条件完全一致。这不是工程精度问题，是信息缺失问题。</p>
+
+  <h3>矛盾二：专用策略能做出动作，但长不出通用性</h3>
+  <p>作者 2019 年在苹果 AR 团队实习时做的虚拟人跑酷，用的就是专用策略：按下不同按钮，给机器人不同的条件输入，它执行对应动作。这套东西能跑，但每加一个能力就要多一个策略，而且「该按哪个按钮去拿那杯咖啡」这个决策本身又变成了新问题。</p>
+  <p>人形机器人有二十多个自由度，人类身体能做出几乎无穷多种动作。用专用策略去覆盖这个空间，边际成本是线性的，而收益是固定的——<b>这就是为什么作者说「我需要一种可扩展的方法」，而不是「我需要一个更强的控制器」</b>。运动追踪的可扩展性在于：任务从「完成某个动作」退化成「贴近某段参考」，这样一来，参考从哪来都行——动捕、VR、视频、甚至另一个模型的输出。控制器只学一件事：怎么跟上。</p>
+
+  <h3>矛盾三：上层想得慢，下层必须动得快</h3>
+  <p>世界动作模型的推理频率只有 1 Hz，也就是每秒想一次。这个数字听起来荒谬——让一个每秒只思考一次的脑子去控制一台会摔的机器。它能工作，靠的全是下层的补偿能力：上层每想一次给出约 1.6 秒的动作意图，下层以 50 Hz 把它变成关节指令，中间的状态到动作延迟只有 2~3 毫秒。</p>
+  <p>反过来说，这也是整套架构的<b>隐藏约束</b>：一旦下层出现明显的延迟，上层想得再对也没用，因为动作已经过时了。作者在 Q&amp;A 里把这条讲得非常直接——只要上层模型还不能把状态到动作延迟压到几毫秒，就永远需要一个独立的全身控制器。</p>
+
+  <div class="box bad">
+    <b>三个矛盾的共同点：</b>没有一个是「模型不够大」或「数据不够多」。第一个是信息结构问题（开环数据里没有闭环信息），第二个是任务形式问题（学「完成动作」还是学「跟随动作」），第三个是时间尺度问题（1 Hz 与 50 Hz 之间必须有东西顶住）。<b>这三件事都必须在架构层面解决，堆算力绕不过去。</b>
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：七步，从「改问法」到「双脑上线」</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：改问法——从「完成动作」改成「跟随动作」</div>
+    <div class="d">这是全篇唯一的「想法」，其余都是工程。原来是你定义一个高层目标（走过这个房间），再设计奖励让它学会。改成：每一帧都给一份参考动作，策略的任务只是贴近它。<b>好处有两个</b>：一是任务变简单（不用自己发明怎么保持平衡，只需跟上）；二是动作空间变大（想要什么行为，就给什么参考）。<b>代价也很清楚</b>：你必须先有参考，所以「机器人到底该做什么」这个问题没有被解决，只是被挪到了上游。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：先把重定向做对——前四个月全花在这上面</div>
+    <div class="d">Sonic 的开发周期里，最初三到四个月主要在迭代训练器和重定向管线，还拉了 NVIDIA 内部的 Digital Human 团队一起做，最后产出了已开源的 SOMA Retargeter。<b>为什么这件事优先级这么高？</b>因为人类和机器人的骨骼比例、关节限位、质量分布都不同，重定向做得糙，喂给策略的目标本身就是「人能做到、机器人做不到」的动作，策略只能在错误的目标上学出畸形补偿。作者自己说，研究生阶段做的重定向「效果非常差」——这句自嘲其实是最有价值的一句：<b>重定向误差会被策略学进去，而且会伪装成「控制能力不足」。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：让 RL 真的学得动——自适应采样、大 batch、选对惩罚项</div>
+    <div class="d">四条经验，都很朴素：<b>①自适应采样</b>，因为数据集极大，必须逼模型去练那些做不到的难样本，不能一直刷简单动作；<b>②更大的 PPO batch</b>，RL 的梯度噪声很大，加大 batch 直接有用；<b>③奖励与域随机化要设计对</b>，这条没有捷径；<b>④踝关节要单独处理</b>，因为它的扭矩响应和其他关节不一样，域随机化的方式不能一刀切。作者提到 NeuroDynamics 能加速训练甚至提升效果，但把它放在「锦上添花」的位置，不是主线。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：造一个能装下所有运动信号的 Token 空间</div>
+    <div class="d">这是整套系统里最像「设计」而不是「工程」的一步。问题很具体：稀疏的 VR 输入、密集的全身动捕、纯人类视频估出来的动作、机器人自己的本体感觉——形式完全不同，怎么让一个控制器都能解码？<b>做法是把它们全部映射进同一个共享潜空间，在那里训练唯一的解码器。</b>走路和跳跃看起来毫不相干，但在潜空间里它们是两个邻近的点。<b>这一步一旦成立，「换个输入源」就不再需要重新训控制器</b>——这才是 Universal 这个词的实际含义，而不是「通用」这种形容词。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：上层不做 VLA，做 WAM——先想象画面，再决定动作</div>
+    <div class="d">GR00T 2 和 VLA 的关键区别是它的输出多了一路：<b>它同时预测像素和动作。</b>不是在动作空间里直接回归，而是先在心里把「接下来该看到的画面」生成出来，再基于这个画面决定动作。作者的说法是「你能够看到模型正在思考」。<b>为什么这条路对高精度任务特别有效？</b>因为像素预测强迫模型对「物体在哪、手会碰到什么」形成显式表征，而纯动作回归可以绕过这些，用统计相关性糊过去。演讲里还给了一个很反直觉的观察：在 UMI 数据（人类手臂）上训练后，去做飞机组装，视频生成器会自动把人类手臂补全成机器人手臂——<b>它在不同具身形态之间做隐式推断（implicit inference），把中间的空缺自己填了。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 6 步：把双脑焊在一起——Token 是接口，也是节流阀</div>
+    <div class="d">上层 1 Hz 推理一次，产出约 1.6 秒、80 个运动 Token 的动作块；下层每 5 毫秒（原文口径）消费一个 Token，以 50 Hz 输出关节指令。上层跑在 Jetson Thor 上（System 2，负责规划、视觉理解、动作生成），下层跑在 Jetson Orin 上（System 0，负责高速全身控制）。<b>这套分工的精妙之处在于：接口的频率天然限制了上层的负担。</b>上层不需要知道关节角度，下层不需要理解语言指令，两者的耦合只有一串离散符号。<span class="src">（提醒：80 个 Token 覆盖 1.6 秒，平均一个 Token 对应 20 毫秒，与「每 5 毫秒消费一个」在算术上对不齐，属于演讲口述口径差异，别当精确参数用。）</span></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 7 步：把模型塞进机器人本体——Turbo 只改了一件事</div>
+    <div class="d">固定机器人可以插网线，人形机器人不行。所以 GR00T 2 Turbo 的核心改动极其朴素：<b>换一个视觉 Token 压缩率更高的视频编码器，把视觉 Token 数量压到四分之一。</b>结果是在 RTX 5090 上快约三倍，装到本体上往返约 170 毫秒（其中推理约 124 毫秒）。<b>作者明说它「不是新模型，就是同一个模型换了个更快的眼睛」，训练数据和方案完全相同。</b>有意思的是，在某些任务上 Turbo 反超了原版——原因还是延迟：高动态任务里，想得快比想得准更值钱。</div>
+  </div>
+
+  <div class="box good">
+    <b>第 8 步（隐藏的第八步）：用视频生成模型造遥操作数据。</b>遥操作太贵，于是有了 GRAIL（CoRL 最佳论文候选）：给视频生成模型一个机器人资产、一个作为参考的人类模型、一句指令（「坐到扶手椅上」），让它生成一段看起来真实的交互视频；再用姿态估计和物体位姿估计把轨迹反解出来，做重定向得到人-物交互，最后用物理追踪修正「物体漂浮」这类错误。<b>这条路的价值不在省钱，而在于它把「数据采集」变成了「数据生成」——上限从「有多少操作员」变成「有多少 GPU」。</b>
+  </div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>核心公式：三个式子，一条从「跟随」到「接口」的链</h2>
+
+  <div class="fml">
+    <div class="name">① 运动追踪的奖励：把「像不像」写成一个逐帧的误差</div>
+    \[ r_t \;=\; -\Big( w_p \lVert \hat{p}_t - p_t \rVert^2 \;+\; w_q \lVert \hat{q}_t - q_t \rVert^2 \;+\; w_v \lVert \hat{v}_t - v_t \rVert^2 \Big) \]
+    <div class="exp">\(p\)、\(q\)、\(v\) 分别是参考动作在这个时刻的关节位置、四元数姿态和速度，带帽子的是机器人当前的实际状态，\(w\) 是三者的权重。<b>大白话：</b>每一帧都算一次「你离目标姿势差多远」，差了就扣分，越接近分越高。策略要做的就是让整个时间序列上的总分最高。<b>关键在最后那一路 \(v\)：</b>只看位置和姿态，策略会学会用「刚好卡在目标点上但随时会倒」的方式站着；加上速度项，它才被逼着连「身体的运动趋势」一起对上。这就是为什么跟踪器没有直接摔倒——它优化的不是某一帧的形状，而是一段时间里的运动一致性。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 双脑的 Token 预算：上层想多快、下层吃什么，由这条式子锁死</div>
+    \[ N_{\text{tok}} \;=\; f_{\text{plan}} \cdot T_{\text{chunk}} \cdot r_{\text{tok}}, \qquad \Delta t_{s \to a} \;\ll\; \frac{1}{f_{\text{ctrl}}} \]
+    <div class="exp">\(f_{\text{plan}}\) 是上层的规划频率（约 1 Hz），\(T_{\text{chunk}}\) 是每次规划覆盖的时长（约 1.6 秒），\(r_{\text{tok}}\) 是每秒需要多少个 Token，三者相乘就是一次推理要吐出多少个符号（约 80 个）。第二式是下层的稳定性条件：状态到动作延迟必须远小于一个控制周期（50 Hz 时是 20 毫秒）。<b>大白话：</b>上层是「慢脑子」，它一次交出一段动作的「提纲」；下层是「快肌肉」，把提纲逐字念成关节力矩。<b>为什么要写成两个频率而不是一个？</b>因为两者的约束根本不同：上层受算力和语义复杂度约束，下层受物理稳定性和延迟约束。想把它们合成一个模型，就得同时满足「想得深」和「动得快」，而这两件事在同一个前向传播里是冲突的——这就是作者坚持「现在还需要独立 System 0」的算术理由。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 离散化的作用：把回归问题改成分类问题</div>
+    \[ \mathcal{T} \;=\; \{1,\dots,32\}^{64}, \qquad |\mathcal{T}| \;=\; 32^{64} \;\approx\; 10^{96} \]
+    <div class="exp">\(\mathcal{T}\) 是 Token 空间，64 个维度、每维 32 个等级。<b>大白话：</b>这个空间大到超过宇宙里的原子数量，所以它「几乎是连续的」；但形式上它是离散的，于是模型要做的从「回归一条连续轨迹」变成了「在每个维度上选一个档位」。<b>为什么要绕这一下？</b>因为直接预测连续的参考运动很难，而且容易破坏动作的物理含义；离散化等于把解空间提前收窄，模型只需要在有限的格子里挑，学习难度低得多。演讲里还给了两个由此带来的特性：<b>①可线性插值</b>——在两个 Token 之间插值，能给出一段平滑过渡的动作；<b>②训练时量化、推理时不量化也能用</b>——说明解码器学到的是连续的运动结构，不是死记硬背的码本。<b>反过来说，作者也承认 Token 利用率并不高</b>：32 的 64 次方这个空间是「随手选的」，并没有优化过，能工作只是因为它足够大。</div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：它把「控制」重新定义成了「接口设计」</h2>
+
+  <h3>它真正贡献了什么</h3>
+  <ul>
+    <li><b>把「哪个任务是基础任务」这个问题摆上了台面。</b>语言模型靠 next-token prediction 统一了 NLP，人形机器人一直缺一个对应的统一任务。这篇给的候选是运动追踪，并且用六年的曲线（2021 通用控制器 → 2023 首个可用追踪器 + 摄像头遥操作 → 2024 全尺寸 H1 → 2026 Sonic）说明它<em>能随规模变好</em>，而不只是「能跑」。</li>
+    <li><b>Token 当接口，比模型当接口更可复用。</b>上层换成更强的 WAM、下层换成更强的追踪器，中间的 Token 不用改。这是软件工程里最经典的一条——稳定的抽象层比强大的实现更值钱。它同时也解释了为什么作者反复强调 Token 设计是「System 1 与 System 0 之间的接口」，这是全场唯一被明确定位为「还远没做完」的问题。</li>
+    <li><b>「先在像素空间想象」是一条可验证的路线，不是修辞。</b>视频预测会自动补全人类手臂到机器人手臂这个观察，是这篇里最有信息量的一句话——它意味着模型学到的是「动作先验」，而不是「数据分布」。这解释了为什么几小时的数据就能外推出不错的成功率。</li>
+    <li><b>把瓶颈明确指到了数据质量上。</b>作者讲了一个很具体的例子：拾取任务卡了一个月，怀疑模型、怀疑奖励、怀疑数据量，最后做数据质检，模型「几乎立刻就开始正常工作」。原因也很朴素——行为克隆策略会把操作员的犹豫一起学进去，学到「先犹豫一下再动手」，然后就卡住。这句话对做数据的人比对上模型的人更有用。</li>
+  </ul>
+
+  <h3>必须打的折扣</h3>
+  <ol class="crit">
+    <li><b>这是一场演讲，不是论文，几乎没有可复核的实验设置。</b>96% 对 60~70%、3 小时数据出成功率、100% 的爆米花成功率，全部是讲者自述。台数、种子数、误差棒、失败判据都没有。<b>尤其「100%」后面紧跟着一句限定：那是在采集训练数据的同一个环境里测的</b>；换到别的房间甚至室外，掉到 80~90%。这个数字在传播里最容易被抹掉。</li>
+    <li><b>数字之间存在口径冲突。</b>80 个 Token 覆盖 1.6 秒，等于每 20 毫秒一个；原文又说「下层每 5 毫秒消费一个 Token」。两者差四倍，要么是口述时的量级误差，要么「Token」在两层里指的不是同一个东西。<b>遇到这类参数，别拿去做工程估算。</b></li>
+    <li><b>1 Hz 的上层之所以能工作，是因为下层在替它兜底——这既是优点也是隐患。</b>作者在 Q&amp;A 里承认：因为遥操作数据本身就是「人费劲补偿过的」，模型学到的是「如何弥补运动追踪的不足」。<b>这意味着追踪器的系统性偏差会被上层学成「正常现象」</b>，误差不会暴露，只会被吸收。他提到的解法（闭环优化重定向、让 System 1 补误差、Test-Time Training）都还停留在「活跃研究方向」。</li>
+    <li><b>「System 0 不需要感知」是一个有代价的立场。</b>作者明确说现阶段控制器应该是「盲的」，理由是引入感知会把渲染、仿真到现实迁移等一堆问题一并拖进来。<b>这个判断在分工清晰的场景下成立，但它同时意味着下层无法处理「脚底下有个台阶」这类必须靠本体之外信息判断的情况</b>——只能等上层以 1 Hz 的频率发现。他也承认最终两者会融合，只是「现在还不是时候」。</li>
+    <li><b>硬件形态本身在限制结论的适用范围。</b>作者自己说 G1 适合表演、跳舞、后空翻，但做局部操作「不是最理想的选择」，手臂太短。所以那些漂亮的桌面任务演示，展示的是模型能力，不是「这台机器人能干活」。</li>
+    <li><b>数据生成路线（GRAIL）绕开了采集成本，但没有绕开仿真到现实。</b>作者的原话是「Sim-to-Real 仍然是一个尚未解决的问题」，他们只是观察到仿真数据确实能提高成功率和泛化。<b>至于「生成的数据里有多少物理错误是被修正掉的、有多少是被模型学进去的」，演讲没有给数字。</b></li>
+    <li><b>最贵的成本被转移到了人身上。</b>「优秀的遥操作操作员真的很难找到，有些任务只有我们最好的操作员才能完成」——这句话说明当前的瓶颈不是算法也不是算力，而是<b>能稳定演示复杂双手任务的少数人</b>。这是个不可规模化的环节，而整篇演讲的可扩展性论证恰好绕过了它。</li>
+  </ol>
+
+  <div class="box good">
+    <b>一句话总结：</b>这篇的价值不在于「NVIDIA 又做了一个更强的人形机器人」，而在于它给出了一套<b>可以被别人复用的分解方式</b>：把控制退化成跟随、把跟随压成 Token、把 Token 当成上下层之间唯一稳定的接口、再用频率差把「想得深」和「动得快」分开。<b>真正的洞见在于它承认了一件事——人形机器人的难点从来不是让某个动作做出来，而是找到一个能随数据、模型、算力一起变好的任务形式。</b>运动追踪是不是那个任务，现在还没有定论；但「必须存在这样一个任务」这个判断，比任何单点指标都更值得记住。
+  </div>
+</section>
+
+<footer>
+  本篇由公众号「human five」2026-11-22 文章《Zhengyi Luo：从通用人形机器人运动控制到自主操作：Sonic、GR00T 与WAM》整理<br>
+  数据与引述均来自原文演讲实录，未额外查阅论文或技术报告 · 3W1H 与第一性原理拆解仅供理解框架使用
+</footer>
+
+</div></body>
+</html>
