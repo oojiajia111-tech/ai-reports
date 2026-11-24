@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>预训练的价值不在分数，在于把一千小时现场数据压成十小时——WALL-OSS-1.0 的第一性原理拆解</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="head">
+  <h1>预训练的价值不在分数，在于把「一千小时现场数据」压成「十小时」<span class="sub">自变量机器人 WALL-OSS-1.0 · UMI 与真机约 10:1 混采 · 每条 UMI 轨迹过 20 多项体检 · Task/Subtask/Action/Segment 四层标注 · X-Tokenizer 分层残差 · MoT + Flow Matching Action Expert · 单张消费级卡跑 18 台机器人</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-23</div>
+    <div><b>正文规模</b> 约 1.4 万字 · 厂商技术博客（非 arXiv 论文）</div>
+    <div><b>一句话</b> 机器人缺的从来不是数据量，是「这段经验里到底有多少动作能被当标签用」</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>机器人要学的经验必须带动作标签，而带动作标签的数据只有真机采得出来——这是具身智能最贵的一道墙。所以真问题不是「模型做多大」，而是「一段人类经验怎样才算变成可训练的动作信号」。WALL-OSS-1.0 的解法是把数据按信息含量分层：动作可靠的就直接学动作，只有画面没有动作的就改成学「接下来画面会变成什么」，不硬造标签。这一刀切下去，成本结构就散了——贵的那部分只买必要的量，便宜的那部分可以大量往上堆。第二个立论更朴素：预训练的价值不在榜单分数，而在把一个新场景从一千小时现场数据压到十小时。它没有解决具身智能，它解决的是「怎样让每一小时真机数据更值钱」。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：它不是「一个模型」，而是一套「数据口径 + 模型家族 + 部署栈」</h2>
+
+  <p>这篇是自变量机器人（X Square Robot）关于 WALL-OSS-1.0 的技术博客。它最容易被误读的地方在于：读者会以为这是一篇「我们又训了个更大的 VLA」。事实上全文的篇幅分配很说明问题——将近一半在讲数据怎么筛、怎么标、怎么混，只有三分之一在讲网络结构。这个配比本身就是结论。</p>
+
+  <p>把它的部件拆开，是三层：</p>
+
+  <ul>
+    <li><b>数据层</b>：UMI 式手持夹爪采集（人拿着设备干活，机器人不用到场）+ 真机遥操作 + 策略执行中被人工接管纠错的片段 + 开源数据。四类数据不混着用，各自按「动作信息可不可靠」走不同训练目标。</li>
+    <li><b>模型层</b>：第一阶段做「语言 + 视觉语言 + 离散动作」的统一自回归训练（它叫 Native VLA），把动作 Token 化后塞进同一个序列；第二阶段在共享主干上加一个 Flow Matching 的 Action Expert 输出连续动作；另有一条 1.0-AR 路线全程走自回归解码。</li>
+    <li><b>部署层</b>：Lite（可反复微调）/ Nano（算力受限）两个小版本，配 XInfer 推理服务；上层再套一个 XR Harness 做长时程任务的规划—执行—反馈闭环。</li>
+  </ul>
+
+  <p>先把量级摊开，判断它站在什么位置（数字全部来自原文）：</p>
+
+  <table>
+    <tr><th>维度</th><th>数值</th><th>为什么这个数重要</th></tr>
+    <tr><td>无机器人数据 : 真机数据</td><td>约 10 : 1，效果接近纯真机</td><td>这是整篇的成本主张：贵的数据只买 1/10</td></tr>
+    <tr><td>UMI 轨迹自动检查项</td><td>20 多项（逆运动学可行性、平滑性、高频抖动、位姿不连续、视觉质量、6-DoF 位姿精度）</td><td>「无机器人采集」的代价全部转移到了这一步</td></tr>
+    <tr><td>语言标注层级</td><td>4 层：Task / Subtask / Action / Segment</td><td>一句「装进信封」学不会开信封，层级是补丁</td></tr>
+    <tr><td>动作序列 Scaling 实验</td><td>10M ~ 1B 参数的自回归 Transformer，固定动作表示与学习目标</td><td>证明「动作预测」本身能吃到算力，且不与视觉语言输入耦合</td></tr>
+    <tr><td>ManipArena 真机评测</td><td>15 项任务（10 执行 + 5 语义）× 10 次，总分 1500；14 项领先或并列</td><td>不针对评测微调，考的是预训练本身</td></tr>
+    <tr><td>语义类任务成功率</td><td>78%（0.5 版 20%，π0.5 44%）</td><td>差距最大的一项，也是最能说明「主干通用能力」的一项</td></tr>
+    <tr><td>开放任务评测</td><td>377 次真机 → 312 个独立任务 → 47 个簇；平均 6.45/10，零样本 55.1%</td><td>自由出题下的真实水位，别只看精心设计的 15 项</td></tr>
+    <tr><td>分拣任务适配成本</td><td>用预训练约 10 小时任务数据；不用预训练需 1000 小时以上</td><td>全文最有商业含义的一个数</td></tr>
+    <tr><td>跨站点保持率</td><td>新站点保留原站点 90% 以上的速度与成功率；对照组下降超 90%</td><td>「换个车间就废」是落地第一大死因</td></tr>
+    <tr><td>部署效率</td><td>Nano 在单张 Blackwell 消费级 GPU 上服务 18 台机器人；推理加速 4 倍以上</td><td>决定单台机器人的 BOM 成本</td></tr>
+  </table>
+
+  <div class="box good">
+    <b>一句话定位：</b>它在回答的问题不是「VLA 怎么更强」，而是<b>「一条人类经验，凭什么能变成机器人的训练信号」</b>。全文所有设计——10:1 混采、20 项体检、四层标注、Ego 视频改走生成式监督、状态与控制命令解耦——都是这一个问题的不同侧面。理解这一点，后面那些看似零散的工程细节才会连成一条线。
+  </div>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：五步公理链，从「数据很贵」推到「所以必须分层」</h2>
+
+  <p>先别看它做了什么，先把约束条件摆出来。具身智能的成本结构是被三条硬约束决定的，任何方案都绕不开：</p>
+
+  <div class="step">
+    <div class="t">公理 1：动作标签只能从「真的动过」里来</div>
+    <div class="d">模型要学的是「看到这个画面，我的手该怎么动」。这个「怎么动」的答案，只存在于真正执行过的记录里。视频里能看见手在动，但看不见电机收到了什么指令。所以<b>有动作的数据 = 真机 + UMI，没动作的数据 = 海量人类视频</b>。前者精确但每一小时都要人和设备，后者免费但缺最关键的标签。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 2：监督信号的精度必须匹配数据的可信度，否则就是在教模型学噪声</div>
+    <div class="d">UMI 数据是「人手拿夹爪」采的，位姿靠视觉估计。一段看起来流畅的演示，位姿一旦跳变，记录下来的动作就跟真实运动对不上；轨迹超出目标机械臂可达范围，机器人根本复现不了。所以<b>「无机器人采集」省下的成本，必然以「清洗成本」的形式还回来</b>——这就是那 20 多项检查存在的原因，不是工程洁癖。而且噪声要分两类：场景和动作方式的自然变化是<b>有益</b>的（帮泛化），位姿跳变、错误动作、时间错位是<b>有害</b>的（教坏观测—动作映射）。一刀切地清洗会把前者也洗掉。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 3：动作要进大模型，就必须变成 token；一变成 token 就必然丢精度</div>
+    <div class="d">语言模型能吃下整个互联网，是因为分词几乎不损失语义。机器人动作是连续数值，高频控制下一小段就包含几十个时间点 × 十几个维度。逐点逐维转 token，序列会长到没法自回归。所以必须压缩。<b>但压缩率、重建精度、以及对多模态学习的友好度，三者互相拉扯</b>——压得狠，精细动作没了；压得松，序列太长、机器人等不起。这是一个没有免费午餐的三角。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 4：语义和动作必须共享一套表征，否则「理解」和「执行」永远是两套系统</div>
+    <div class="d">「把颜色相同的物体放在一起」这句话，模型得先认出物体、理解颜色关系、排出顺序，再控制机械臂和夹爪。如果视觉语言是一个模型、动作是另一个模型，中间那道接口就是所有误差的汇聚点。所以要把动作塞进预训练，让动作数据和图文数据一起去塑造同一套表征——<b>这才是「Native VLA」和「VLM 后面接个策略头」的本质区别</b>。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理 5：具身模型的价值单位不是分数，是「达到可用水平所需的现场数据小时数」</div>
+    <div class="d">买方不关心你在自建榜单上多少分，他关心「我这个车间要跑起来，还得再采多久数据、再花多少钱」。所以<b>一切设计最终都要折成这个数</b>。原文那句「10 小时 vs 1000 小时」之所以是全文最重的一句，就是因为它把技术叙事翻译成了采购语言。同理，「跨站点保留 90% 以上」也是同一把尺子在量迁移性。</div>
+  </div>
+
+  <p><b>推论：</b>把这五条串起来，方案几乎是唯一的——数据必须按信息含量分层使用（对应公理 1、2），动作表示必须分层压缩（公理 3），动作与图文必须共享主干（公理 4），而所有设计都要能被「适配小时数」检验（公理 5）。WALL-OSS-1.0 的每一个具体选择，都能对应回上面某一条。反过来看，哪些方案会失败也就清楚了：<b>只堆真机数据的</b>（成本线性爆炸）、<b>把人类视频硬转成机器人动作的</b>（公理 2 的噪声问题无法回避）、<b>把动作当外挂模块的</b>（公理 4 那条接口永远是瓶颈）。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：数据先分层，模型再分层，部署最后分层</h2>
+
+  <h3>一、数据侧：不是「多采」，是「按可信度分流」</h3>
+
+  <p>四类数据各走各的路，这是全文最值得抄的工程决策：</p>
+
+  <table>
+    <tr><th>数据类型</th><th>有什么</th><th>缺什么</th><th>怎么用</th></tr>
+    <tr><td>真机遥操作</td><td>图像 + 机器人状态 + 控制命令</td><td>贵、场景受限</td><td>直接动作监督；同时提供「状态↔命令」对应关系</td></tr>
+    <tr><td>UMI 手持夹爪</td><td>夹爪位姿轨迹 + 开合 + 视频</td><td>没有真实执行器的控制命令</td><td>只学「运动状态」，不学「命令」；先过 20 多项体检</td></tr>
+    <tr><td>人工接管纠错</td><td>失败前后的状态 + 人的修正动作</td><td>只在策略卡住时才产生</td><td>补「模型自己踩到的坑」，还从错误前同一状态额外采错误执行做对照</td></tr>
+    <tr><td>人类 Ego 视频</td><td>丰富场景与行为</td><td>没有可靠动作标签</td><td>不走动作监督，改走生成式监督（预测未来画面）</td></tr>
+  </table>
+
+  <p>其中两个细节特别值得停下来看：</p>
+
+  <ul>
+    <li><b>UMI 和真机能混，靠的是「运动状态 / 控制命令」的解耦。</b>UMI 记录的是夹爪走到哪、怎么走（运动状态），真机记录的是电机收到什么（控制命令）。同一段轨迹，改变「哪些量作为条件、哪些量作为预测目标」，就能拼出四种任务：只预测运动状态、状态与命令联合预测、给历史状态和命令预测未来状态（正向动力学）、给运动状态反推命令（逆向动力学）。<b>一个 Action Expert，四套监督，同一份参数</b>——这是把异构数据塞进一个模型的真正接口。</li>
+    <li><b>人手持夹爪 ≠ 机械臂能到。</b>人能靠身体和手腕调整姿态，机械臂有工作空间、关节限位、碰撞约束。所以 UMI 轨迹必须先验证逆运动学可行、运动平滑、无高频抖动、位姿连续、视觉质量与 6-DoF 精度达标。<b>这一步不是可选项，它是「不用机器人采数据」这张支票的兑付条件。</b></li>
+  </ul>
+
+  <p>标注也一样在解决「时间尺度对不上」的问题。一句「把纸装进信封」是目标，模型却要学会折纸、开信封、插入三个动作；只给目标，模型得自己猜语言和局部动作的对应；只给短动作，又丢了整体意图。所以做成 Task / Subtask / Action / Segment 四层：<b>任务级给目标，动作级和片段级给每一步的落点</b>。同一条轨迹因此既能教「要干什么」，也能教「这一步怎么动」。</p>
+
+  <h3>二、模型侧：动作先当 token 学，再当连续量生成</h3>
+
+  <p>训练分两个阶段，这个划分是整篇的骨架：</p>
+
+  <div class="step">
+    <div class="t">第一阶段：把动作变成一种「可以预测的符号」</div>
+    <div class="d">用改进版 X-Tokenizer 把连续轨迹压成分层的离散码，然后和语言、图文数据一起做统一的自回归训练。关键设计有三个：①<b>分层残差</b>——第一层学粗粒度动作结构，后面几层只补重建细节，避免「一层量化把细节一次抹平」；②<b>动作特征与同一时刻的视觉语言特征对齐，并预测下一时刻的视觉语言特征</b>——这是逼动作 token 携带语义，而不只是数值；③<b>联合训练时 Tokenizer 冻结</b>——不让它在多任务里漂移，否则码本和主干的语义会互相拖。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第二阶段：在共享主干上加一个连续动作专家</div>
+    <div class="d">主干继续吃图像和指令，Action Expert 通过共享注意力拿到这份上下文，用 Flow Matching 从噪声一步步生成一段连续轨迹（Action Chunk）。架构上叫 MoT（Mixture of Transformers）：<b>理解归理解，生成归生成，但注意力是通的</b>。同时保留第一阶段的自回归路径（1.0-AR：时间压缩 + 分层残差 + 因果解码器），两条路并行探索。</div>
+  </div>
+
+  <p>还有一个很巧的训练技巧：<b>一份视觉语言上下文，服务多个轨迹训练块</b>。先编码一次图像和指令，然后让多个轨迹块共享这份编码，每块独立采样不同的预测任务、历史长度、预测范围、动作前缀、以及流匹配所需的噪声与时间条件；块与块之间用注意力掩码互相隔离。<b>大白话：一次读题，同时做几道不同的练习题</b>。这直接解决了「异构数据怎么在一个 batch 里共存」——UMI 状态预测、真机状态+命令、不同长度的轨迹，都能塞进同一套框架。</p>
+
+  <h3>三、部署侧：动作生成必须和「机器人还在动」这件事对齐</h3>
+
+  <p>这是最容易被论文忽略、却决定能不能上线的一段。Action Chunking 一次生成未来一段动作，片长要权衡：太短要频繁推理，太长就按旧观测行动。真正的麻烦在<b>片段交接处</b>——模型生成下一段时，机器人还在执行上一段，等新片段算完，机器人已经走出去一段了。如果新动作不考虑这段已确定的运动，前后就会跳。</p>
+
+  <p>它的做法是：训练时就让 Action Expert 学会「根据长度可变、无噪声的动作前缀生成后续轨迹」；部署时这段前缀就是已经下发、还在执行的命令，前缀固定不动，只生成它后面的部分，新片段自然从前缀边界接着走。1.0-AR 则用增量解码，让「生成—解码—执行」三者重叠，一段准备好就先跑。</p>
+
+  <p>再往下就是把模型做小：Lite 面向需要反复微调的下游任务，Nano 面向算力受限场景。原文给的结果是 Nano 配 XInfer 后，<b>单张 Blackwell 消费级 GPU 支持 18 台机器人</b>。这句话的含金量在于它把「一个模型服务多机」变成了调度问题，而不是「再买一台 A100」的问题。</p>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>核心公式：三个式子，对应「怎么生成动作」「动作怎么变成符号」「生成时怎么接得上」</h2>
+
+  <div class="fml">
+    <div class="name">① Flow Matching 目标：不猜答案，先学「从噪声走到答案的那条直线」</div>
+    \[ \mathcal{L}_{\mathrm{FM}}(\theta)=\mathbb{E}_{t\sim U(0,1),\;a_0\sim p_{\text{noise}},\;c}\Big[\big\lVert v_\theta(a_t,t,c)-(a_1-a_0)\big\rVert^{2}\Big],\qquad a_t=(1-t)a_0+t\,a_1 \]
+    <div class="exp">\(c\) 是视觉语言上下文（当前画面 + 指令），\(a_0\) 是一段随机噪声轨迹，\(a_1\) 是真实动作片段，\(a_t\) 是两者按时间 \(t\) 插值出来的中间点，\(v_\theta\) 是要学的速度场。<b>大白话：</b>别让网络一步猜出动作，而是告诉它「从噪声到真动作，这一小步该往哪个方向挪」。训练时方向是已知的（真动作减噪声，就是那条直线的方向），所以这是个有标准答案的回归题；推理时从纯噪声出发，按这个方向走几小步，就落到一段合理的动作轨迹上。<b>为什么用这个而不是直接回归动作？</b>因为一段动作可能有多种合理走法（绕过杯子左边或右边都行），直接回归会把它们平均成「从杯子里穿过去」；学速度场保留了这个多峰性，采样时走哪条由噪声起点决定。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 分层残差动作 token：粗的用少码，细的用残差补</div>
+    \[ a \;\approx\; \sum_{k=1}^{K}\mathcal{D}_k(z_k),\qquad z_k=\mathcal{E}_k\!\left(a-\sum_{j<k}\mathcal{D}_j(z_j)\right) \]
+    <div class="exp">\(\mathcal{E}_k\) 是第 \(k\) 层编码器，\(\mathcal{D}_k\) 是对应解码器，\(z_k\) 是该层的离散码，\(K\) 是层数。<b>大白话：</b>第一层只记「手大致往哪个方向走」，解码出来先拼个大概；然后拿真轨迹减掉这个大概，剩下的是「差在哪儿」，交给第二层记；再减再记，一层层补。<b>为什么要分层而不是一次量化？</b>因为一次量化必须同时决定「整体形状」和「毫米级细节」，码本容量会被细节吃掉，粗结构反而失真。分层之后，粗结构用很少的码就能表达准确，细节按需追加——<b>这正是「压缩率、重建精度、语义友好度」那个三角的一个折中点</b>。另外它还顺手做了两件事：动作特征和同一时刻的视觉语言特征对齐、并预测下一时刻的视觉语言特征，逼这些码携带语义而不仅是数值。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 实时分块：前缀不许改，只续写后面</div>
+    \[ a^{\text{new}}_{1:H}\sim p_\theta\big(\cdot\mid o_t,\;\ell,\;a^{\text{pre}}_{1:m}\big),\qquad a^{\text{pre}}_{1:m}\equiv\text{已下发但尚未执行完的命令} \]
+    <div class="exp">\(o_t\) 是当前观测，\(\ell\) 是语言指令，\(a^{\text{pre}}_{1:m}\) 是机器人还在执行的那 \(m\) 步命令，\(H\) 是新片段的长度。<b>大白话：</b>机器人不会站着等你算完。它已经在跑上一段指令了，所以新算出来的这段必须承认「前 \(m\) 步已经定了、改不了」，只负责接在后面。这就是把「推理有延迟」这个物理事实写进条件里，而不是假装延迟不存在。<b>不这么做会怎样？</b>新片段从零开始生成，起点和机器人当前实际位置差了一截，接上去就是一次抖动或急停——在真机上表现为「动作抽一下」，在视频里几乎看不出来，但在产线上就是撞机风险。这也是 1.0-AR 那条路要用增量解码的原因：让生成、解码、执行三者重叠，把等待时间藏进执行时间里。</div>
+  </div>
+
+  <p class="src">补充一个不进公式但很关键的实验：它固定动作表示和学习目标，训了一组 10M 到 1B 参数的自回归 Transformer 专门预测离散动作序列，<b>不带任何视觉或语言输入</b>，结果验证交叉熵随算力持续下降。这个实验的意义是排除了「涨点只是因为视觉语言主干变强」——<b>动作预测这一件事本身，就能吃 scaling</b>。这也解释了为什么值得把动作塞进预训练，而不是当成一个外挂头。</p>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：它把「数据口径」提到了架构前面，但证据链是自证的</h2>
+
+  <p><b>真正值得带走的三点：</b></p>
+
+  <ul>
+    <li><b>把「数据口径」当成第一性问题。</b>绝大多数 VLA 论文的叙事是「我们的架构更好」，这篇的叙事是「我们先把数据分了层，架构只是顺着数据长出来的」。这个顺序更接近工程现实——数据决定了模型能学到什么，架构只决定学得多快。</li>
+    <li><b>用「适配小时数」当价值单位。</b>10 小时 vs 1000 小时、跨站点保留 90% vs 下降 90%，这两个数比任何榜单分数都更能回答「值不值得买」。这是买方视角，不是论文视角。</li>
+    <li><b>两个可直接复用的工程 trick：</b>一是分层残差 token（解决压缩率与细节的矛盾），二是状态/命令解耦（让 UMI 和真机在同一套监督下共存，还顺手把正逆动力学变成同一批参数的两个任务）。这两个跟具体架构无关，换任何 VLA 都能用。</li>
+  </ul>
+
+  <p><b>但必须说清它的局限，而且这些局限不小：</b></p>
+
+  <div class="box bad">
+    <b>证据链是自证的。</b>这是厂商技术博客，<b>没有 arXiv 号、没有开源权重、没有第三方复现</b>。核心评测集 ManipArena 由团队参与构建，评测协议、对手（π0.5）的训练数据预算是否对齐、是否同等微调，原文都没有交代。语义类 78% 对 44% 这么悬殊的差距，在没有协议细节的情况下，更可能是「主干规模 + 数据配比」的结果，而不是「动作设计」的功劳——而原文没有做把这个因素拆开的消融。
+  </div>
+
+  <ul class="crit">
+    <li><b>「10 小时 vs 1000 小时」缺分母。</b>原文说的是「在该任务及其设定的可用水平下」——可用水平是多少成功率、多少节拍、允许多少人工干预，全都没给。只给倍数不给绝对值，无法判断这个 100 倍是稳健结论还是特定任务下的巧合。</li>
+    <li><b>10:1 的混采比例是单点结论。</b>这是特定任务、特定本体、特定夹爪下测出来的。换一个自由度更高的手、换一个需要力控的任务，无机器人数据能不能顶到 10:1 完全未知。原文自己也留了口子：「并不假设无机器人数据能够消除真机数据的作用」。</li>
+    <li><b>开放任务的水位其实不高。</b>377 次真机评估、平均 6.45/10、零样本成功率 55.1%，多步骤顺序执行 66.5%、双臂协作 57.7%。翻译一下：<b>自由出题时，接近一半的指令是失败的</b>，多步骤和双臂这两类离生产还差得远。前面 15 项里 14 项领先很好看，但那 15 项是设计过的。</li>
+    <li><b>Ego 视频那条路的收益无法验证。</b>让没有动作标签的视频去学「未来画面怎么变」，本质是学视觉动力学，不等于学会了动作。这部分到底贡献了多少，只能靠内部消融，外部看不到。</li>
+    <li><b>「通用模型也能生成动作」这一段暴露了真问题。</b>原文提到 NVIDIA Astranomy 在 RoboLab 里测 Astra 直接生成动作，能承担抓放决策，但受限于推理延迟与成本。这其实是在问：<b>如果通用大模型能直接出动作，具身基模的护城河到底在哪？</b>原文给的答案是「连接本体、连续动作、物理反馈」——这个答案合理，但它是定性的，没有实验支撑。</li>
+  </ul>
+
+  <div class="box good">
+    <b>怎么读这篇最划算：</b>把它当<b>工程决策记录</b>读，不当<b>性能证明</b>读。值得抄的是「数据按可信度分流」这套口径、以及 UMI 数据必须先过体检这条纪律；不必抄的是它的排名和倍数——那些需要等第三方复现，或者等你自己的场景实测。如果你想判断它对你有没有用，别看 ManipArena 的 1500 分，去看两件事：你的场景里有没有「只有画面没有动作」的存量数据（有的话第二条路对你有效），以及你换一个新工位要采多少小时（这才是它真正卖的东西）。
+  </div>
+</section>
+
+<footer>
+  本篇由公众号「human five」2026-11-23 文章《Astra 之后，我们还需要具身基模吗？》整理<br>
+  数据与引述均来自原文（自变量机器人 WALL-OSS-1.0 技术博客），未额外查阅论文或第三方复现 · 3W1H 与第一性原理拆解仅供理解框架使用
+</footer>
+
+</div></body>
+</html>
