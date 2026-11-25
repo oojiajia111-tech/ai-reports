@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>三个旋钮，拧完从模仿学习到 Token VLA 的谱系｜3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<div class="head">
+  <h1>三个旋钮，拧完了从模仿学习到 Token VLA 的整条谱系<span class="sub">机器人策略教程精读 · 统一目标 max E[w·log π(a|o)] · 数据从哪来 / 权重怎么给 / 动作怎么表示 · BC → GMM → ACT → DAgger → PPO → RT-2 → FAST → OpenVLA-OFT</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-24</div>
+    <div><b>材料性质</b> 教学讲座整理（五部分 + Q&amp;A，非单篇论文，无实验数据）</div>
+    <div><b>一句话</b> 七个看似不相干的方法，其实只是在同一条式子上各拧了一个旋钮</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>从行为克隆、ACT、DAgger 一路排到 PPO、RT-2、OpenVLA、FAST，看起来是七八个互不相干的方法，其实都在解同一个式子：在某个数据分布上，最大化加权对数似然。差别只有三个旋钮——数据从哪来（专家示范、自己 rollout、还是两者混合）、每个样本给多少权重（一律平等、按优势加权、还是只对失败样本加权）、动作怎么表示（连续回归、混合分布、还是离散 token）。旋钮一转就是一篇新论文。看懂这三个旋钮，读任何新方法都能先问一句：它动的是哪一个，代价付在哪。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据公众号「human five」2026-11-24 发布的《Robot Policies：从 Imitation Learning 到 Token VLA》整理。<b>原文是一份系统性教学讲座的整理稿</b>，分五部分（Physical AI 基础、动作表示与控制、模仿学习、深度强化学习、Token VLA），末尾附四组 Q&amp;A。<b>它不提出新方法、不报告新实验，价值在把散落的方法串成一条可比较的谱系。</b>文中公式按原文转写（原文为讲义式 LaTeX），符号做了统一；方法名与关键结论均来自原文，未额外引入数据。
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：把整条谱系压成一条式子，三个旋钮</h2>
+
+  <p>先把最基本的东西摆清楚。<b>一个策略（Policy）做的事只有一件：看到当前观测，选一个动作。</b>机器人执行动作，世界改变，新的观测回来，再选下一个动作。<b>这个闭环就是全部。</b>原文把它写成 Goal → Policy → Action → Environment → Observation → Policy。</p>
+
+  <p>训练比执行难，是因为训练时策略还不成熟，完不成任务，所以必须有反馈告诉它「刚才那个动作有多好」。<b>而这份讲义的核心贡献，是指出所有方法都可以从同一个目标函数出发理解：</b></p>
+
+  <div class="box good">
+    <b>在数据分布 q 上，最大化「权重 w 乘以对数似然」的期望。</b>原文由此直接提出三个问题，这三个问题就是本文说的三个旋钮：<br>
+    <b>① 训练数据从哪里来？</b>（专家示范 / 策略自己跑出来的 rollout / 两者混合）<br>
+    <b>② 每个样本应该有多大的权重 w？</b>（一律平等 / 按优势加权 / 只对失败样本加权）<br>
+    <b>③ 动作该怎么表示、策略该用什么结构？</b>（连续回归 / 混合分布 / 离散 token / 动作块）
+  </div>
+
+  <p>用这三个旋钮去对照，谱系立刻清楚了：</p>
+
+  <table>
+    <tr><th>方法</th><th>动的是哪个旋钮</th><th>要解决什么</th><th>留下了什么代价</th></tr>
+    <tr><td>Behavior Cloning</td><td>数据 = 专家示范</td><td>最简单，等于监督学习</td><td>多模态动作被平均，可能正好撞上障碍</td></tr>
+    <tr><td>GMM</td><td>动作 = 混合分布</td><td>保留多种正确动作模式</td><td>训练数据没覆盖的地方仍然乱</td></tr>
+    <tr><td>BC-RNN</td><td>输入 = 历史观测</td><td>能判断夹爪是上升还是下降</td><td>只解决「看得懂趋势」，不解决分布偏移</td></tr>
+    <tr><td>ACT</td><td>输出 = 动作块 + 潜变量 z</td><td>抑制复合误差，z 承载「风格」</td><td>块内不能及时纠偏</td></tr>
+    <tr><td>Temporal Ensembling</td><td>后处理 = 融合重叠块</td><td>切换动作块时不突变</td><td>依赖固定控制频率</td></tr>
+    <tr><td>DAgger / HG-DAgger</td><td>数据 = 自己跑的 + 专家标注</td><td>治复合误差的根</td><td>要求专家在线</td></tr>
+    <tr><td>PPO</td><td>数据 = 自己 rollout，权重 = 优势</td><td>不需要示范</td><td>奖励函数难设计</td></tr>
+    <tr><td>RT-2</td><td>动作 = 离散 token</td><td>复用语言模型的序列能力</td><td>量化损失，精度不可逆</td></tr>
+    <tr><td>FAST</td><td>token 序列 = 压缩后的</td><td>序列太长的问题</td><td>压缩丢细节</td></tr>
+    <tr><td>OpenVLA-OFT</td><td>动作 = 连续头 + 动作块</td><td>拿回精度与速度</td><td>放弃逐 token 的序列建模优势</td></tr>
+  </table>
+
+  <p><b>这张表能读出一个规律：每一次「改进」都是拿一个旋钮换另一个旋钮，没有免费的午餐。</b>这不是巧合，是同一个目标函数下的预算守恒——数据、权重、表示三者互相补偿。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：两个绕不过去的矛盾</h2>
+
+  <h3>矛盾一：为什么非要 token 化，token 化又为什么一定掉精度</h3>
+  <p>Token 化的动机很功利：<b>大语言模型已经被证明极擅长处理 token 序列</b>，把它改造成「预测动作 token」比重头训一个机器人模型便宜太多。这就是 RT-2 的思路——图像过 ViT，与语言指令一起进 LLM，输出动作 token。</p>
+  <p>代价也是结构性的：<b>机器人动作是连续值，要变成 token 就得量化。</b>把某一维的取值范围切成若干 bin，落在同一个 bin 里的不同数值，解码后就再也分不开了。<b>原文说得很直白：Quantization 会带来精度损失，原本不同的连续数值可能被映射到同一个 bin。</b></p>
+  <div class="box bad">
+    <b>这不是工程瑕疵，是表示层的根本矛盾：用离散符号去承载连续物理量，必然有量化误差。</b>而机械臂恰恰对精度最敏感——差 2 毫米，抓取就变成推动。<b>所以后面所有工作都在这个矛盾上打补丁</b>：FAST 压缩序列（让长动作块塞得进去），OpenVLA-OFT 干脆换回连续 Action Head（放弃 token 换精度）。<b>钟摆在「复用语言模型」和「保住物理精度」之间来回摆，至今没有停。</b>
+  </div>
+
+  <h3>矛盾二：动作块的两难——连不连贯 vs 能不能纠偏</h3>
+  <p>ACT 引入动作块（Action Chunking）：一次预测未来若干步动作，而不是一步一步预测。<b>好处是抑制复合误差</b>——单步小误差不会立刻被下一步放大。<b>但代价立刻出现</b>：如果一次预测 16 步就把 16 步全执行完，中途杯子被挪了，机器人也来不及反应。</p>
+  <p>所以实际做法是「预测 16 步，只执行前 4 步，重新观测再重新预测」。<b>原文特意区分了两个概念：Horizon 是一次预测多少步，Executed Steps 是执行多少步后重新规划。</b>这两个数的比值，本质上就是「连贯性」与「响应性」的兑换率。</p>
+  <div class="box good">
+    <b>讲义里的 Q&amp;A 有一段很值得记：</b>提问者问「动作块一次生成更多动作，计算量不是更大吗，怎么会提高推理速度？」讲者的回答是——<b>动作块的主要目的不是提速，而是避免误差累积。</b>这是个诚实的澄清：<b>很多被当作「效率优化」的技术，真实动机是稳定性，只是顺带省了几次模型调用。</b>
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：一条方法链是怎么长出来的</h2>
+
+  <p>把五部分的内容按因果串起来，能看出每一步都是被上一步的失败逼出来的。</p>
+
+  <h3>第一步：从「平均动作」的灾难开始</h3>
+  <p>行为克隆最朴素：给定观测预测专家动作，用均方误差训。但任务往往有多种正确解法——绕过障碍可以走左边也可以走右边。<b>如果训练数据里两种都有，MSE 会把它们平均，而平均值可能正好指着障碍物。</b>这是多模态动作分布问题，GMM 的解法是「不预测一个平均值，而是学一个多峰的分布」。</p>
+
+  <h3>第二步：从「看不见趋势」到引入历史</h3>
+  <p>只看当前一帧，没法判断夹爪是在上升还是下降。<b>BC-RNN 用循环网络整合过去观测，这是最便宜的时序建模。</b>但它只解决了「趋势判断」，没解决「训练分布和实际执行分布不一致」。</p>
+
+  <h3>第三步：复合误差，以及两条治疗路线</h3>
+  <p>专家示范全是成功轨迹，策略自己跑却会出错，而<b>训练数据里没有「出错后怎么救」的样本</b>，于是小错滚成大错。两条路线：</p>
+  <ul>
+    <li><b>数据侧（DAgger / HG-DAgger）</b>：让策略自己跑，专家在现场给正确动作标注，或直接接管纠正，把这些状态补进数据集。<b>本质是「把策略会去的状态也纳入训练分布」。</b></li>
+    <li><b>表示侧（ACT）</b>：一次预测一段动作，减少「每一步都重新决策」带来的累积。</li>
+  </ul>
+
+  <h3>第四步：没有专家怎么办，转向强化学习</h3>
+  <p>RL 换了个思路：<b>不告诉机器人每一步做什么，只告诉它什么结果是好的。</b>数据来自策略自己的 rollout，权重由优势函数决定——比预期好的动作提高概率，比预期差的降低。PPO 再加一道保险：<b>用 clip 限制单次更新的幅度，避免一次高奖励把策略带崩。</b></p>
+  <p>但 RL 的老问题原封不动：<b>奖励函数怎么设计。</b>讲义列了三条缓解路径——用参考运动数据做先验（AMP）、让语言模型生成奖励函数、让 VLM 看执行视频打分，再让 Agent 基于历史实验自动迭代奖励函数。</p>
+
+  <h3>第五步：回到 VLA，以及 Token 化的整条分支</h3>
+  <p>VLA 的野心是<b>把互联网规模训练出来的视觉语言能力，迁移成动作能力</b>：输入图像和指令，输出机器人动作。从 RT-2 的离散 token，到 Open X-Embodiment 的跨本体数据，到 OpenVLA 的开放权重（DINOv2 + SigLIP 视觉编码，7B，自回归解码慢），到 FAST 的三步压缩（DCT 变换 → 量化 → BPE），再到 MolmoAct 的三阶段生成（深度 token → 视觉轨迹 → 动作 token）。<b>每一环都在回答同一个问题：怎么让语言模型那套序列机器，更省更准地吐出动作。</b></p>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>核心公式：三个式子覆盖全谱系</h2>
+
+  <div class="fml">
+    <div class="name">① 统一目标：所有方法都是它的特例</div>
+    \[ \max_{\theta}\; \mathbb{E}_{(o,a)\sim q}\Big[\, w \cdot \log \pi_{\theta}(a \mid o) \,\Big] \]
+    <div class="exp">\(q\) 是训练数据分布，\(\pi_{\theta}\) 是策略，\(w\) 是每个样本的权重。<b>大白话：</b>在「你手上这些数据」上，让模型更可能吐出「数据里那些动作」。<b>三个旋钮全在这个式子里：</b>换 \(q\) 就是换数据来源（专家示范 vs 自己 rollout），换 \(w\) 就是换加权方式（均匀 / 优势 / 失败门控），换 \(\pi_{\theta}\) 的输出形式就是换动作表示（连续 / 混合 / 离散 token）。<b>看起来简单的式子，装下了整条谱系。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 优势与 PPO：RL 那一支的权重从哪来</div>
+    \[ A(s,a) = Q(s,a) - V(s), \qquad L^{\text{CLIP}}(\theta) = \mathbb{E}_{t}\Big[\min\big(r_{t}(\theta)A_{t},\; \mathrm{clip}(r_{t}(\theta), 1-\epsilon, 1+\epsilon)A_{t}\big)\Big] \]
+    <div class="exp">\(r_{t}(\theta) = \pi_{\theta}(a_{t}\mid s_{t}) / \pi_{\theta_{\text{old}}}(a_{t}\mid s_{t})\) 是新旧策略的概率比。<b>大白话：</b>第一式问「这个动作比平均水平好多少」——比预期好就加分，差就减分，这就是那个 \(w\)；第二式的 clip 是保险丝：<b>单次更新里策略不许挪超过 \(\epsilon\)，防止一个高奖励样本把模型带偏。</b>原文的说法很形象——好不容易学会的行为了，别一次更新就毁掉。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ FAST 三步压缩：token 序列为什么能变短</div>
+    \[ a_{t:t+H} \;\xrightarrow{\;\text{DCT}\;}\; c_{1:K} \;\xrightarrow{\;\text{量化}\;}\; \hat{c}_{1:K} \;\xrightarrow{\;\text{BPE}\;}\; \text{tokens} \]
+    <div class="exp">\(H\) 是动作块长度，\(K\) 是保留的频率成分数（\(K \ll H\)）。<b>大白话：</b>相邻关节目标变化平滑，所以先用余弦变换把「一段动作」转成「几个频率成分」——大部分高频细节直接扔掉；再量化成整数；最后用 BPE 把常出现的模式合并成一个 token。<b>三步下来序列短了一个量级，代价是动作细节被抹平。</b>原文点得很准：压缩和量化会损失部分动作细节——<b>这跟 Token 化的量化损失是同一类账，只是记在序列长度这一栏。</b></div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：这张地图好用，但别当领土</h2>
+
+  <h3>三个值得带走的东西</h3>
+  <ol>
+    <li><b>「三个旋钮」是一个可复用的定位工具。</b>看到任何新方法，先问：它换的是数据来源、样本权重，还是动作表示？<b>如果三个都没换，那它只是工程优化，不是方法创新。</b>这个判断标准比读 abstract 快得多，也狠得多。</li>
+    <li><b>每次改进都是交换，不是白捡。</b>ACT 拿「块内不可纠偏」换「复合误差下降」，FAST 拿「动作细节」换「序列长度」，OpenVLA-OFT 拿「序列建模优势」换「精度与速度」。<b>论文里通常只写前半句，后半句要自己补。</b></li>
+    <li><b>Token VLA 的根本矛盾被讲透了：</b>它想用离散符号承载连续物理量，量化误差是这个选择的必然结果，不是实现 bug。<b>所以「换更大的模型」治不了它，「换表示」才治得了。</b></li>
+  </ol>
+
+  <h3>四个必须打的折扣</h3>
+  <ol>
+    <li><b>这是一份讲义，不是综述论文。</b>它没有系统检索、没有横向实验、没有方法间的定量对比。<b>「三个旋钮」的统一框架是讲者的事后归纳，不是原作者的自我陈述</b>——用它做理解工具很好，用它做「方法等价性」的论证则不够。</li>
+    <li><b>框架的代价是抹平工程细节。</b>比如 Temporal Ensembling 的有效性依赖固定控制频率，一旦控制频率随负载变化，融合权重就得重算；这些约束在统一框架里看不见，但真机上会要命。</li>
+    <li><b>Q&amp;A 部分暴露了领域内的共识缺口。</b>比如「动作块到底提不提速」这个问题，讲者的回答是「主要不是为提速」——<b>说明连从业者对同一技术的动机判断都不一致</b>。读论文时看到「提升效率」的说法，值得多问一句是真测量还是顺带的。</li>
+    <li><b>原文没有真机数据。</b>所有论断都停在方法描述层。<b>想在真机上选型，这份材料只能给方向，不能给结论。</b></li>
+  </ol>
+
+  <div class="box good">
+    <b>一句话总结：</b>它没提出新东西，但做了一件更实用的事——<b>把一条看起来越来越碎的谱系，压缩成一个目标函数加三个旋钮。</b>最值得带走的两点：<b>① 任何机器人策略方法，都可以被定位成「在 q、w、π 三处做了哪个选择」，这个方法迁移性极强；② 从 BC 到 Token VLA 的每一次跃迁，本质都是在「数据便宜程度」与「表示的物理保真度」之间重新找平衡——所谓路线之争，多半是这两项预算怎么分配之争。</b>
+  </div>
+</section>
+
+<footer>
+  本篇由公众号「human five」2026-11-24 文章《Robot Policies：从 Imitation Learning 到 Token VLA》整理<br>
+  原文为五部分教学讲座整理稿（含 Q&amp;A），非学术论文 · 公式按讲义转写并统一符号 · 未做实验复现 · 3W1H 与第一性原理拆解仅供理解框架使用
+</footer>
+
+</div>
+
+</body>
+</html>
