@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>压缩与智能：智能是同一个等式｜3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>智能就是压缩，这不是一句俏皮话，是同一个数学对象<span class="sub">greene.sh《Compression and Intelligence》· 交叉熵就是平均惊讶度 · 两部分编码 vs 序贯编码 · Qwen3 三个尺寸实测 bpb · 柯尔莫哥洛夫复杂度与所罗门诺夫归纳 · 离线智能 vs 在线智能</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-24</div>
+    <div><b>正文规模</b> 约 8000 字译文 · 原文为 greene.sh 长文（2026-07-25，纪念所罗门诺夫百年诞辰）</div>
+    <div><b>一句话</b> 压缩率不是分数，它是在给「你学到了多少可复用的规律」称重</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>「智能就是压缩」这句话常被当作一句聪明的废话，但它其实是一个能算的等式：交叉熵损失就是平均惊讶度，单位是比特，预训练就是在最小化「描述这份数据需要多少比特」。压缩能做小，只可能是因为抓到了数据里可复用的结构；而把抓到的结构用到没见过的新数据上，就叫泛化。所以压缩率不只是排行榜上的一个数，它是给「你学到了多少规律」称重。文章把这个等式推到底，还顺手拆掉一个幻觉：把模型权重也算进成本之后，小数据集上大模型根本压不过 zstd——模型的聪明是有摊销门槛的。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据公众号「human five」2026-11-24 发布的译文《压缩与智能：压缩、智能与LLM》整理，原文为 greene.sh 的长文《Compression and Intelligence》（2026-07-25 发表，以纪念雷·所罗门诺夫诞辰一百周年）。<b>文中所有压缩数字（gzip 3.0250 bpb、zstd 2.4707 bpb、Qwen3-0.6B 0.8024 bpb 等）与实验设定均取自原文</b>；公式按原文转写，符号做了统一以便阅读。<b>这是一篇论述性长文而非实验论文，它的价值在框架，不在新方法。</b>
+</div>
+
+<section id="what">
+  <h2><span class="tag">What</span>是什么：一张 2×2 的表，把「压缩」和「智能」对上了号</h2>
+
+  <p>先把最容易混淆的地方说清：<b>这篇讲的「压缩」不是 zip 那个压缩。</b>zip 找的是重复的字节串，它不需要「理解」任何东西；这里讲的压缩是<b>「给每个可能出现的符号分配一个概率，然后用这个概率去编码它」</b>——概率给得越准，码越短。<b>而「给概率」这件事，恰好就是预测。</b>于是压缩和预测在数学上是同一件事的两面。</p>
+
+  <p>文章把这个对应关系铺成一张 2×2 的表，四个格子分别是：</p>
+
+  <table>
+    <tr><th></th><th>压缩侧（怎么算码长）</th><th>智能侧（衡量什么能力）</th><th>理论极限</th></tr>
+    <tr><td><b>离线</b></td><td>两部分编码：数据码流 + 模型权重 + 程序</td><td>冻结权重在留出数据上的表现（benchmark、留出损失）</td><td>柯尔莫哥洛夫复杂度 K(X)</td></tr>
+    <tr><td><b>在线</b></td><td>序贯编码：从零开始学，码长 = 损失曲线下面积 + 程序</td><td>学习效率，也就是数据效率 / 样本效率</td><td>所罗门诺夫归纳</td></tr>
+  </table>
+
+  <p>这张表里有两个词是全文的骨架，必须先定义清楚：</p>
+  <ul>
+    <li><b>复用（Reuse）</b>：程序里的一个比特，必须通过多次减少数据编码成本，才能收回自己的成本。<b>只能省一次的东西，压不进去。</b></li>
+    <li><b>提取（Extract）</b>：这个「可复用的结构」是从过去的经验里挖出来的，而不是从当前数据里当场抄的。</li>
+  </ul>
+
+  <p>于是「泛化」有了一个操作性定义，而且不用引入任何哲学：<b>用从先前经验里学到的知识，对新颖数据作出准确建模的能力。</b>它有两个维度——<b>比「什么都不懂」的均匀模型省了多少比特</b>，以及<b>新数据离旧经验有多远</b>。这两个维度缺一个，话就说不完整。</p>
+
+  <div class="box good">
+    <b>为什么这个框架值得认真对待：</b>因为它把「模型是不是真聪明」这个模糊问题，换成了一个可计算的量——<b>码长</b>。而且它同时解释了三个平时分散的现象：<b>Scaling Law 为什么成立</b>（更大的模型是更强的压缩器）、<b>benchmark 为什么可以被「买」</b>（训练数据贴近测试集等于偷看答案）、<b>为什么数据墙会卡住进步</b>（数据集不能再变大时，唯一能提升的就是学习者的数据效率）。
+  </div>
+</section>
+
+<section id="why">
+  <h2><span class="tag">Why</span>为什么：三个必须解决的矛盾，否则这套说法立刻崩塌</h2>
+
+  <h3>矛盾一：只算数据码流，硬编码就能赢</h3>
+  <p>最直接的漏洞：<b>我可以写一个程序，把整个数据集逐字写在代码里，运行就原样输出。</b>这样「数据码流」的长度是 0——压缩率无限好。<b>所以任何诚实的压缩核算都必须把程序本身算进去</b>，这叫两部分编码。<b>而 LLM 的「程序」不只是几百行采样代码，还包括那几百 MB 到几十 GB 的权重。</b>这一步一算，画风就变了：<b>Qwen3-0.6B 权重按 FP8 是 600 MB，用它去压 1 MB 的新闻文本，两部分码长是 4801 bpb——比 gzip 的 3.02 差了三个数量级。</b></p>
+  <div class="box bad">
+    <b>这不是在拆自己的台，而是在划清适用边界。</b>原文的结论很干脆：模型权重的成本是固定成本，<b>只有当数据足够大，这个成本才能被摊薄</b>。对 Qwen3-0.6B，需要大约 <b>2.88 GB</b> 的数据才能摊到比 zstd 更优。<b>换句话说：大模型不是「在任何尺寸上都更强的压缩器」，它是「在大数据上才划算的压缩器」。</b>这个限定条件，很多引用「智能即压缩」的文章都悄悄省略了。
+  </div>
+
+  <h3>矛盾二：模型输出的是概率，不是一个文件</h3>
+  <p>第二个技术坎：<b>就算你有一个很好的预测器，怎么把它变成比特流？</b>这一步靠算术编码——它能把「每个符号的概率」几乎无损地转成码长，<b>对长序列，实际码长与理论下界的差距只有几个比特。</b>关键是：<b>这条通道是通用的</b>，任何预测器都能接上去。<b>这在工程上意味着「预测能力」和「压缩能力」之间没有额外损耗</b>，两者的差距纯粹来自预测本身的好坏。<b>理论的优雅之处在这里落地成了可执行的流程。</b></p>
+
+  <h3>矛盾三：离线分数可以被「买」，而且很难查出来</h3>
+  <p>这是全文最锋利的一段，也是它区别于普通综述的地方。<b>评测一个冻结模型在 benchmark 上的分数，隐含假设是「这个分数来自泛化」——但训练数据的选择过程是不可见的。</b>原文引用了一项测量：31 个开放权重模型，压缩能力与基准表现呈近乎线性关系，<b>但 Qwen 系列在数学推理上的表现，显著超出了它的压缩能力所能解释的水平。</b>作者的原话很难听但很准：<b>这说明预训练阶段可能接触过 GSM8K 训练数据、MATH 训练数据，甚至 MATH 测试数据。</b></p>
+  <p>更说明问题的是一个对照：<b>在 GSM8K 训练集上遥遥领先、在测试集上只有普通水平</b>——这不是泛化，这是记住了题。<b>所以「线性关系成立」和「个体分数不可全信」这两件事同时为真。</b>前者支持把压缩当智能指标，后者警告你别把某一次跑分当结论。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">How</span>怎么做：四步，从「惊讶度」走到「不给权重也能解码」</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：把概率翻译成「惊讶度」，单位是比特</div>
+    <div class="d">模型对下一个符号给出概率 p，取负以 2 为底的对数，得到的就是「惊讶度」。<b>这一步是整个框架的翻译器：概率越接近 1，惊讶度越接近 0（不意外，几乎不用花比特）；概率越小，惊讶度越大（很意外，要花很多比特去描述）。</b>把所有位置的惊讶度加起来，就是编码整段文本理论上需要的比特数。<b>因为实际训练用自然对数，损失的单位是纳特，除以 ln2 就换算成比特——这个换算看似琐碎，但它是「损失」和「码长」之间唯一的桥。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：接上算术编码，让概率真正变成文件</div>
+    <div class="d">有了每步的概率，用算术编码把它转成比特流，<b>长序列上的额外开销只有几个比特。</b>原文用 Qwen3 三个尺寸（0.6B / 4B / 14B）在三个数据集上做实测：1 MB 的 2026 年新闻、239 KB 的教皇通谕、1.4 MB 的《芬尼根守灵夜》。<b>选前两个是因为它们晚于模型权重发布时间一年，基本可以排除「背过」；选第三个是因为它语言极其个人化，传统压缩器最吃亏。</b>结果最小模型也全面优于 gzip 与 zstd。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：把权重的账算进去——才发现赢不了</div>
+    <div class="d">把「数据码流 + 权重 + 程序」加起来重算一遍，<b>画风立刻反转：三个数据集上，即使是 0.6B 的模型，两部分码长也在几千到几十万比特每字节的量级，远高于 gzip 的 3 上下。</b>原因很朴素：<b>你要还原 1 MB 的文本，却得先搬一份 600 MB 的字典过去。</b>于是有了那条摊销结论：<b>把新闻数据当作同分布的样本外推，0.6B 模型大约需要 2.88 GB 数据才能摊到优于 zstd。</b>这不是失败，这是把「什么条件下大模型才划算」算清楚了。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：换个玩法——干脆不传权重，让两端一起从零学</div>
+    <div class="d">既然权重太贵，那就<b>不传权重</b>。<b>编码器和解码器约定同一个随机种子，各自本地生成完全相同的初始参数；然后用确定性训练（比如确定性的 CUDA 内核），每传一个数据批次，两端各做一步相同的梯度更新。</b>这样两端始终持有同一份权重，<b>权重本身一个比特都不用传。</b>代价是：<b>传输成本从「存权重的钱」变成了「学习曲线的面积」——前期模型很笨，每一步都很贵。</b>实测用 2.2 亿参数的字节级模型，在三个数据集上都以微弱优势超过 gzip 和 zstd（最明显的是《芬尼根守灵夜》，因为它语义密集，传统算法最难压）。</div>
+  </div>
+
+  <div class="box good">
+    <b>两种玩法的成本结构，一句话说清：</b>离线压缩付的是<b>存权重的钱</b>（固定成本，靠大数据摊薄），在线压缩付的是<b>学会这些权重的钱</b>（前期贵，靠学习效率降低）。<b>所以选择标准不是「哪个更强」，而是「你的数据集够不够大」——数据集大到能摊平权重，就用预训练模型；数据集很小，就让模型在数据上现学。</b>原文给的那个不等式就是这么来的：<b>只要「学习付出的额外代价」小于「存权重的代价」，在线就更划算。</b>
+  </div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">Formula</span>核心公式：五个式子，把「智能」写成一个码长</h2>
+
+  <div class="fml">
+    <div class="name">① 从惊讶度到码长：交叉熵损失就是平均比特数</div>
+    \[ L_{\theta}(X) = \sum_{t=1}^{T} -\log_2 p_{\theta}\big(x_t \mid x_{<t}\big), \qquad \ell(\theta) = \frac{1}{T}L_{\theta}(X) \]
+    <div class="exp">\(p_{\theta}\) 是模型给出的下一个符号概率，\(x_{<t}\) 是此前所有符号，\(L_{\theta}(X)\) 是编码整段序列所需比特数的理论下界，\(\ell\) 是它的平均值。<b>大白话：</b>模型对每个字的「意外程度」加起来，就是描述这段话要花多少比特。<b>而预训练用的交叉熵损失，正好就是这个平均值。</b>所以「训练模型」和「造一个压缩器」不是两件事——<b>你每降一点 loss，就是在让这个压缩器变强一点。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 两部分编码：把权重的账算进来</div>
+    \[ L_{\text{offline}}(X) = \underbrace{L_{\theta}(X)}_{\text{数据码流}} + \underbrace{b\,|\theta| + c}_{\text{程序}} \]
+    <div class="exp">\(b\) 是每个参数占的比特数，\(|\theta|\) 是参数数量，\(c\) 是采样与编码代码的长度。<b>大白话：</b>要还原数据，你得同时拥有「压缩后的比特流」和「解码用的程序」——<b>而对这个程序来说，模型权重占了绝大部分。</b>0.6B 参数按 FP8 就是 600 MB，这就是那个 4801 bpb 的来源。<b>这个式子最大的价值是它把「不公平的比较」堵死了</b>：不算程序，硬编码数据集永远赢。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 序贯编码：不传权重，传「学习的代价」</div>
+    \[ L_{\text{online}}(X) = \sum_{t=1}^{T} -\log_2 p_{\theta_{t-1}}\big(x_t \mid x_{<t}\big) + c \]
+    <div class="exp">注意下标：这里用的是 <b>\(\theta_{t-1}\)</b>，也就是「在看到第 t 个符号之前」的模型。<b>大白话：</b>每读一个字，先按当前水平猜它、付出相应比特，然后立刻用这个字更新一次模型，再读下一个。<b>这样模型是「边学边压」，两端只要约定同一个随机种子和确定性训练，就能保持同步。</b>权重不用传，但<b>总码长等于损失曲线下的面积</b>——前期猜不准，那是真金白银的比特。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 什么时候该用在线：一个不对称的比较</div>
+    \[ L_{\text{offline}}(X) = L_{\theta_T}(X) + b|\theta| + c, \qquad L_{\text{online}}(X) = L_{\theta_T}(X) + R(X) + c \]
+    \[ \text{在线更优} \iff R(X) < b\,|\theta| \]
+    <div class="exp">\(R(X)\) 是「累积遗憾」：在线编码相对于「直接用最终权重编码」多付的那部分，几何上就是<b>损失曲线与最终损失水平之间的那块面积</b>。<b>大白话：</b>把两个方案相同的部分（用最好的权重压数据 + 代码）减掉，剩下的差别只有一个——<b>离线要付「存权重的钱」，在线要付「学会权重的钱」。</b>谁的账更小就用谁。<b>这条不等式是整个框架里最实用的一句：它告诉你「小数据别用大模型压」不是经验，是算术。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑤ 理论天花板：所罗门诺夫归纳为什么是最优的</div>
+    \[ M(x_{\le t}) = \sum_{p:\,U(p)=x_{\le t}*} 2^{-|p|}, \qquad L_{M}(X) \le L_{q}(X) + K(q) + O(1) \]
+    <div class="exp">\(U\) 是一台通用单调机，\(p\) 是能输出该前缀的程序，\(2^{-|p|}\) 意味着<b>程序每长一个比特，权重就减半</b>；\(q\) 是任意一个可计算预测器，\(K(q)\) 是它的柯尔莫哥洛夫复杂度。<b>大白话：</b>把所有可能的程序按「越短越可信」加权混合起来做预测，<b>这个混合预测器的码长，永远不会比任何具体预测器差太多——差的部分正好是那个预测器自己的复杂度。</b><b>这就是「能最好压缩过去的程序，会主导对未来的预测」的严格版本，也是奥卡姆剃刀的信息论重述：描述最短的模型就是最好的模型。</b></div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">Worth</span>价值与局限：它给的是一把尺子，不是一个结论</h2>
+
+  <h3>它真正贡献了什么</h3>
+  <ul>
+    <li><b>把「智能」从形容词变成了一个可称重的量。</b>而且不是比喻式的称重：<b>交叉熵的单位本来就是比特，算术编码能把它变成真实文件，两部分编码能把程序成本算进去。</b>这条链路每一环都可执行。<b>于是「这个模型是不是真的学到了结构」有了一个不依赖 benchmark 的独立检验方式</b>——这在一个「跑分可以被训练数据污染」的时代，价值极高。</li>
+    <li><b>给了「数据墙」一个精确的解释。</b>规模扩张有三个旋钮：模型更大、数据更多、学得更快。<b>当高质量数据接近上限时，前两个旋钮失效，只剩第三个。</b>而第三个恰好就是在线智能——数据效率。<b>文章引用的估计是：人类学会语言和开车所需的经验量，比模型少三到六个数量级。</b>这不是一句感慨，它是在说「还有巨大空间，但方向必须是效率，不是堆量」。</li>
+    <li><b>把「离线智能」和「在线智能」分开，是一个非常实用的区分。</b>离线看的是最终产物（权重 + benchmark），在线看的是学习过程（损失曲线下面积）。<b>原文举的例子很锋利：一个训练到一半的高效学习器，和一个已经训完的低效学习器，在离线指标上可能分不出来；但看序贯码长，前者明显更聪明。</b>对做模型选型的人来说，这提醒你别只看终点分数。</li>
+    <li><b>它诚实地承认了指标可以被操纵。</b>「benchmark 分数可以被买」这一段，是很多同类文章会绕开的话题。<b>而它给出的解法不是换一个更好的 benchmark，而是换一个更硬的量：在模型知识截止之后的新数据上的压缩率。</b>这个思路可以直接用——<b>拿晚于模型发布日期的语料去压，是一个低成本、难作弊的体检。</b></li>
+    <li><b>把「复用」这个词讲透了。</b>「程序里的一个比特，必须通过多次减少数据编码成本才能收回自己」——<b>这句话解释了为什么「记住答案」不算学到东西。</b>硬编码也能让数据码流归零，但它省下的每一个比特都在程序里花掉了，净收益为零。<b>只有能被反复复用的结构才有净收益，而复用就是泛化的另一个说法。</b></li>
+  </ul>
+
+  <h3>必须打的折扣</h3>
+  <ol class="crit">
+    <li><b>理论极限全都不可计算。</b>柯尔莫哥洛夫复杂度 K(X) 是不可计算的（要穷举所有程序，而有些永不停止），所罗门诺夫混合分布也是不可计算的（要枚举所有程序）。<b>所以这两个「理想极限」只能当参照系，不能当指标。</b>文章自己也承认这点，但读者容易把它当成「可以逼近的目标」——<b>实际能算的只有「用某个具体模型压某个具体数据集」的那一个数。</b></li>
+    <li><b>缺一个关键度量：经验与新数据的「距离」。</b>文章明说，目前没有信息论度量能衡量先前数据与新颖数据之间的距离。<b>而这个距离恰恰决定了「泛化」这个词能不能用</b>——同样节省 1000 比特，在「几乎一样的分布」上省和「完全陌生的分布」上省，含义天差地别。<b>没有这把尺子，「压缩即智能」就只能在没有分布漂移的场合成立。</b></li>
+    <li><b>两个指标都不是尺度不变的。</b>原文举了一个很具体的反例：在训练量 1/3 处，学习者 B 的损失和序贯码长都更低；到 2/3 处，B 的损失更高但码长仍更短；到全部数据时，A 在两个指标上都反超。<b>这意味着「谁更聪明」的结论会随你训多久而翻转。</b>解法是转向损失曲线的几何参数（下限 H、指数 β、系数 B），但<b>这些参数本身也是拟合出来的，而且依赖损失曲线是否真的服从幂律。</b></li>
+    <li><b>所有压缩实验都在小数据上做，且模型没为压缩调过。</b>1 MB、239 KB、1.4 MB——<b>这三个数据集的规模比任何真实语料小几个数量级</b>，也正因如此，权重的固定成本才那么刺眼。而序贯编码实验用的是 2.2 亿参数的字节级小模型、所有数据集共用一套超参。<b>「微弱优势超过 gzip」这个结果，说明的是方法可行，不是方法好用。</b></li>
+    <li><b>「线性关系」的样本有偏。</b>那项被反复引用的测量用了 31 个开放权重模型，且<b>在算压缩比时把模型权重排除了</b>，理由是「数据集够大就能摊销」。<b>这个处理在方法论上是必要的简化，但它也意味着那条漂亮的直线，画的不是「完整描述长度」与智能的关系，而是「数据码流长度」与智能的关系。</b>两者不是一回事。</li>
+    <li><b>它是一篇论述，不是一次实验。</b>框架漂亮、推导干净、引文扎实，<b>但它没有提出新方法，也没做新的大规模验证。</b>它的价值是「让你换一个角度看已有的东西」，而不是「让你明天就能用上一个新工具」。<b>把它当教科书的一章读，别当论文的创新点读。</b></li>
+    <li><b>对「数据效率是唯一出路」这个结论，要留一分怀疑。</b>文章的逻辑是：数据到顶 → 只能提效率。<b>但这个推理默认了「模型架构与训练目标不变」。</b>如果下一步的突破来自全新的学习范式（比如能在交互中主动获取信息的智能体），那「数据效率」这个框架就只是描述旧范式的一把尺子。<b>尺子很好，别把它当路。</b></li>
+  </ol>
+
+  <div class="box good">
+    <b>一句话总结：</b>它没有证明「智能就是压缩」，它做的是更扎实的一件事——<b>把「学到结构」这件事，翻译成了一个可以称重的量，然后诚实地标出了这个量在哪儿会失真。</b>最值得带走的两个判断：<b>① 能压缩，说明抓到了可复用的结构；能用到没见过的地方，才叫泛化——这两句话合起来才是完整的定义，缺一半就会把「背下来」误认成「学会了」；② 任何关于「模型多聪明」的说法，先问一句「程序成本算了吗、数据是不是模型见过的、训了多久」——这三个问题一问，大半的结论会缩水，但剩下的那部分才是真的。</b>
+  </div>
+</section>
+
+<footer>
+  本篇由公众号「human five」2026-11-24 文章《压缩与智能：压缩、智能与LLM》整理<br>
+  原文：Compression and Intelligence（greene.sh，2026-07-25，纪念雷·所罗门诺夫诞辰一百周年）· 数据与引述均来自译文与原文，未额外做实验复现 · 3W1H 与第一性原理拆解仅供理解框架使用
+</footer>
+
+</div>
+</body>
+</html>

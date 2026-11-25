@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>两阶段后训练：天花板是老师｜3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>蒸馏的天花板是老师，掀掉天花板得请环境当第二个老师<span class="sub">Two-Stage Post-Training · 多教师在线策略蒸馏 MOPD · Flow-SDE 转成高斯转移 · 失败门控蒸馏 β=10 · GR00T N1.5 / QwenVLA / π0.5 · 清华</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-24 · arXiv 2611.31850</div>
+    <div><b>关键词</b> 后训练 · 在线策略蒸馏 · 流匹配 · PPO · 失败门控 · 样本效率</div>
+    <div><b>一句话</b> 学会老师只在老师走过的那条路上有效，要超过老师必须让环境打分</div>
+    <div><b>方向</b> 模型性能</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>多教师蒸馏看起来很划算：把一堆专家会的东西灌进一个模型。但它有个结构性天花板——你拟合的是老师的速度场，而「任务成功」不是速度场的函数。老师在某个状态只走过一条路，你学得再像，也只是复制它的水平。这篇论文分两阶段：先用蒸馏把专家能力快速并进来，再用强化学习去撞那个天花板。难点是奖励太稀疏，于是它把老师在失败轨迹上的稠密指导当成补课——成功的回合不碰，失败的回合才请老师。五个设置全部超过教师聚合成功率，厨房任务高出 12.83 个点，而且用一半的环境步数就赢过直接强化学习。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据 <b>arXiv 2611.31850 的正文（HTML 版）</b>撰写，作者 Jiaming Zhang、Yao Lyu、Haoning Wang、Yongjun Chen、Liping Zhang、Shengbo Eben Li，清华大学数学科学系与车辆与运载学院，2026-11-24 提交。<b>关键数字（LIBERO 98.75%、Kitchen 75.50%、GR1 49.83%、样本效率 160 万步对 2000 万步、β=10）均取自原文表格与图</b>；公式按原文 LaTeX 转写，符号做了统一。
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：把「整合专家」和「超过专家」拆成两件事，分两次做</h2>
+
+  <p>这篇要解决的问题很具体：<b>你手上有一堆按任务训好的专家，想合成一个多任务模型，还要比每个专家都好。</b>现有三条路各有硬伤——监督微调会把示范里没有的状态留成盲区；强化学习能自己探索，但奖励稀疏，且多任务下各任务进步速度不一致；多教师蒸馏能把专家并进来，但它本质是「模仿」，<b>模仿的上限就是被模仿者。</b></p>
+
+  <p>它的做法是把这件事拆成两段，用同一个底座串起来：</p>
+
+  <ul>
+    <li><b>阶段一 MOPD（多教师在线策略蒸馏）</b>：让模型自己在环境里跑，跑出来的状态交给对应任务的冻结教师打「速度标签」，模型去拟合。<b>关键在「自己的状态」——不是拿示范喂它，所以不会出现分布失配。</b></li>
+    <li><b>阶段二 教师引导的 RL</b>：在阶段一的检查点上继续，用 PPO（配 Flow-SDE 采样）拿环境奖励优化；<b>同时只在失败轨迹上叠加教师蒸馏</b>，成功轨迹不加约束。</li>
+  </ul>
+
+  <p>把量级摊开（数字全部来自原文）：</p>
+
+  <table>
+    <tr><th>维度</th><th>数值</th><th>为什么这个数重要</th></tr>
+    <tr><td>LIBERO 平均成功率</td><td>GR00T N1.5 <b>98.75%</b>（教师 97.25 / SFT 95.65）</td><td>第一次在多任务上整体压过教师聚合</td></tr>
+    <tr><td>RoboCasa Kitchen</td><td><b>75.50%</b>（教师 62.67 / SFT 64.08）</td><td>+12.83 点，全文最大增益</td></tr>
+    <tr><td>RoboCasa GR1</td><td>49.83%（教师 49.08）</td><td>微弱超过，且 Articulated 反而从 52.00 掉到 45.33</td></tr>
+    <tr><td>样本效率</td><td>阶段一 160 万步 94.8% &gt; 直接 RL 2000 万步 89.4%</td><td>少一个数量级的交互，分数还更高</td></tr>
+    <tr><td>完整框架</td><td>LIBERO 1000 万步 97.8%；Kitchen 2000 万步 67.3%</td><td>约为直接 RL 一半步数即超过</td></tr>
+    <tr><td>失败门控系数 β</td><td>10.0（LIBERO 与 RoboCasa 同值）</td><td>β=100 早期快、β=1000 过早平台</td></tr>
+    <tr><td>消融（LIBERO 2000 万步）</td><td>完整 98.7% / 仅 OPD 96.4% / 仅 RL 96.9%</td><td>两项都必要，不是叠加而是互补</td></tr>
+    <tr><td>训练成本</td><td>8× H100 80GB，冻结视觉语言主干，只训动作模块</td><td>后训练而非重训，落地的现实路径</td></tr>
+  </table>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：三条路各有硬伤，而硬伤都在「目标函数选错了」</h2>
+
+  <h3>矛盾一：SFT 学的是示范的分布，部署时走的是自己的分布</h3>
+  <p>监督微调的损失是在示范数据上算的。<b>但模型一旦上环境，它访问到的状态就不再属于示范分布</b>——一个小偏差会把机器人带到示范里从没出现过的位置，那里没有标签可学，误差开始滚雪球。<b>这不是数据不够多的问题，是「训练分布 ≠ 部署分布」的结构性问题。</b>加数据只能推迟它，不能消除它。</p>
+
+  <h3>矛盾二：RL 的目标是对的，但信号太稀</h3>
+  <p>强化学习直接在「任务成功」上优化，<b>方向完全正确</b>。可是多任务下它有两个毛病：<b>奖励稀疏导致信用分配困难</b>（几十步动作里不知道哪一步做对了），<b>各任务学习进度不均衡</b>（有的任务早就满分，有的还在零）。合在一起训，梯度会被已经学会的任务占满。</p>
+
+  <h3>矛盾三：蒸馏的目标是「像老师」，不是「把事做成」</h3>
+  <p>这是全文最关键的一句诊断：<b>降低蒸馏误差并不等于提高闭环成功率。</b>老师在某个状态给出一个速度，那是它自己的策略在那个状态下的取值；<b>你把速度拟合得再准，也只是复制了它的行为，而不是复制了它的结果。</b>更麻烦的是多教师还会打架——不同教师对共享参数产生冲突更新，<b>某些任务提升的代价是另一些任务下降</b>（这就是 GR1 的 Articulated 从 52.00 掉到 45.33 的原因）。</p>
+  <div class="box bad">
+    <b>还有一个被很多人忽略的技术障碍：流式模型没法像语言模型那样逐 token 匹配分布。</b>自回归模型的在线蒸馏很直接——每个位置对齐下一个 token 的概率分布就行。但流匹配模型是<b>通过积分一整条速度场来生成连续动作块</b>，中间没有「词」可以对。<b>所以它必须先把确定性 ODE 换成随机 SDE，让每一步变成一个高斯转移，才有「分布」可比。</b>这个转换不是技巧，是方法能否成立的前提。
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：四步，从「拟合速度」走到「只在失败处补课」</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：先认清预训练在干什么——它在回归一个速度场</div>
+    <div class="d">流匹配的生成过程是一条常微分方程：从高斯噪声出发，沿着模型预测的速度场积分若干步，落到动作块上。训练目标就是<b>条件流匹配</b>：把噪声和真实动作线性插值出一个中间点，让模型预测「从噪声指向动作」的那个速度。<b>这一步没有任何新东西，但它是后面所有推导的地基</b>——因为速度场是可加的、可差的，才能谈「教师的速度减学生的速度」。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：阶段一——用「自己的状态 + 老师的答案」做蒸馏</div>
+    <div class="d">每一轮，模型在自己的策略下用 ODE 采样出轨迹，<b>把中间的去噪状态记下来，然后在这些状态上请对应任务的教师给出速度</b>，用均方误差拟合。<b>两个细节决定成败：</b>① 对去噪状态做 stop-gradient，<b>不让梯度顺着去噪链回传</b>（否则雅可比连乘会让训练极不稳定）；② 教师的监督因此只改「当前这一步往哪走」，不改「早期去噪步把点放在哪」。<b>结果是：模型在自己的分布上学，但学的是老师的判断。</b>这正是它比 SFT 快的原因。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：阶段二——把 ODE 换成 SDE，让「像不像老师」变成一个 KL</div>
+    <div class="d">关键转换：给 ODE 加一个与时间相关的高斯噪声项，得到 Flow-SDE。<b>加噪声不是为了让探索更随机，而是为了让每一步转移变成一个「有均值和方差的高斯分布」——有了分布，才能算散度。</b>然后有个漂亮的结果：<b>因为学生和教师的转移共享同一个协方差，速度差的均方误差正比于两者转移分布的 KL 散度。</b>也就是说，<b>「拟合速度」和「匹配分布」在这个设定下是同一件事</b>，只差一个与噪声尺度有关的系数。<b>这一步把自回归蒸馏的直觉平移到了连续生成上。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：失败门控——成功的不碰，失败的才请老师</div>
+    <div class="d">联合目标就三项：PPO 的策略损失、价值损失、以及<b>乘上「1 减成功标志」的蒸馏项</b>。<b>成功能拿到的回合，蒸馏项直接归零；只有失败的回合，老师的稠密指导才生效。</b>为什么这么设计？因为<b>老师的水平就是天花板，你对已经成功的轨迹继续施加教师约束，等于把刚撞开的天花板又压回去</b>。消融印证了这一点：不加门控（全样本蒸馏）早期学得更快，但<b>随后进入平台期，最终低于失败门控</b>。<b>它买的是后期，不是前期。</b></div>
+  </div>
+
+  <div class="box good">
+    <b>一句话把两阶段的分工说清：</b>阶段一解决「怎么快」——用教师的稠密监督替代稀疏奖励，把 2000 万步压缩到 160 万步；阶段二解决「怎么高」——用环境奖励突破教师上限，教师只在卡住的地方扶一把。<b>缺了阶段一，阶段二变成又慢又难的直接 RL；缺了阶段二，模型只是个蒸馏出来的「平均值」，永远到不了教师之上。</b>
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：四个式子，从速度回归走到「失败才补课」</h2>
+
+  <div class="fml">
+    <div class="name">① 条件流匹配：预训练到底在拟合什么</div>
+    \[ \mathcal{L}_{\mathrm{CFM}}(\theta) = \mathbb{E}_{(c,a),\,\epsilon,\,u}\Big[\ \big\|\, v_{\theta}(z_u,u\mid c) - (a-\epsilon) \,\big\|^{2}\ \Big],\qquad z_u=(1-u)\epsilon+u\,a \]
+    <div class="exp">\(c\) 是观测条件（图像 + 语言 + 本体感觉），\(a\) 是真实动作块，\(\epsilon\) 是高斯噪声，\(u\in[0,1]\) 是插值系数，\(z_u\) 是噪声与动作之间的中间点。<b>大白话：</b>在噪声和动作之间随便取一个点，问模型「从这里往动作那边该走哪个方向」，标准答案就是「动作减噪声」。<b>注意目标不是「动作」而是「方向」</b>——这正是它能和后面教师的速度直接相减的原因。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 阶段一的蒸馏损失：在自己的状态上，学老师的判断</div>
+    \[ \mathcal{L}_{1}(\theta) = \sum_{k=1}^{K}\alpha_{k}^{(1)}\,\mathbb{E}_{\mathcal{B}_{k}(\mathrm{sg}[\theta])}\Big[\big\|\, v_{\theta}(\mathrm{sg}[z_j],u_j\mid c) - \mathrm{sg}[v_{T_k}(z_j,u_j\mid c)]\,\big\|^{2}\Big] \]
+    <div class="exp">\(T_k\) 是第 k 个任务组的冻结教师，\(\mathrm{sg}[\cdot]\) 是停止梯度，\(\mathcal{B}_k(\mathrm{sg}[\theta])\) 表示<b>采样分布来自学生自己的策略</b>。<b>大白话：</b>轨迹由学生自己跑（所以不偏离自己的分布），标签由老师来打（所以有稠密监督）。<b>两个 stop-gradient 是保命的：</b>一个堵住「通过改早期去噪步来移动监督点」的作弊路径，一个让教师永远是个不会动的靶子。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 阶段二的蒸馏项：一个「速度差」等于一个 KL</div>
+    \[ \ell_{\mathrm{SDE}}(\theta) = \frac{\Delta u_j}{g(u_j)^{2}}\Big(1+\frac{u_j\,g(u_j)^{2}}{2(1-u_j)}\Big)^{2}\,\big\|\, v_{\theta}-v_{T_k}\,\big\|^{2} \;=\; \frac{2}{D}\,D_{\mathrm{KL}}\big(p_{\theta}^{j}\,\big\|\,p_{T_k}^{j}\big) \]
+    <div class="exp">\(g(u)\) 是噪声调度，\(\Delta u_j\) 是离散步长，\(D\) 是动作维度，\(p^j\) 是第 j 步的高斯转移。<b>大白话：</b>左边是「速度差乘一个随时间变化的系数」，右边是「两个高斯分布之间的 KL」。<b>等号的意义：你以为你在做回归，其实你在做分布匹配。</b>系数 \(\big(1+u g^2/2(1-u)\big)^2\) 说明<b>越靠近生成末段（u→1），同样的速度差被放大得越厉害</b>——也就是末段那几步最不能错，这符合直觉：最后几步决定动作落点。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 联合目标：奖励 + 价值 + 只对失败生效的补课</div>
+    \[ \mathcal{L}_{2}(\theta,\phi) = \mathbb{E}\big[\ell_{\mathrm{PPO}}(\theta)+c_{V}\ell_{V}(\phi)\big] + \beta\sum_{k}\alpha_{k}^{(2)}\,\mathbb{E}\big[(1-S)\,\ell_{\mathrm{SDE}}(\theta)\big] \]
+    <div class="exp">\(S=1\) 表示该回合成功，\((1-S)\) 就是失败门控掩码，\(\beta=10\) 是蒸馏强度。<b>大白话：</b>成功的回合只受「把事做成」的奖励驱动，失败的回合额外接受老师的指导。<b>这个式子里最值钱的是那个 \((1-S)\)</b>——它把「教师的角色」从「模仿对象」改成了「卡住时的助推器」。<b>而 \(\beta\) 的敏感性也在这里暴露：β=100 时早期涨得快但后期平，β=1000 直接过早饱和</b>——<b>老师扶得太多，学生就学不会自己走。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑤ PPO 的概率比：用 SDE 的高斯密度算，而不是用 token 概率</div>
+    \[ r_{\theta} = \frac{p_{\theta}^{j}(z_{j+1}\mid z_{j},c)}{p_{\theta_{\mathrm{old}}}^{j}(z_{j+1}\mid z_{j},c)},\qquad \ell_{\mathrm{PPO}} = -\min\big(r_{\theta}\hat{A},\ \mathrm{clip}(r_{\theta},1-\epsilon,1+\epsilon)\hat{A}\big) \]
+    <div class="exp">\(\hat{A}\) 是广义优势估计，\(\epsilon=0.2\) 是裁剪范围。<b>大白话：</b>PPO 需要知道「新策略产生这个动作的概率比旧策略大多少」，自回归模型直接读 softmax 就行；<b>流式模型没有 softmax，所以只能借 SDE 每步的高斯密度来算这个比值。</b>这就是「把连续生成改造成可做 RL 的形式」的全部秘密——<b>也是这类方法最脆弱的一环：概率比依赖噪声调度的选择，换一个 \(g(u)\) 结论就可能变。</b></div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限：它证明了「蒸馏 + RL」不是叠加，而是接力</h2>
+
+  <h3>它真正贡献了什么</h3>
+  <ul>
+    <li><b>把「超过教师」从口号变成了表格上的一个数。</b>五个设置全部超过教师聚合成功率：<b>LIBERO 98.75 对 97.25、Kitchen 75.50 对 62.67、GR1 49.83 对 49.08</b>。<b>这件事以前很少有人做干净</b>——多数蒸馏工作报告的是「接近教师」，因为理论上你就该被教师上界住。<b>它给出的破法很朴素：让另一个信号（环境奖励）进来。</b></li>
+    <li><b>样本效率的对比是全文最实用的一组数。</b>阶段一 160 万步就达到 94.8%，<b>而直接 RL 跑 2000 万步才 89.4%</b>——<b>十二分之一的交互量，分数还高 5.4 个点。</b>对做机器人的人来说，环境步数就是真机小时数或仿真机时，这个比值直接对应成本。</li>
+    <li><b>「失败门控」这个设计有可迁移的洞察。</b>它说的其实是一件更普遍的事：<b>专家指导在「你已经会了」的地方是负资产。</b>因为专家只是众多可行解里的一个，你一旦成功，再向它靠拢就是把自己拉回它的分布。<b>这条判断适用于任何 teacher-student 场景，包括蒸馏、包括 RLHF 里的参考模型约束。</b></li>
+    <li><b>把流式模型的 RL 做通了，而且给了 KL 的解释。</b>「速度回归正比于转移分布的 KL」这个等式不是装饰——<b>它意味着你可以用最普通的 MSE 实现分布匹配，不必去算复杂的散度。</b>对做 flow / diffusion 策略后训练的人，这是可直接抄的工程结论。</li>
+    <li><b>消融设计得诚实：两项都砍掉都掉点，而且掉的方式不同。</b>2000 万步时完整 98.7%、仅 OPD 96.4%、仅 RL 96.9%。<b>「仅 OPD」和「仅 RL」差不多，但加起来多 2 个点</b>——这说明它们的互补性不在「各自多强」，而在「各自补对方的短板」。</li>
+  </ul>
+
+  <h3>必须打的折扣</h3>
+  <ol class="crit">
+    <li><b>全部实验在仿真里，没有真机。</b>LIBERO、RoboCasa 都是仿真基准，<b>训练与评估同域</b>。而这篇的核心主张之一是「环境奖励能把性能推过教师」——<b>在真机上，奖励从哪来？成功判定靠什么？这个最关键的问题论文没有回答。</b>对比同期的 VLA-MOPD 有真机评估，这是明显短板。</li>
+    <li><b>GR1 上「超过教师」只超了 0.75 个点，而且有一个方向在退。</b>49.83 对 49.08，<b>这个差距在每任务 50 回合的评估噪声范围内</b>。更值得警惕的是 Articulated 从 52.00 掉到 45.33（-6.67）。<b>作者把它归因于多教师参数冲突，但这等于承认：冲突问题没解决，只是被其他方向的增益盖住了。</b></li>
+    <li><b>β 的敏感性说明方法不稳。</b>β=10 后期最好、β=100 早期最好、β=1000 过早饱和。<b>三个数量级的同一个系数，行为差异这么大，意味着换数据集、换模型、换任务数量都得重调。</b>论文没有给调参规则（比如按成功率自适应），<b>这是复现时最容易被卡住的地方。</b></li>
+    <li><b>失败门控依赖二元成功信号，而真实任务常常是「部分成功」。</b>倒水倒了一半、装配到位但没锁紧——<b>这些回合算 S=0，会被当成完全失败去接受教师的全量约束</b>，可能把已经做对的部分也拉回教师的行为。<b>论文没有讨论这个信息损失，也没有软性成功度量的版本。</b></li>
+    <li><b>教师是按任务组手工划分的，分组策略的影响没被分析。</b>RoboCasa 的任务分组由人工按相似性划分，每个任务组配一个教师，权重 α 也是设定的。<b>「分几组、怎么分」对结果的影响完全没有消融</b>——而这在多教师蒸馏里往往比算法本身更影响成绩。</li>
+    <li><b>推理成本没提，但代价可能不小。</b>训练要 8 张 H100、要额外训一个价值网络、每轮还要跑教师前向。<b>论文报的是训练侧成本，没有报部署侧——不过按设计，推理时只有学生，所以这一点算过关。</b>真正的问题是：<b>它冻结视觉语言主干只训动作模块，这意味着上限被主干锁死了。</b></li>
+    <li><b>训练长度受限，长期行为未知。</b>Kitchen 的曲线在数千万步内趋于平台，图里<b>特意省略了 7000 万到 1.3 亿步的区间</b>。省略本身不是错，但<b>它让「会不会后期崩」这个问题无法回答</b>。而 RL 后训练后期崩溃是常见现象。</li>
+    <li><b>它是「后训练」，不是「预训练」。</b>所有成绩都建立在已有的多任务 SFT 检查点上（GR00T N1.5、QwenVLA、π0.5）。<b>换句话说，它解决的是「最后 2 个点怎么拿」，不是「从零怎么训」。</b>把它读成「VLA 训练新范式」会高估它；读成「多任务后训练的标准配方」才准确。</li>
+  </ol>
+
+  <div class="box good">
+    <b>一句话总结：</b>它没有让蒸馏变强，它给蒸馏<b>配了一个能推翻它的上司</b>。最值得带走的是两条判断：<b>① 模仿的上限是被模仿者，想让模型超过老师，必须有第二个不来自老师的信号；② 专家指导要用在卡住的地方，用在你已经成功的地方就是往回拽。</b>而它留下的最大空白也很清楚：<b>这套「环境奖励」在仿真里免费，在真机上昂贵——真机上的奖励从哪来，才是这条路能不能落地的真问题。</b>
+  </div>
+</section>
+
+<footer>
+  论文：Two-Stage Post-Training for Flow-Based Embodied Models via Multi-Teacher On-Policy Distillation · arXiv 2611.31850 · 2026-11-24<br>
+  Jiaming Zhang, Yao Lyu, Haoning Wang, Yongjun Chen, Liping Zhang, Shengbo Eben Li · 清华大学 · 本篇依据正文（HTML 版）撰写
+</footer>
+
+</div>
+</body>
+</html>

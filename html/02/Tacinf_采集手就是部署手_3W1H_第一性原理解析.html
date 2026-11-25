@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tacinf：采集手就是部署手｜3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>触觉数据贵，不是因为传感器贵，是因为「采的那只手」和「干活的那只手」不是同一只<span class="sub">Tacinf · Tabero 仿真基准 · Tacumi 手持采集（低于 2500 美元）· Taco 协同训练 · 力等级 10% / 25% / 100% · π0 与 π0.5 三种触觉适配器 · 26 位作者 / 英伟达 + 港科广 + 剑桥</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-22 · arXiv 2611.29240</div>
+    <div><b>关键词</b> 触觉采集 · 手持夹爪 · 力等级标注 · Real2Sim · sim-to-real 排序相关性</div>
+    <div><b>一句话</b> 把采集的手、仿真的手、部署的手摁成同一副手指，力这个维度才谈得上规模化</div>
+    <div><b>方向</b> 数采</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>给机器人加力感知，卡住的从来不是传感器贵不贵，而是三件事对不上：采集时的手、训练时的仿真、部署时的夹爪，其实是三套不同的接触。你在 A 手上采的动作，换到 B 手上力就错了；你在仿真里标的接触力，回到真机摩擦一变又偏了。Tacinf 的办法是把这三件事摁到同一副手指上：2500 美元的手持夹爪既是采集设备也是部署夹爪，力的大小靠阻抗参数而不是靠人手上的感觉，剩下的靠仿真把位置、物体、背景整个换一遍。于是「力」第一次变成了可以按等级凑量的数据，而不是只能靠老师傅的手感碰运气。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据 <b>arXiv 2611.29240 的正文（HTML 版）与项目页 tacinf.github.io</b> 撰写，作者 Qiwei Wu、Xiangyu Chen、Xin Xiang、Rui Zhang 等 26 人，英伟达 / 港科广 / 剑桥，2026-11-22 提交。<b>关键数字（仿真-真机排序相关 r=0.998、混合数据 20%→60%、LIBERO-like 98%、采集套件低于 2500 美元、推理延迟 150–200 ms）均取自原文</b>；公式按原文转写，个别符号做了归一化以便阅读。
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：不是一套算法，是「采集—仿真—训练—评估」四件套配一副手指</h2>
+
+  <p>先看这篇的篇幅分配，它暴露了作者认为真正的瓶颈在哪。<b>全文四分之三在讲基础设施：用什么夹爪采、怎么标定、仿真里力怎么来、真机和仿真怎么对齐。</b>策略本身只有一小节，用的是现成的 π0 与 π0.5。这个配比就是结论——<b>触觉操作的瓶颈不在模型，在数据的物理一致性。</b></p>
+
+  <p>四件套的名字都带 Tacinf 前缀，各自管一段：</p>
+
+  <ul>
+    <li><b>Tabero</b>：仿真基准。18 个语言条件的基础任务，能按「力等级算不算独立任务」切片，输出视觉 / 触觉图 / marker 位移场 / 接触力四路同步数据，20 Hz 采样。</li>
+    <li><b>VTLA</b>：策略框架。在 OpenPi 上实现 π0 / π0.5，高层预测未来夹爪位姿加六维指尖力设定点，低层用混合控制器把力真正做出来。</li>
+    <li><b>Tacumi</b>：手持采集硬件。电机化扳机 + 平行夹爪 + 指尖视触觉传感器 + Quest 3 头显与手柄追踪 + 腕部相机，整套低于 2500 美元，最低只需单张 4090。</li>
+    <li><b>Taco</b>：协同训练与评估。3DGS 重建工作台、单图生成物体资产、真实种子 + 仿真增广、以及任务对齐的 sim-to-real 评估。</li>
+  </ul>
+
+  <p>把它的量级摊开，判断这套东西站在什么位置（数字全部来自原文）：</p>
+
+  <table>
+    <tr><th>维度</th><th>数值</th><th>为什么这个数重要</th></tr>
+    <tr><td>采集套件成本</td><td>低于 2500 美元，最低单张 RTX 4090</td><td>这是整篇的成本主张：触觉不再是实验室专属</td></tr>
+    <tr><td>力等级</td><td>10% / 25% / 100%，对应 Kp 2000 / 500 / 200 牛每米</td><td>力是被「造」出来的，不是被人演出来的</td></tr>
+    <tr><td>仿真-真机策略排序相关</td><td>8 个变体，Pearson r = 0.998，MMRV = 0.010</td><td>仿真第一次能当「筛子」用，而不是只能当训练场</td></tr>
+    <tr><td>零样本迁移</td><td>仅用仿真触觉数据微调，LIBERO-like 任务成功率至少 98%</td><td>触觉可以在仿真里便宜地造出来</td></tr>
+    <tr><td>数据协同效果</td><td>仅遥操作 20% → 遥操作 + 仿真 + Tacumi 60%（位置与物体双随机）</td><td>三源缺一不可，后面细讲</td></tr>
+    <tr><td>真机推理延迟</td><td>约 150–200 ms，策略与触觉闭环均 20 Hz</td><td>力控做到 20 Hz 才够用，这是硬门槛</td></tr>
+    <tr><td>基础任务数</td><td>Tabero 18 个，每任务 30 条演示；评估每任务 50 次（仿真）/ 20 次（真机力跟随）</td><td>样本量不大，说明方法是「结构省数据」而非「数据堆出来」</td></tr>
+  </table>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：力这件事，三个环节各错一次</h2>
+
+  <h3>矛盾一：力是要连续调的物理量，但示范数据里只有开关</h3>
+  <p>开源数据集里绝大多数夹爪命令是离散的：开、合。<b>但「合」到什么程度，才是抓鸡蛋和抓扳手的区别。</b>你用二值命令训出来的策略，它在仿真里学到的是「合上就完事」，力的分布极窄。原文有一组很直接的对照：把力命令改成二值之后，<b>平均夹持力在 firm 与 gentle 两种指令下是 35.8 与 34.6——几乎不动，等于策略根本没听指令。</b>这不是模型笨，是训练信号里压根没有「力」这个维度。</p>
+
+  <h3>矛盾二：采集的手和部署的手不是同一副，触觉统计就不同源</h3>
+  <p>这是最容易被忽略、也最贵的一条。<b>触觉传感器的读数不是一个绝对物理量，它是「这块胶体 + 这个相机 + 这个安装角度」的组合输出。</b>你用一个 UMI 式手持夹爪采集，再用另一副触觉夹爪部署——两边的胶体硬度、相机焦距、指尖曲率全不一样，同一个物体同样的力，采出来的触觉图和力读数就对不上。<b>后果不是精度下降一点点，而是策略学到的「力的语义」在部署时被整体平移了。</b></p>
+  <div class="box bad">
+    <b>Tacinf 对这条的处理是硬件级的：采集与部署共用同一副低成本夹爪电机与同一款指尖传感器。</b>这不是省钱的副产品，而是方法成立的前提——<b>只有当采集设备和部署设备是同构的，力标签才有资格被迁移。</b>代价也说清楚：这套设计绑定了特定型号的夹爪与传感器，换硬件就要重标定。
+  </div>
+
+  <h3>矛盾三：轨迹能回放，接触力不一定能回放</h3>
+  <p>把真实轨迹搬进仿真，通常的做法是回放关节轨迹。但<b>「位置对」和「力对」是两件事</b>：位置由运动学决定，力由接触刚度、摩擦、阻尼决定，而这些参数在仿真里往往是默认值。<b>轨迹回放能骗过眼睛，骗不过接触。</b>原文的验证很干脆：同一批 LIBERO 数据在 MuJoCo 与 Isaac 之间回放，平均成功率 0.85 对 0.76，勉强算接近；<b>但一换成触觉夹爪，成功率掉到 0.60，力等级降到 10% 时只剩 0.36。</b>——力越小，对接触参数的误差越敏感，因为小力区间的信噪比最差。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：四步，从「同一副手指」到「三源混采」</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：先统一硬件，让采集与部署共用一副手指</div>
+    <div class="d">Tacumi 的组成：电机化扳机（磁场定向控制，既是命令接口也是力反馈执行器）+ DAMIAO 电机驱动的平行夹爪 + 指尖视触觉传感器 + Quest 3 追踪 + 腕部相机。<b>扳机是双向的</b>：你扣它，它变成夹爪的目标开度；夹爪电机的力矩估计反过来推动扳机，让你手上感觉到「夹住了多硬的东西」。<b>这一步解决的是「人怎么把力演出来」——不靠手感，靠设备把力编码成可复现的参数。</b>标定用 20 组配对位姿估手眼外参，多模态统一到一条时间线。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：把「力」做成可调参数，而不是演示者的习惯</div>
+    <div class="d">夹爪用弹簧-阻尼位置伺服，也就是阻抗控制。<b>关键洞察：在这个结构里，力不取决于你合得多快，而取决于你让目标位置「插进」物体多深。</b>于是只要改刚度和阻尼这组参数，就能得到有序的力等级——原文用 Kp 2000 / 500 / 200 牛每米配 Kd 100 / 25 / 10，对应 100% / 25% / 10% 三档，同一任务、同一轨迹，只换力。<b>语言侧再贴上 gently / softly 与 firmly / tightly 的措辞，力和指令就配成了对。</b>这是整篇最漂亮的一刀：<b>它把「力」从演示者的手感，变成了数据生成器的一个旋钮。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：仿真里造三样东西——触觉图、marker 场、接触力</div>
+    <div class="d">触觉图用 Taxim（由深度图位移 + 多层高斯滤波 + 表面法线光学渲染），marker 位移场用 FOTS（高斯空间衰减近似法向膨胀、剪切、扭转）。<b>接触力则不从图像推，直接从物理引擎的接触反力求</b>：左右指尖局部坐标系的力旋到工具坐标系，取负求和。<b>这个分工是有意的——形变是「看起来像」，力是「算出来对」，两条路各管一头。</b>语言条件的力等级在这里生成，视觉用腕部 + 第三人称双路同步 RGB-D，全部 20 Hz 对齐。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：三源混采 + 真实种子增广，把泛化拆成「位置」和「物体」两件事</div>
+    <div class="d">Taco 的工作顺序是：3DGS 重建工作台（转成 Isaac Sim 可加载的体积，单一配准矩阵对齐）→ 每个真实物体拍一张图用生成模型出资产 → <b>真实种子 + 仿真视觉增广</b>（换物体外观、实例、背景，回放产生同步的视觉/触觉/marker/力/动作）→ <b>UMI 空间增广</b>（换位置、朝向、接近路径）→ 回放后做接触信号检查与任务完成检查，筛掉无效数据。原文给了一条明确的分工结论：<b>没有 UMI 数据，位置泛化受限；没有仿真数据，物体泛化受限。</b>三条数据源不是冗余，各补一个维度。</div>
+  </div>
+
+  <div class="box good">
+    <b>策略侧只做了一件事，但很关键：把触觉塞进「同一个时间窗」。</b>论文对比了三种适配器——marker 场（轻量时序卷积）、触觉图（当视觉编码器处理，再与视觉特征交叉注意）、力（六维经 MLP 压成潜向量）。<b>三者共享同一时间窗、同一预处理、同一主干、同一训练协议，所以它们的差异只来自「输入是什么」，不来自「怎么训」。</b>这才让「哪种触觉表示更好」这个问题第一次有了干净答案：<b>启用力监督之后，marker 场在 firm / gentle 两个条件下最平衡。</b>
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：四个式子，从「力怎么来」到「哪些维度要算损失」</h2>
+
+  <div class="fml">
+    <div class="name">① 夹爪的弹簧-阻尼伺服：力是「插进去多深」的函数</div>
+    \[ F^{\text{cmd}} = K_p\,(p^{\text{target}} - p) + K_d\,(\dot{p}^{\text{target}} - \dot{p}) \]
+    <div class="exp">\(p\) 是夹爪实际开度，\(p^{\text{target}}\) 是目标开度，\(K_p\) 刚度，\(K_d\) 阻尼。<b>大白话：</b>稳态时 \(F \approx K_p \cdot \delta\)，其中 \(\delta\) 就是「目标位置比物体实际厚度多插进去的那一点点」——<b>力不是直接下命令来的，是靠目标位置和真实位置之间的差值挤出来的。</b>冲击力则主要来自 \(K_d\) 那一项，所以合得快就打得重。<b>这条式子解释了为什么「改刚度就能改力等级」：只要轨迹不变，改 \(K_p\) 就等于改「虚拟插入深度」。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 挤压力与维持静止所需的力：两指取小、摩擦定生死</div>
+    \[ F_{\text{squeeze}} = \min\big(\|\mathbf{f}_L^{S_L}\|,\ \|\mathbf{f}_R^{S_R}\|\big), \qquad F_{\text{static}} = F_{\text{grip}}\,\mu = 2F_{\text{squeeze}}\,\mu \]
+    <div class="exp">\(\mathbf{f}_L^{S_L}\)、\(\mathbf{f}_R^{S_R}\) 是左右指尖在各自传感器局部坐标系下的反力，\(\mu\) 是摩擦系数。<b>大白话：</b>两指挤一个物体，真正「夹住」的量取决于弱的那一侧——所以取最小值而不是取和。<b>而能不能不掉，取决于夹持力乘以摩擦系数够不够抵消重力与惯性力。</b>这条式子是整篇的物理底线：<b>力等级不是「手感好看」，它直接对应一个不等式——力太小就滑，力太大就压坏。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 合力与力矩：把两指的读数折算成一个 TCP 六维旋量</div>
+    \[ \mathbf{F}^{T} = -(\mathbf{f}_L^{T} + \mathbf{f}_R^{T}), \qquad \boldsymbol{\tau}^{T} \approx \frac{p}{2}\big(f_{L,z}^{T} - f_{R,z}^{T},\ 0,\ f_{R,x}^{T} - f_{L,x}^{T}\big)^{\top} \]
+    <div class="exp">上标 \(T\) 表示已旋到工具坐标系，\(p\) 是开度。<b>大白话：</b>两个指尖的力相加再取负，就是物体受到的反作用合力；两指的差乘以半个开度，就是这对力偶产生的力矩。<b>注意中间那个 0——绕抓取轴的力矩被有意置零。</b>原文讲得很坦白：那部分力矩依赖物体形状与接触条件，噪音大、说不清，所以干脆不建模。<b>这是一个诚实的取舍，也是一个明确的漏洞：转瓶盖这类靠「拧」的任务，这条反馈是缺的。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 加权流匹配损失：动作 7 维、指尖力 6 维，谁重谁轻由权重定</div>
+    \[ \mathcal{L} = \frac{1}{BKD}\sum_{b=1}^{B}\sum_{k=1}^{K}\sum_{d=1}^{D} w_d\, e_{b,k,d}^{2},\qquad w_d=1\ (1\!\le\! d\!\le\! 7),\quad w_d=\lambda_{\text{force}}\ (8\!\le\! d\!\le\! 13) \]
+    <div class="exp">\(e\) 是预测速度与目标速度之差，\(D=32\) 是输出宽度但只有 13 维有效（7 维运动 + 夹爪控制，6 维指尖力），其余是填充维，权重 \(\lambda_{\text{pad}}\) 压掉。<b>大白话：</b>模型输出的不是「动作」，而是「这一小步该往哪个方向走」的速度，动作和力在同一条向量里一起回归。<b>\(\lambda_{\text{force}}\) 这个权重就是「力到底算不算数」的开关</b>——消融里把它关掉（无力监督），gentle 条件成功率直接掉到 0.01。<b>换句话说，这个数字决定了整篇论文是否成立。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑤ 力驱动的位置修正：预测出来的动作，还要按力的偏差拧一下</div>
+    \[ \Delta\mathbf{p} = -\mathbf{K}_p\mathbf{R}_T^{B}(\mathbf{e}_L^{T}+\mathbf{e}_R^{T}), \qquad \mathbf{p}^{\text{cmd}} = \mathbf{p}^{\text{pred}} + \Delta\mathbf{p} \]
+    <div class="exp">\(\mathbf{e}\) 是指尖力误差（目标减实际，再旋到 TCP），\(\mathbf{K}_p\) 的单位是米每牛。<b>大白话：</b>策略先预测一个动作，力控再根据「力比目标大了还是小了」微调位置——力偏大就往回退一点，偏小就再压一点。<b>这一步是「力闭环」，也是它敢说 20 Hz 的底气。</b>没有这一步，模型输出的力只是一个「建议值」；有了它，力才真的被做出来。<b>而 20 Hz 这个频率也标出了上限：比这更快的接触瞬态（比如磕碰、滑移起始），这套环路是跟不上的。</b></div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限：它把「力」从手感变成了标量，也把方法绑在了硬件上</h2>
+
+  <h3>它真正贡献了什么</h3>
+  <ul>
+    <li><b>提出并验证了「仿真可以当筛子」这件事。</b>8 个策略变体，在仿真与真机上的平均成功率排序 <b>Pearson r = 0.998、MMRV = 0.010</b>。<b>这个数字的意义远大于某个任务的绝对成功率</b>：它意味着你可以在仿真里跑 50 次就淘汰掉一批策略，而不必上真机 20 次去试错。<b>对做硬件的人来说，这是把真机时间成本直接砍掉一个数量级。</b></li>
+    <li><b>把力等级做成了可复现的参数，而不是演示者的手感。</b>改刚度 Kp 就改力，同一轨迹只换刚度，firm 与 gentle 就成了严格配对的对照实验。<b>这是方法学上的进步：以前「轻一点抓」是一句没法量化的指令，现在是一个数。</b></li>
+    <li><b>量化了「哪种触觉表示更好」，而且给了干净对照。</b>三种适配器共享时间窗、预处理、主干、训练协议，差异只来自输入形式。<b>结论是 marker 场在两个力条件下最平衡，触觉图在无力监督时几乎无效（0.01）。</b>这个结论对做触觉硬件选型的人直接可用。</li>
+    <li><b>把三源数据的「分工」写清楚了，而不是含糊地说混合更好。</b>无 UMI 则位置泛化差，无仿真则物体泛化差，只有 UMI 则两边都差。<b>这条结论可以当采购清单用：缺哪一维就补哪一维，不用三样都堆满。</b></li>
+    <li><b>成本真的低。</b>低于 2500 美元的采集套件、单张 4090 能跑通、26 位作者里含英伟达与港科广，<b>说明这不是一篇只存在于大实验室的论文</b>。硬件清单、标定流程、同步约定都写进了附录，可复现性在同类工作里算高的。</li>
+  </ul>
+
+  <h3>必须打的折扣</h3>
+  <ol class="crit">
+    <li><b>触觉仿真换的是吞吐量，不是形变保真。</b>作者自己写得很直白：这套模块化方案<b>用「逐样本形变一致性」换了「能规模化回放开源轨迹」的吞吐</b>。后果是 marker 位移只能当相对剪切与方向的线索用，绝对形变对不上。<b>所以「零样本迁移 98%」是在这套近似下成立的，换一个对形变更敏感的传感器，结论未必保得住。</b></li>
+    <li><b>Xense 传感器的规格拿不到，标定是不完整的。</b>原文承认因商业限制无法获得完整光学与机械参数，<b>只在观测层面调了渲染视角与工作深度范围，明确不声称严格的结构外参配准</b>。<b>这条限制的杀伤力在于：它是「整篇力标签可信度」的物理基础，而这一层是近似对齐的。</b></li>
+    <li><b>绕抓取轴的力矩被直接置零。</b>式③里那个 0 不是笔误，是主动省略。这意味着<b>所有靠「拧」的任务（开瓶盖、旋螺丝、拧阀门）拿不到这条反馈</b>。论文的 18 个任务里也确实没有这类。</li>
+    <li><b>换末端执行器，掉点非常惨。</b>同样是 LIBERO Spatial，MuJoCo 回放 0.86、换触觉夹爪后只剩 0.42（10% 力档 0.07）。<b>这既证明了「力感知任务对硬件高度敏感」，也说明这套方法的成绩不能脱离它的夹爪来引用。</b>「采集与部署共用同一副手指」是它的优点，同时是它不可移植的原因。</li>
+    <li><b>AG（平均夹持力）不是真值。</b>原文明确：它只是切向挤压力的参考估计，<b>用左右指尖力幅值之和作近似，因为单指读数在接触时并不准</b>。所以所有力相关的对比（31.3 对 8.5 之类）应该当「相对趋势」读，不当绝对值读。</li>
+    <li><b>UMI 那条路被换掉了，代价是依赖消费级 VR 追踪。</b>原版 UMI 靠 SLAM，在纹理匮乏场景（纯白墙房间）会失效；Tacinf 改用 Quest 3 追踪绕开这个问题，<b>但换来了对消费级头显追踪精度与可用性的依赖</b>。这是个划算的交换，但它把「数据采集的可靠性」外包给了一个非工业级设备。</li>
+    <li><b>任务规模与泛化边界没说清。</b>18 个基础任务、每任务 30 条演示、真机每任务 20 次（力跟随）或 10 次（特殊任务）评估——<b>20 次的成功率，置信区间宽到 ±10 个点以上</b>。而「位置 + 物体双随机」这种真正难的设定下，最好的成绩是 60%，<b>离能用还差得远</b>。</li>
+    <li><b>它是「一套基础设施」，不是「一个新算法」。</b>策略用的是现成的 π0 / π0.5，增益主要来自数据与硬件的一致性。<b>这意味着它的价值高度依赖你愿不愿意接受它那套夹爪——如果不愿意，能直接搬走的只有「力等级用阻抗参数造」和「仿真当筛子」这两条思路。</b></li>
+  </ol>
+
+  <div class="box good">
+    <b>一句话总结：</b>它没有让触觉变聪明，它让触觉<b>变得可量产</b>。真正值得记住的不是 98% 那个数字，而是那个 2500 美元的夹爪和 r=0.998 的排序相关——<b>前者说明这个领域的数据入口正在从「实验室定制」变成「可以买」，后者说明验证环节正在从「上真机试」变成「在仿真里筛」。</b>对做具身数据的人来说，这两件事合起来才叫基础设施：<b>入口便宜了，出口可信了，中间的训练才有意义。</b>而它最大的局限也在这：<b>整套结论都长在那副特定手指上，拔下来就不成立。</b>
+  </div>
+</section>
+
+<footer>
+  论文：Tacinf: A Unified Tactile Infrastructure for Robot Manipulation · arXiv 2611.29240 · 2026-11-22<br>
+  Qiwei Wu, Xiangyu Chen, Xin Xiang, Rui Zhang 等 26 人 · 英伟达 / 香港科技大学（广州）/ 剑桥大学 · 本篇依据正文（HTML 版）撰写
+</footer>
+
+</div>
+</body>
+</html>
