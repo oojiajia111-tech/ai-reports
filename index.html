@@ -45,7 +45,9 @@
   .day-sep {
     font-size: 12px; font-weight: 600; color: var(--text-muted);
     padding: 10px 18px 6px; background: #fbfdff; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between;
   }
+  .day-cnt { font-weight: 400; color: #94a3b8; }
   .months { display: flex; flex-wrap: wrap; gap: 8px; }
   .month {
     font-size: 13px; padding: 6px 12px; border: 1px solid var(--border);
@@ -62,37 +64,40 @@
 <div class="container" id="recent">
   <header>
     <h1>具身智能 3W1H 第一性原理知识库</h1>
-    <p class="desc">最近 7 天 · 最多 30 篇 · 更早内容见下方月份归档</p>
+    <p class="desc">按解析入库日分组 · 最近 7 天 · 最多 30 篇 · 更早内容见下方月份归档</p>
   </header>
 
-  <div class="sec-title">🆕 最近更新 <span class="cnt">共 20 篇</span></div>
+  <div class="sec-title">🆕 最近更新 <span class="cnt">共 23 篇</span></div>
   <div class="list">
-      <div class="day-sep">2026-11-25</div>
-      <a class="item" href="html/02/FreshVLA_潜动作要分频段_3W1H_第一性原理解析.html"><span class="date">11-25</span><span class="col c02">02</span><span class="title">潜动作要分频段：低频管阶段，高频管接触</span></a>
-      <a class="item" href="html/02/DexEngine_先够得着再推得动_3W1H_第一性原理解析.html"><span class="date">11-25</span><span class="col c02">02</span><span class="title">从人手到机械手：先让手臂够得着，再让物理说了算</span></a>
-      <a class="item" href="html/02/RoboJackVR_把采集做成游戏_3W1H_第一性原理解析.html"><span class="date">11-25</span><span class="col c02">02</span><span class="title">把采集做成游戏：让玩家替你录 1310 条机器人示范</span></a>
-      <a class="item" href="html/01/EASG_把动作语义写进上下文_3W1H_第一性原理解析.html"><span class="date">11-25</span><span class="col c01">01</span><span class="title">27B 模型不需要动作头：把坐标系画进图里，它就会动手了</span></a>
-      <div class="day-sep">2026-11-24</div>
-      <a class="item" href="html/01/EgoStudy_人视频能教的是任务_3W1H_第一性原理解析.html"><span class="date">11-24</span><span class="col c01">01</span><span class="title">第一人称视频能教机器人的，是任务，不是手</span></a>
-      <a class="item" href="html/01/RobotPolicies_三个旋钮穷尽一条谱系_3W1H_第一性原理解析.html"><span class="date">11-24</span><span class="col c01">01</span><span class="title">三个旋钮，拧完了从模仿学习到 Token VLA 的整条谱系</span></a>
-      <a class="item" href="html/01/RoboChallengeZero_理解到手之间的距离_3W1H_第一性原理解析.html"><span class="date">11-24</span><span class="col c01">01</span><span class="title">大模型会抓方块，却解不开一根线</span></a>
-      <a class="item" href="html/01/压缩与智能_智能是同一个等式_3W1H_第一性原理解析.html"><span class="date">11-24</span><span class="col c01">01</span><span class="title">智能就是压缩，这不是一句俏皮话，是同一个数学对象</span></a>
-      <a class="item" href="html/02/TwoStagePostTraining_天花板是老师_3W1H_第一性原理解析.html"><span class="date">11-24</span><span class="col c02">02</span><span class="title">蒸馏的天花板是老师，掀掉天花板得请环境当第二个老师</span></a>
-      <div class="day-sep">2026-11-23</div>
-      <a class="item" href="html/02/Real2Worlds2Real_齿轮上要有齿_3W1H_第一性原理解析.html"><span class="date">11-23</span><span class="col c02">02</span><span class="title">仿真数据的价值不在「多」，在于齿轮上到底有没有齿</span></a>
-      <a class="item" href="html/01/WALLOSS1.0_预训练买的是适配成本_3W1H_第一性原理解析.html"><span class="date">11-23</span><span class="col c01">01</span><span class="title">预训练的价值不在分数，在于把「一千小时现场数据」压成「十小时」</span></a>
-      <div class="day-sep">2026-11-22</div>
-      <a class="item" href="html/02/Tacinf_采集手就是部署手_3W1H_第一性原理解析.html"><span class="date">11-22</span><span class="col c02">02</span><span class="title">触觉数据贵，不是因为传感器贵，是因为「采的那只手」和「干活的那只手」不是同一只</span></a>
-      <a class="item" href="html/01/人类视频预训练_腕部摄像头决定后半程_3W1H_第一性原理解析.html"><span class="date">11-22</span><span class="col c01">01</span><span class="title">人类视频预训练买到的不是「手怎么动」，而是「现在进行到哪一步」</span></a>
-      <a class="item" href="html/01/Sonic_运动追踪是人形的下一个词预测_3W1H_第一性原理解析.html"><span class="date">11-22</span><span class="col c01">01</span><span class="title">运动追踪之于人形机器人，就像下一个词预测之于语言模型</span></a>
-      <div class="day-sep">2026-11-20</div>
-      <a class="item" href="html/02/IntervalMotion_空缺只约束净位移_3W1H_第一性原理解析.html"><span class="date">11-20</span><span class="col c02">02</span><span class="title">动作标签断了，不代表信息没了</span></a>
-      <div class="day-sep">2026-11-19</div>
-      <a class="item" href="html/02/TacInno_触觉里剩下的那点残差_3W1H_第一性原理解析.html"><span class="date">11-19</span><span class="col c02">02</span><span class="title">触觉里真正值钱的，只有视觉解释不了的那点残差</span></a>
-      <a class="item" href="html/01/Marin_Recipe是图纸_3W1H_第一性原理解析.html"><span class="date">11-19</span><span class="col c01">01</span><span class="title">基模重新变得可研究，不是因为开源了权重</span></a>
-      <a class="item" href="html/01/HALO_接口要适应人_3W1H_第一性原理解析.html"><span class="date">11-19</span><span class="col c01">01</span><span class="title">别让人去适应机器人——三处鸿沟决定示教到底值不值钱</span></a>
-      <a class="item" href="html/01/CodeAsWorldModel_给控制代码配单元测试_3W1H_第一性原理解析.html"><span class="date">11-19</span><span class="col c01">01</span><span class="title">Code as World Models：给机器人控制代码配一个单元测试层</span></a>
-      <a class="item" href="html/01/JEPA_瓶颈不在预测而在规划_3W1H_第一性原理解析.html"><span class="date">11-19</span><span class="col c01">01</span><span class="title">JEPA 的瓶颈不在预测，而在怎么规划</span></a>
+      <div class="day-sep">2026-11-26<span class="day-cnt">5 篇</span></div>
+      <a class="item" href="html/02/RoboJackVR_把采集做成游戏_3W1H_第一性原理解析.html" title="原文发布 2026-11-25"><span class="col c02">02</span><span class="title">把采集做成游戏：让玩家替你录 1310 条机器人示范</span></a>
+      <a class="item" href="html/02/FreshVLA_潜动作要分频段_3W1H_第一性原理解析.html" title="原文发布 2026-11-25"><span class="col c02">02</span><span class="title">潜动作要分频段：低频管阶段，高频管接触</span></a>
+      <a class="item" href="html/02/DexEngine_先够得着再推得动_3W1H_第一性原理解析.html" title="原文发布 2026-11-25"><span class="col c02">02</span><span class="title">从人手到机械手：先让手臂够得着，再让物理说了算</span></a>
+      <a class="item" href="html/01/EgoStudy_人视频能教的是任务_3W1H_第一性原理解析.html" title="原文发布 2026-11-24"><span class="col c01">01</span><span class="title">第一人称视频能教机器人的，是任务，不是手</span></a>
+      <a class="item" href="html/01/EASG_把动作语义写进上下文_3W1H_第一性原理解析.html" title="原文发布 2026-11-25"><span class="col c01">01</span><span class="title">27B 模型不需要动作头：把坐标系画进图里，它就会动手了</span></a>
+      <div class="day-sep">2026-11-25<span class="day-cnt">6 篇</span></div>
+      <a class="item" href="html/01/RobotPolicies_三个旋钮穷尽一条谱系_3W1H_第一性原理解析.html" title="原文发布 2026-11-24"><span class="col c01">01</span><span class="title">三个旋钮，拧完了从模仿学习到 Token VLA 的整条谱系</span></a>
+      <a class="item" href="html/01/RoboChallengeZero_理解到手之间的距离_3W1H_第一性原理解析.html" title="原文发布 2026-11-24"><span class="col c01">01</span><span class="title">大模型会抓方块，却解不开一根线</span></a>
+      <a class="item" href="html/01/压缩与智能_智能是同一个等式_3W1H_第一性原理解析.html" title="原文发布 2026-11-24"><span class="col c01">01</span><span class="title">智能就是压缩，这不是一句俏皮话，是同一个数学对象</span></a>
+      <a class="item" href="html/02/TwoStagePostTraining_天花板是老师_3W1H_第一性原理解析.html" title="原文发布 2026-11-24"><span class="col c02">02</span><span class="title">蒸馏的天花板是老师，掀掉天花板得请环境当第二个老师</span></a>
+      <a class="item" href="html/02/Real2Worlds2Real_齿轮上要有齿_3W1H_第一性原理解析.html" title="原文发布 2026-11-23"><span class="col c02">02</span><span class="title">仿真数据的价值不在「多」，在于齿轮上到底有没有齿</span></a>
+      <a class="item" href="html/02/Tacinf_采集手就是部署手_3W1H_第一性原理解析.html" title="原文发布 2026-11-22"><span class="col c02">02</span><span class="title">触觉数据贵，不是因为传感器贵，是因为「采的那只手」和「干活的那只手」不是同一只</span></a>
+      <div class="day-sep">2026-11-24<span class="day-cnt">1 篇</span></div>
+      <a class="item" href="html/01/WALLOSS1.0_预训练买的是适配成本_3W1H_第一性原理解析.html" title="原文发布 2026-11-23"><span class="col c01">01</span><span class="title">预训练的价值不在分数，在于把「一千小时现场数据」压成「十小时」</span></a>
+      <div class="day-sep">2026-11-23<span class="day-cnt">4 篇</span></div>
+      <a class="item" href="html/02/IntervalMotion_空缺只约束净位移_3W1H_第一性原理解析.html" title="原文发布 2026-11-20"><span class="col c02">02</span><span class="title">动作标签断了，不代表信息没了</span></a>
+      <a class="item" href="html/01/人类视频预训练_腕部摄像头决定后半程_3W1H_第一性原理解析.html" title="原文发布 2026-11-22"><span class="col c01">01</span><span class="title">人类视频预训练买到的不是「手怎么动」，而是「现在进行到哪一步」</span></a>
+      <a class="item" href="html/01/Sonic_运动追踪是人形的下一个词预测_3W1H_第一性原理解析.html" title="原文发布 2026-11-22"><span class="col c01">01</span><span class="title">运动追踪之于人形机器人，就像下一个词预测之于语言模型</span></a>
+      <a class="item" href="html/02/TacInno_触觉里剩下的那点残差_3W1H_第一性原理解析.html" title="原文发布 2026-11-19"><span class="col c02">02</span><span class="title">触觉里真正值钱的，只有视觉解释不了的那点残差</span></a>
+      <div class="day-sep">2026-11-20<span class="day-cnt">4 篇</span></div>
+      <a class="item" href="html/02/DUAC_动作块该切多长_3W1H_第一性原理解析.html" title="原文发布 2026-11-18"><span class="col c02">02</span><span class="title">动作块该切多长——从流场里直接读出「哪一步开始不可信」</span></a>
+      <a class="item" href="html/01/数据多样性_长尾在四个维度_3W1H_第一性原理解析.html" title="原文发布 2026-11-18"><span class="col c01">01</span><span class="title">两万小时里，模型只记住了「在哪个房间」</span></a>
+      <a class="item" href="html/01/Marin_Recipe是图纸_3W1H_第一性原理解析.html" title="原文发布 2026-11-19"><span class="col c01">01</span><span class="title">基模重新变得可研究，不是因为开源了权重</span></a>
+      <a class="item" href="html/01/HALO_接口要适应人_3W1H_第一性原理解析.html" title="原文发布 2026-11-19"><span class="col c01">01</span><span class="title">别让人去适应机器人——三处鸿沟决定示教到底值不值钱</span></a>
+      <div class="day-sep">2026-11-19<span class="day-cnt">3 篇</span></div>
+      <a class="item" href="html/02/RightCheckpoint_能被改比现在准更重要_3W1H_第一性原理解析.html" title="原文发布 2026-11-18"><span class="col c02">02</span><span class="title">把模型练准，还是把模型留出可改的余地？</span></a>
+      <a class="item" href="html/01/CodeAsWorldModel_给控制代码配单元测试_3W1H_第一性原理解析.html" title="原文发布 2026-11-19"><span class="col c01">01</span><span class="title">Code as World Models：给机器人控制代码配一个单元测试层</span></a>
+      <a class="item" href="html/01/JEPA_瓶颈不在预测而在规划_3W1H_第一性原理解析.html" title="原文发布 2026-11-19"><span class="col c01">01</span><span class="title">JEPA 的瓶颈不在预测，而在怎么规划</span></a>
   </div>
 
   <div class="sec-title">🗂 月份归档</div>
