@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>把动作语义写进上下文：27B 模型零样本直接动手｜3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<div class="head">
+  <h1>27B 模型不需要动作头：把坐标系画进图里，它就会动手了<span class="sub">EASG · arXiv 2610.12832</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-25</div>
+    <div><b>原文规模</b> 约 7000 字 · 含 8 组真机实验</div>
+    <div><b>对比对象</b> π0.5 · π0-FAST · GR00T N1.6 · OpenVLA-OFT</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>VLA 的动作头之所以贵，不是因为动作难预测，而是因为它从来没说清自己在说哪种语言。动作是一串数字，数字本身没有意义——意义全部来自坐标系、尺度、单位。「往 +Z 走 6 厘米」这句话，只有在先定义了 +Z 是哪个方向、6 厘米是相机系还是基座系之后才可执行。这批约定在机器人数据里全是隐含的，于是模型只好一边学做事、一边反推约定，两份学费一起交。EASG 把这批约定直接画在图像上、写进提示词里：模型第一次知道自己在说哪种话。剩下的事，它本来就会。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">它到底改了什么</a>
+  <a href="#why">两条路都卡在接口</a>
+  <a href="#how">锚定、闭环、约束解码</a>
+  <a href="#formula">五个式子</a>
+  <a href="#worth">证到了什么、没证到什么</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">是什么</span>不是造一个更强的动作解码器，是把动作的「语法书」塞进输入</h2>
+
+  <p>先看结果，因为它反常：一个 <b>27B 的开源 VLM（Qwen-3.8-27B），不做任何机器人动作预训练、不加动作头、不挂技能库</b>，靠原生文本接口直接控制一台 UR3 机械臂，在六项真机任务上零样本拿到 <b>79.4%</b> 平均成功率。</p>
+
+  <p>对照一下同批次的 VLA：π0.5 用每任务 30 条示教微调后才 <b>76.1%</b>；把示教加到 50 条，这批 VLA 才拉开到 85.6%–96.7%。也就是说，<b>它零样本的成绩，约等于一个通用 VLA 微调 30 条示教的水平。</b></p>
+
+  <p>它输出的「动作」长这样：</p>
+
+  <div class="box good">
+    <b>0 | +0.40, -0.10, +0.91, +6.00 | +0.00, +0.00, +1.00, -45.00 | +1.00</b><br>
+    读法：任务还没完成｜沿方向 (0.40, −0.10, 0.91) 走 6 厘米｜绕当前 TCP 的 +Z 轴转 −45 度｜夹爪闭合到 1.0。
+  </div>
+
+  <p>整串全是普通字符。<b>这正是关键——这些符号本来就在预训练词表里，所以自回归解码器本身就是动作解码器。</b>不需要额外训练一个 head，也不需要独立词表。</p>
+
+  <table>
+    <tr><th>实验</th><th>数字</th><th>它在证什么</th></tr>
+    <tr><td>零样本（Task Group 1，6 任务）</td><td><b>79.4%</b>（3 轮 × 10 次 × 6 任务）</td><td>预训练能力可直接变成动作</td></tr>
+    <tr><td>同组、π0.5 微调 30 条</td><td>76.1%</td><td>零样本 ≈ 微调 30 条</td></tr>
+    <tr><td>同组、VLA 微调 50 条</td><td>85.6%–96.7%</td><td>数据仍然有用，但代价是示教</td></tr>
+    <tr><td>物体/位置/姿态随机化后</td><td>EASG 79.4 → <b>77.3</b></td><td>基本不掉</td></tr>
+    <tr><td>同条件 π0.5</td><td>96.7 → <b>40.2</b></td><td>高分不等于泛化</td></tr>
+    <tr><td>同条件 π0-FAST</td><td>85.6 → <b>25.5</b></td><td>掉得更狠</td></tr>
+    <tr><td>困难任务微调后（6 项）</td><td>67.2%（π0-FAST 70.0 / OpenVLA 55.0 / Octo 57.2）</td><td>同一接口能继续学</td></tr>
+    <tr><td>LIBERO，0.8B 微调</td><td>83.3%（Octo 75.1 / OpenVLA 76.5 / π0-FAST 85.5）</td><td>小模型也吃得下这套接口</td></tr>
+    <tr><td>跨本体（UR3 训练 → Flexiv 部署）</td><td>63.9% vs 62.2%</td><td>末端空间表示与本体解耦</td></tr>
+  </table>
+
+  <p>最后一行的逻辑值得单独说：<b>模型只在末端位姿空间里预测，机械臂各自的逆运动学和底层控制器负责翻译。</b>6 自由度换 7 自由度，同一个 checkpoint 直接上，几乎不掉点。这不是调出来的，是坐标系选对了的副产品。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">为什么</span>动作的语义本来可以被语言描述，却被当成只能从数据里猜的东西</h2>
+
+  <p>把这件事拆到最底层，是一条五步的公理链，每一步都不需要机器人知识：</p>
+
+  <div class="step">
+    <div class="t">公理一：数字本身不携带意义，意义由约定提供</div>
+    <div class="d">「位移 6」这句话，单位是厘米还是米、方向是相机系还是基座系、旋转用欧拉角还是四元数——<b>换任何一项，同一个数字对应完全不同的物理动作。</b>约定的信息量不小，但它其实是可以被写下来的。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理二：现有 VLA 把这批约定当成「要从数据里学的东西」</div>
+    <div class="d">Open X-Embodiment 这类大规模数据里，坐标系、尺度、运动学对应全都<b>隐含在观测与动作标签之间</b>，没有以模型能直接读的形式给出。<b>于是模型必须同时学三件事：动作怎么参数化、参数在物理世界意味着什么、图像里的二维关系怎么对应三维运动。</b>三份学费，一份也没省。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理三：另一条路（模块化）省了学费，却断了后路</div>
+    <div class="d">Code as Policies 生成调 API 的程序，VoxPoser 造三维价值图，ReKep 用关键点关系约束求解。<b>它们把操作问题翻译成基础模型已经懂的表示</b>，所以不需要动作预训练就能干活。<b>但「视觉观测 → 连续动作」的映射散在模型和外部模块之间，一旦零样本不够用，你没有一个统一接口能直接拿机器人轨迹去微调那个正在推理的模型。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理四：所以真正缺的不是能力，是「同一接口的两用性」</div>
+    <div class="d">要一个接口，既能零样本直接跑，又能在同一个接口上用机器人数据继续学。<b>这要求动作的表示方式本身就落在语言模型的原生表达能力之内</b>——只有这样，「直接推理」和「微调」才是同一件事，而不是两套系统。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">推论：动作头不是必需品，词表才是</div>
+    <div class="d">如果动作是一段合法文本，那么<b>「生成动作」和「生成句子」在计算上就是同一个操作</b>；动作头、动作专家、独立词表这些模块，都是为了绕开「动作不是文本」这个假设而存在的。<b>把这个假设去掉，它们就都不需要了。</b></div>
+  </div>
+
+  <div class="box bad">
+    <b>那条最反直觉的消融，正好验证了公理一：</b>把「动作坐标系锚定」去掉，或把「深度信息」去掉，平均成功率从 <b>79.4% 直接掉到 0%</b>。<b>不是掉一点，是归零。</b>也就是说，只给任务指令和图像，这个模型<b>完全无法</b>产生可靠动作——它的空间与常识能力是真的，但它缺的是「往哪走、走多远」这两条最基础的信息。
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">怎么做</span>三件事：把坐标系画在手上、闭上环、把格式焊死</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：显式动作空间锚定——把坐标轴投影到腕部相机画面里</div>
+    <div class="d">每个控制步，以<b>当前 TCP（工具中心点）为原点</b>建一个局部坐标系：X 轴沿夹爪开合方向，+Z 从夹爪主体指向指尖，Y 轴与二者构成右手系。<b>然后把这个三维坐标系的三根轴投影到腕部相机的第一人称图像上</b>——模型看到的不是「一个数字」，而是「图像里画出来的三根箭头」。<br>光有方向还不够，精确控制要知道走多远。所以再用对齐的 RGB-D 观测，<b>估计沿 TCP +Z 到最近可见表面的距离</b>，把这个物理尺度直接告诉模型。最后配一段语言说明，规定平移单位（厘米）、旋转表示（轴角，度）、夹爪语义和输出格式。<b>视觉投影 + 距离 + 语言，三样合起来把原点、轴向、参数化方式、尺度全部交代完。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：闭环执行——模型只管说，换算交给确定性代码</div>
+    <div class="d">每步模型输出一步增量平移、旋转、夹爪指令和完成标志。<b>预测先在 TCP 系里表达，再变换到机器人基座系，然后走逆运动学和底层控制器。</b>执行完重新取观测，进入下一轮。<br><b>这条分工是整个方法的地基：</b>VLM 永远在同一个动作空间里推理，<b>各家机械臂的坐标变换和运动学由确定性过程处理</b>。所以换本体不用重新训练——同一套话，换个人来翻译就行。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：原生文本动作学习——只用词表里已有的 token</div>
+    <div class="d">平移用「单位方向向量 + 非负距离（厘米）」，旋转用「单位旋转轴 + 带符号角度（度）」。<b>生成时若向量没严格归一化，执行前做一次归一化。</b>把机器人示教按同样规则转成文本动作后，<b>直接用标准因果语言模型的交叉熵损失微调</b>——零样本执行和后续学习共享同一套动作表示，不换接口、不加预测器。<br>实测里这一步用的是 LoRA：困难任务每项收 30 条示教，就能把 27B 从「做不了」教到 67.2%。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：语法约束解码（GCD）——自由生成会写错格式，那就把非法 token 屏蔽掉</div>
+    <div class="d">自回归生成动作，一个小错就让整条命令不可解析：少一个字段、分隔符写错、或者数值后面多吐一段解释。<b>GCD 在每一步生成时屏蔽不符合动作语法的候选 token，但保留原模型对合法候选的偏好——约束只作用于格式，具体数值仍由 VLM 自己预测。</b><br>效果很硬：LIBERO 上 0.8B 模型 <b>72.66% → 83.28%</b>，四个子集全部改善。<b>而 GCD 没有任何可学参数，也不增加动作头、不改词表。</b></div>
+  </div>
+
+  <div class="box good">
+    <b>把四步串起来看：</b>锚定解决「往哪走、走多远」，GCD 解决「说得对不对」，<b>两者都不是让模型变聪明，而是把本来不该由模型猜的东西拿走。</b>真正留给模型学的，只剩「做什么」。</div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">公式</span>五个式子：从「一句话」走到「一次微调」</h2>
+
+  <div class="fml">
+    <div class="name">① 动作的文本形式：四段，全在词表里</div><div class="exp">\( a_t = \big(s_t \mid \mathbf{v}_t, d_t \mid \mathbf{r}_t, \theta_t \mid g_t\big) \)<br><b>大白话：</b>第一段是任务完成位，第二段是单位方向向量加厘米数，第三段是单位旋转轴加角度，第四段是夹爪开合。<b>这个式子的全部价值在于「没有新符号」——每一项都是普通数字，所以不需要任何额外解码器。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 执行链：模型只在 TCP 系说话，翻译是别人的事</div><div class="exp">\( \mathbf{a}^{\text{base}}_t = T_{\text{tcp}\to\text{base}}\,\mathbf{a}^{\text{tcp}}_t,\qquad \mathbf{q}^{*}_t = \mathrm{IK}\big(\mathbf{a}^{\text{base}}_t\big) \)<br><b>大白话：</b>先把 TCP 系的动作旋到基座系，再解逆运动学得到关节角。<b>跨本体迁移之所以几乎不掉点（63.9% → 62.2%），全部利润都在这个式子里</b>：模型学的是「在末端空间怎么动」，而「怎么用你这台机械臂实现」被隔离在模型之外。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 微调目标：和训语言模型一字不差</div><div class="exp">\( \mathcal{L}_{\text{SFT}} = -\sum_{i=1}^{|a_t|}\log p_\theta\big(a_t^{(i)} \mid a_t^{(<i)}, o_t, l, \mathcal{A}_t\big) \)<br><b>大白话：</b>\(o_t\) 是观测（含画了坐标轴的图像），\(l\) 是语言指令，\(\mathcal{A}_t\) 是那段说明动作怎么参数化的话。<b>注意损失函数里没有动作头、没有流匹配、没有扩散项</b>——它就是普通的下一 token 预测。<b>这一行是整篇论文最省钱的贡献。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 语法约束解码：只筛候选，不改数值</div><div class="exp">\( a_t^{(i)} \sim p_\theta(\cdot \mid a_t^{(<i)}) \cdot \mathbb{1}\big[a_t^{(i)} \in \mathcal{G}_{\text{pos}}\big] \)<br><b>大白话：</b>\(\mathcal{G}_{\text{pos}}\) 是「这个位置上语法允许出现的字符集合」。<b>把不属于它的 token 概率直接清零，再在剩下的里面采样。</b>它保证字段顺序、分隔符、符号、数值精度都对，<b>但「走 6 厘米还是 8 厘米」仍由模型决定</b>。这就是为什么它能提 10.6 个点却不牺牲能力。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑤ 零样本成功率：为什么「79.4% 对 0%」这组数最值钱</div><div class="exp">\( \mathrm{SR} = \frac{1}{N\,T}\sum_{n=1}^{N}\sum_{t=1}^{T}\mathbb{1}\big[\text{success}(n,t)\big] \)<br><b>大白话：</b>6 个任务 × 3 轮 × 10 次 = 180 次试验的成功比例。<b>它本身平淡，但配上消融就变成诊断工具：</b>去掉坐标系锚定或深度，这个数从 0.794 变成 0.000。<b>在统计上这不是「性能下降」，这是「系统失效」</b>——说明这两条信息是开关，不是加分项。</div>
+  </div>
+
+  <div class="box bad">
+    <b>还有一组数比成功率更能说明机制：</b>Thinking / Memory 的 2×2 对照——两者都开 <b>79.4%</b>；只留 Memory 关掉 Thinking <b>11.7%</b>；只留 Thinking 去掉 Memory <b>64.4%</b>；都关 <b>8.9%</b>。<b>Thinking 是命门，Memory 是补丁。</b>「把香蕉放到盘中」这类多阶段任务，去掉历史信息后成功率从 66.7% 直接掉到 0。<b>这顺带否掉一个流行假设：它不是在背轨迹，因为背轨迹不需要每一步都推理。</b>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">价值与局限</span>它最硬的贡献是一句诊断，最软的地方是任务太窄</h2>
+
+  <h3>值得带走的</h3>
+  <ul>
+    <li><b>它把「VLA 到底缺什么」这个模糊问题变成了一句可验证的话：缺上下文。</b>原文的自我批评很尖锐——<b>不管预训练时用关节角还是位姿表示动作，两种格式微调后效果基本一样；推理时甚至完全不输入 RGB、只给当前机械臂姿态，VLA 往往也能成功。</b>这说明模型没在理解任务和图像，是在背轨迹。<b>EASG 用「去掉锚定就归零」证明了这个诊断是真的。</b></li>
+    <li><b>它指了一条成本极低的路：不训动作头。</b>一个 0.8B 模型不做动作预训练，直接在 LIBERO 上微调就 83.3%，超过 Octo（75.1）和 OpenVLA（76.5）。<b>对小团队，这意味着不必先攒百万条轨迹才能开始。</b></li>
+    <li><b>跨本体几乎不掉点，而且原因可解释。</b>63.9% → 62.2%，只用一个 checkpoint。<b>这不是工程调优出来的，是「在末端空间预测、把运动学留在模型外」这个选择的直接结果</b>——所以它可以被复用。</li>
+  </ul>
+
+  <h3>必须打的折扣</h3>
+  <ol class="crit">
+    <li><b>绝对分数不高，而且是被自己超越的那种不高。</b>零样本 79.4% 很好听，但<b>同组 VLA 微调 50 条就到 85.6%–96.7%</b>。它的价值在「不用数据」，不在「比用数据更好」。<b>把它读成「VLA 可以不要了」会严重高估；读成「冷启动的最优解」才准确。</b></li>
+    <li><b>Thinking 一关就崩到 11.7%，这是成本炸弹。</b>每一步都要推理，意味着<b>单步延迟和 token 成本都是普通 VLA 的数倍</b>，而论文没有报任何延迟、吞吐或算力数字。<b>对「10T 参数的模型去叠衣服成本超过人工」这个它自己提出的论点，它没有给出反证。</b></li>
+    <li><b>任务面很窄：一台 6 自由度 UR3、桌面级、单臂、刚性物体为主。</b>困难任务组只有 6 项，真机每项 30 条示教。<b>没有柔性物体的大规模验证，没有多臂，没有移动底盘。</b>「叠 T 恤 80%」是单点成绩，不是分布。</li>
+    <li><b>它依赖两样在真实场景里不一定成立的东西：可靠的深度，和明确的 TCP 定义。</b>深度消融里「去掉深度就归零」是优点也是软肋——<b>意味着透明物体、反光表面、强光环境会直接把这个方法打回 0。</b>论文没有做这类鲁棒性测试。</li>
+    <li><b>「规模不是唯一决定因素」这个结论，证据偏薄。</b>2B→27B 明显提升、27B→397B 收益有限、闭源更强但「部分任务仍有提升」——<b>它没有拆开「模型家族」和「规模」两个变量</b>，所以只能说「要一起看」，说不了「哪个更重要」。</li>
+    <li><b>它是 post-Astra 讨论的一部分，不是结论。</b>原文末尾把 VLA、WAM、零样本框架三条路线都批了一遍，姿态是「我们在找一个低成本、能直接执行、还能持续变强的模型，EASG 是初步尝试」。<b>按作者的自我定位读，它是一份有说服力的方向论证，不是一份可交付的系统。</b></li>
+  </ol>
+
+  <div class="box bad">
+    <b>一句话总结它的位置：</b>它没有让 VLM 变强，它<b>把一件本来要花数据去猜的事，改成了一件可以直接写下来的事</b>。最值得带走的两条判断：<b>① 动作的语义是可被语言描述的，凡是可以被描述的东西，就不该让模型从数据里反推；② 动作头存在的理由是「动作不是文本」这个假设，假设被去掉，模块就消失了。</b><br>
+    而它留下的最大空白也很清楚：<b>零样本 79.4% 的那 20.6% 失败，到底是「不会做」还是「说不清」？</b>如果是后者，这套方法的下一站不是更大的模型，而是更严格的语法与更好的深度。
+  </div>
+
+  <p class="src">出处：公众号「human five」2026-11-25 推文，正文为 arXiv 2610.12832（EASG：Explicit Action-Space Grounding）的解读。开源仓库 General-Robo/EASG（含 Qwen-3.8-27B 零样本操作与动作接口微调代码）。硬件：6 自由度 UR3 + 腕部 RGB-D + 外部相机；跨本体实验部署到 7 自由度 Flexiv。零样本任务组含黄瓜抓取、方块抓取、香蕉入盘、关笔记本、关抽屉、折毛巾；困难组含叠 T 恤、开笔记本、套环、挂杯及两项多阶段任务。</p>
+</section>
+
+<footer>公众号「human five」· 2026-11-25 · 3W1H 与第一性原理拆解</footer>
+</div>
+
+</body>
+</html>

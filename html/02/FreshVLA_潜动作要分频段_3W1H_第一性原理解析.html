@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>潜动作要分频段：低频管阶段，高频管接触｜3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<div class="head">
+  <h1>潜动作要分频段：低频管阶段，高频管接触<span class="sub">FreshVLA · 模型性能</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-25 · arXiv 2611.33635</div>
+    <div><b>关键词</b> 潜在动作 · 频率正则 · 时间分层 · 流匹配 · LIBERO-PLUS 鲁棒性</div>
+    <div><b>一句话</b> 2B 参数的 VLA，靠「把潜动作按频段拆开」打出 3B/7B 的分数，推理只贵 1.58 毫秒</div>
+    <div><b>方向</b> 模型性能</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>没有动作标签的视频里，动作的信息藏在帧间变化的频率结构里：低频是任务阶段在推进，高频是接触那一瞬间的细微修正。这两个时间尺度差了两个数量级。把它们塞进同一个潜变量，模型只能学一个折中值，于是长任务和精细操作一起平庸。FreshVLA 的做法是按频段拆开、再用频域正则强制各管一段，代价是推理只多 1.58 毫秒。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据 <b>arXiv 2611.33635 正文（HTML 版）</b>；公式按原文 LaTeX 转写，符号做了统一。评测基准为 LIBERO / LIBERO-PLUS / CALVIN 与一套真机任务（6 自由度 Flexiv + RealSense D435）。
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：从「没有动作标签的视频」里，学出分层的连续潜动作</h2>
+
+  <p>先说它要解决的那件事。机器人数据贵，视频不贵——<b>但视频里没有动作标签。</b>过去两年主流做法是从无标签视频里学一个「潜动作」，再把潜动作接到策略上。<b>问题出在「一个潜变量」这个上限上：</b>同一段视频里，既包含「先开抽屉、再取杯子」这种<b>秒级</b>的阶段推进，也包含「手指碰到杯子那一刻微调 2 毫米」这种<b>几十毫秒级</b>的接触修正。<b>把它们压进一个 64 维向量，模型只能学到加权折中。</b></p>
+
+  <p>FreshVLA 的答案是把潜动作<b>按时间尺度分层、按频段约束</b>，而且整套东西只有 <b>2B 参数</b>。</p>
+
+  <table>
+    <tr><th>基准</th><th>FreshVLA</th><th>最强对照</th><th>说明</th></tr>
+    <tr><td>LIBERO 平均</td><td><b>98.2%</b></td><td>GR00T-N1.6 97.0 / π0.5 96.9（3B）</td><td>2B 打过 3B</td></tr>
+    <tr><td>LIBERO-Long</td><td><b>98.0%</b></td><td>GR00T-N1.6 94.4 / UniVLA 92.0（9B）</td><td>长任务差距最大</td></tr>
+    <tr><td>LIBERO-PLUS 平均</td><td><b>80.4%</b></td><td>GR00T N1.7 77.3</td><td>7 类扰动零样本</td></tr>
+    <tr><td>CALVIN 平均长度</td><td><b>4.52</b></td><td>π0.5 4.26 / GR00T-N1.6 4.24</td><td>连续 5 子任务</td></tr>
+    <tr><td>真机（4 任务）</td><td><b>84.2%</b></td><td>π0.5 76.7 / ACoT-VLA 72.5</td><td>每任务 30 条轨迹</td></tr>
+    <tr><td>推理延迟</td><td>86.80 ms（仅动作 85.22）</td><td>+1.58 ms（+1.85%）</td><td>H200，显存不变（4.878 GiB）</td></tr>
+  </table>
+
+  <p>预训练数据规模：<b>227,894 条轨迹 / 约 2787 万帧</b>，来自 DROID（19.8M 帧）、RT-1（3.7M）、Bridge、RoboCOIN、RoboMIND2、CALVIN、LIBERO。<b>全部是固定的第三人称视角视频</b>——腕部相机的自运动会和真实交互动力学混在一起，所以它明确排除了。</p>
+
+  <p>最有说服力的一行不是 98.2，而是这个：<b>同一架构去掉潜在动作（w/o LA），LIBERO 从 98.2 掉到 96.0，PLUS 从 80.4 掉到 75.3。</b>后者里，背景 +13.1、噪声 +12.6、光照 +5.2 个百分点。<b>也就是说，潜动作预训练买到的不是「更会做任务」，而是「更抗干扰」</b>——这恰好是视频预训练应该给的东西。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：一个瓶颈通道装不下两个数量级的时间尺度</h2>
+
+  <div class="step">
+    <div class="t">公理一：视频里没有动作标签，但有「变化」</div>
+    <div class="d">相邻帧的表示之差，隐含了「这中间发生了什么」。这是所有潜动作方法的共同起点：<b>既然没有动作，就把「变化」当成动作的代理。</b>问题在于，这个代理里混着好几个物理过程。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理二：变化至少有两层，时间尺度差两个数量级</div>
+    <div class="d"><b>阶段层</b>：几秒到十几秒，表现为「先抓住、再抬起、然后移动」。<b>执行层</b>：几十毫秒到几百毫秒，表现为接触瞬间的位置微调、打滑后的补偿。<b>前者决定任务走不走得下去，后者决定最后几毫米准不准。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理三：单通道 + 有限维度 = 必然折中</div>
+    <div class="d">一个 64 维潜变量要同时编码这两层，<b>训练目标（重建下一帧）会自然偏向能量更大的那一层</b>——也就是宏大的背景运动与阶段推进。<b>结果是：长任务丢步、精细操作迟滞。</b>这不是容量不够的问题，是<b>目标函数分不清谁是谁</b>的问题。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">推论：拆开还不够，必须强制「两路真的不一样」</div>
+    <div class="d">这是全篇最容易被略过、但最关键的一步。<b>如果把两路拆开却用同一个目标训，模型会偷懒：两路学成几乎一样的东西，等于没拆。</b>所以它加了一个<b>频域正则</b>：在 DCT 域上，让阶段层只用前 K 个频带、执行层用全部频带。<b>这不是精度项，是「分工约束」——它把「两路应该各管一段」写进了损失函数。</b></div>
+  </div>
+
+  <div class="box bad">
+    <b>证据在这里，而且是可以直接看的：</b>有 DCT 正则时，<b>阶段分支在低频带领先执行分支 0.031，执行分支在高频带领先阶段分支 0.052</b>；<b>去掉这个正则，执行分支在低频反而反超 0.009（排序反转）</b>。<b>排序一反转，就说明两路塌成了一路。</b>这比任何成功率对比都更能说明「正则不是装饰」。
+  </div>
+
+  <h3>再补一层：注意力该看哪里</h3>
+  <p>还有一个独立的坑。<b>视频预训练的注意力很容易落在背景和无关大物体上</b>，而和动作最相关的信息往往在<b>接触边界</b>——也就是图像里的高频边缘。<b>所以它用 FFT 的高频响应做出一个「注意力应该看哪里」的目标分布，用 KL 散度去监督。</b></p>
+  <p>这一招的收益很集中：<b>传感器噪声 +22.4、相机视角 +13.3、机器人初始状态 +8.8 个百分点</b>；<b>但布局变化反而 −6.1（82.4 → 76.3）。</b>原因不难猜——<b>盯着接触区域看，会削弱对「目标在哪」这类全局位置线索的敏感度</b>，而布局变化恰恰考的是这个。这也是它 LIBERO-Goal 掉点的同一个原因。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：两阶段，先造潜动作，再联合去噪</h2>
+
+  <div class="step">
+    <div class="t">阶段 I-1：冻结骨干 + 一个 4 头适配器，把 patch 聚成帧表示</div>
+    <div class="d">视觉骨干是<b>冻结的 DINOv3 ViT-B/16</b>，输入 36 帧、224×224，出 patch 级 token。<b>DynaAdapter 用 4 头交叉注意力 + 单一共享 query</b> 把 patch 聚合成一个帧级表示，<b>同时输出每个 patch 的注意力权重</b>——后者不是副产品，是下面那个高频先验的落点。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">阶段 I-2：高频先验——用 FFT 告诉注意力该看哪</div>
+    <div class="d">沿时间轴对 RGB 像素做实数 FFT，<b>只保留后半段频率 bin</b>，逆变换回逐帧高频响应，归一化后按 patch 网格池化，得到目标分布。<b>梯度截断</b>后，用 KL 散度把这个分布按到注意力上。<b>翻译：不要求注意力「看得准」，只要求它「看得对地方」。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">阶段 I-3：分层编码器——把过渡拆成「慢包络 + 快残差」</div>
+    <div class="d">用等间距时间锚点把窗口切成 K=6 个粗区间。<b>阶段层的过渡由粗区间首尾表示之差给出</b>，然后上采样到全长度；<b>执行层再编码「全长过渡减去上采样后的阶段层」这个残差</b>。<b>最后 latent 等于阶段层加上残差，再归一化。</b>潜空间 64 维，共享时序卷积核大小 3。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">阶段 I-4：双向预测 + 防坍缩</div>
+    <div class="d"><b>把潜动作取反号得到「反向动作」</b>，用同一个因果 Transformer 分别做正向与反向预测，Huber 损失。<b>反向预测不是炫技：它逼着潜动作编码「可逆的动力学」，而不是「帧的差异」。</b>另外用 SIGReg（各向同性高斯正则）约束帧表示，防止所有帧塌到同一点。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">阶段 II：联合潜动作-动作流匹配，只加 1.58 毫秒</div>
+    <div class="d">冻结阶段 I 的整套模块作为「目标生成器」，产出前向潜动作；<b>然后把潜动作流和 7 维机器人动作流各自加噪，交给同一个 DiT-B 流匹配专家一起去噪</b>，动作视野 12 步、交错排列。<b>推理时不需要生成器、不需要未来帧</b>——潜动作流只作内部变量。<b>这就是为什么它只贵 1.58 毫秒：路线多了，推理路径没多。</b></div>
+  </div>
+
+  <div class="box good">
+    <b>一句话把两阶段分工说清：</b><b>阶段 I 解决「动作长什么样」，阶段 II 解决「怎么把它变成关节」。</b>而两阶段共用一个潜动作表示，所以<b>阶段 II 不需要重新学「动作是什么」，只需要学「动作到关节的映射」</b>——这也是 2B 参数就够的原因。
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：五个式子，从「注意力看哪」走到「联合去噪」</h2>
+
+  <div class="fml">
+    <div class="name">① 高频先验的 KL：不要求看得准，只要求看得对地方</div><div class="exp">\( \mathcal{L}_{\mathrm{PAWKL}}=\frac{1}{BT}\sum_{b=1}^{B}\sum_{t=1}^{T}D_{\mathrm{KL}}\big(\operatorname{sg}(\bm{\pi}_{b,t})\,\big\|\,\mathbf{w}_{b,t}\big) \)<br><b>大白话：</b>\(\bm{\pi}\) 是 FFT 高频响应池化出来的目标分布（\(\operatorname{sg}\) 表示不回传梯度，它是靶子不是学生），\(\mathbf{w}\) 是注意力自己算出来的分布。<b>用 KL 而不是 MSE，是因为两者都是概率分布——比的是「把注意力预算花在哪些 patch 上」。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 分层构造：慢包络 + 快残差</div><div class="exp">\( \mathbf{s}=\operatorname{Up}_N\!\big(R_s(E_c(\mathbf{d}^{\mathrm{sub}}_{1:K}))\big),\quad \mathbf{e}=R_e(\mathbf{r}-\mathbf{s}),\quad \mathbf{z}=\operatorname{LN}_{\mathrm{out}}(\mathbf{s}+\mathbf{e}) \)<br><b>大白话：</b>先把 K 个粗区间的过渡编码后上采样回全长得到「慢的」\(\mathbf{s}\)；<b>再用全长过渡减去它，剩下的才是「快的」\(\mathbf{e}\)</b>；两者相加并归一化得到潜动作 \(\mathbf{z}\)。<b>注意这个减法是关键：执行层学的不是「过渡」，而是「过渡里阶段层没解释掉的那部分」。</b>所以两路天然不重复。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 频域正则：把「该谁管哪段频率」写进损失</div><div class="exp">\( \mathcal{L}_{\mathcal{H}}=\frac{1}{2}\sum_{\sigma\in\{+,-\}}\Big[\lambda_{\mathrm{sub}}D_{\bm{\omega}^{\mathrm{sub}}}(\mathbf{s}^{\sigma},\mathbf{r}^{\sigma})+\lambda_{\mathrm{exe}}D_{\bm{\omega}^{\mathrm{exe}}}(\mathbf{z}^{\sigma},\mathbf{r}^{\sigma})\Big] \)<br><b>大白话：</b>把两条潜动作路径与真实过渡都转到 DCT 域比，<b>但用不同的权重谱</b>：阶段层只在前 K 个频带上给权重（管低频），执行层在全频带上按指数衰减给权重（管高频）。<b>这就是「分工」的技术定义——它不是让两路各自更准，而是让它们别抢同一段频率。</b>去掉它，LIBERO-Long 从 98.0 掉到 93.0，是全文最大单项跌幅。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 双向动力学损失：逼潜动作编码可逆的动力学，而不是帧差</div><div class="exp">\( \mathcal{L}_{\mathrm{dyn}}=\frac{1}{2}\Big[\ell_{\mathrm{H}}\big(P_\eta(\mathbf{h}_{1:T-1},\mathbf{z}^{+}),\mathbf{h}_{2:T}\big)+\ell_{\mathrm{H}}\big(P_\eta(\operatorname{rev}(\mathbf{h}_{2:T}),\operatorname{rev}(\mathbf{z}^{-})),\operatorname{rev}(\mathbf{h}_{1:T-1})\big)\Big] \)<br><b>大白话：</b>正向：给定表示序列和正向潜动作，预测下一帧表示；反向：把序列倒过来、潜动作取反，预测上一帧。<b>两个方向用同一个预测器。</b>如果潜动作只是「帧差」，反向会立刻崩；<b>只有编码了真正的动力学，正反才都成立。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑤ 联合流匹配：一条目标，两条流，一个专家</div><div class="exp">\( \mathcal{L}_{\mathrm{JFM}}=\mathbb{E}\left[\frac{1}{H_{\mathrm{a}}}\sum_{i=1}^{H_{\mathrm{a}}}\Big(\operatorname{MSE}(\hat{\mathbf{v}}^{a}_{\tau,i},\,\mathbf{a}_{t+i-1}-\bm{\epsilon}^{a}_{i})+\operatorname{MSE}(\hat{\mathbf{v}}^{z}_{\tau,i},\,\mathbf{z}^{+}_{i}-\bm{\epsilon}^{z}_{i})\Big)\right] \)<br><b>大白话：</b>动作和潜动作各自加噪、各自被预测「速度」，<b>共用同一个 DiT 专家</b>。\(H_{\mathrm{a}}=12\) 是动作视野。<b>这一行的野心是：让潜动作成为「动作的另一种写法」，而不是「动作之前的另一个阶段」</b>——所以两条流可以同时去噪，推理时也能直接丢掉潜动作那条。</div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限：它赢在「便宜 + 抗扰动」，输在「目标相关」</h2>
+
+  <h3>值得带走的</h3>
+  <ul>
+    <li><b>2B 参数打赢 3B/7B，而且不是靠数据灌出来的。</b>LIBERO-Long 98.0 对 GR00T-N1.6 的 94.4、UniVLA（9B）的 92.0。<b>长任务差距最大，恰好对应「阶段层」这条设计要解决的问题</b>——设计与收益对得上，这比单纯的高分更可信。</li>
+    <li><b>潜动作的收益被拆清楚了：它买的是鲁棒性，不是任务能力。</b>去掉潜动作，LIBERO 只掉 2.2（98.2 → 96.0），<b>但 PLUS 掉 5.1（80.4 → 75.3），其中噪声 −12.6、背景 −13.1。</b><b>这对「视频预训练到底有什么用」这个问题，给了一个可以说清的答案。</b></li>
+    <li><b>「推理不变贵」这件事本身是工程贡献。</b>联合去噪听起来应该更贵，实测只多 1.58 毫秒、显存不变。<b>原因是潜动作只在训练期存在。</b>很多分层方法在这一步会把模型变重。</li>
+    <li><b>频域正则那组对照做得漂亮。</b>有正则时两路频段分工明确（低频领先 0.031、高频领先 0.052），去掉后「低频排序反转」。<b>这是一个可以直接拿来验自己实现对不对的诊断指标</b>——如果你复现出来两路没分工，说明正则没生效。</li>
+  </ul>
+
+  <h3>必须打的折扣</h3>
+  <ol class="crit">
+    <li><b>LIBERO-Goal 明确退步，而且原因它自己承认。</b>96.3 对 π0.5 的 98.0、JALA 的 97.4。<b>作者归因于「潜动作预训练没有显式以语言目标为条件」，并指出高频先验强调交互区域可能降低对目标位置线索的敏感度</b>——Goal 从 98.0 掉到 96.3 正是这个代价。<b>换句话说，「看接触」和「看目标」在这里是互斥的，它选了前者。</b></li>
+    <li><b>高频先验在布局变化下是负收益。</b>不加 PAWKL 的版本 Layout 达 82.4%，加了降到 76.3%（−6.1）。<b>作者承认这个权衡，但没有给出「什么时候该关掉它」的判据。</b>对一个要跨场景部署的系统，这是必须回答的问题。</li>
+    <li><b>相机视角是最脆弱的一维，而它恰好只支持第三人称固定视角。</b>Camera 扰动下只有 60.0%，RRS 0.933（全篇最低）；<b>Robot 58.9%、Layout 76.3% 都没超过 GR00T N1.7（63.2% / 75.1%）。</b>而它<b>因为腕部相机自运动干扰，明确放弃了腕部视角</b>——<b>等于把「换相机」这条最现实的数据扩展路径关掉了。</b></li>
+    <li><b>两个关键超参都要手调，而且最优点不一致。</b>substage 数量 3 / 6 / 12 → 94.6 / 98.2 / 98.0（Long 从 94.3 反弹到 98.0 又回落）；频率衰减 0 / 1 / 2 → 98.1 / 98.2 / 97.7，<b>但 Decay 0 在 Goal 上更好（98.3 对 96.3），Decay 2 在 Object 上到 100.0。</b><b>这说明最优点依赖任务组合，没有自动选择机制。</b></li>
+    <li><b>「w/o LA」这个对照不足以证明潜动作的全部价值。</b>它是同架构去掉潜动作，<b>而不是与一个同等训练预算的强基线对比</b>。<b>真正该问的是：这 2.2 / 5.1 个点，换成一个更大的骨干或更多数据能不能买到？</b>论文没有做这个等预算比较。</li>
+    <li><b>真机只有 4 个任务、每任务 30 条轨迹。</b>84.2% 对 π0.5 的 76.7 是 +7.5，<b>但 4 个桌面任务的方差可能就覆盖了这个差距</b>，而论文没有报真机试验的重复次数与置信区间。<b>相比之下 LIBERO 那套 98.2 有完整消融，真机部分更像一个「能用」的证明。</b></li>
+    <li><b>它是「潜动作方法」的改进，不是新范式。</b>整套东西建立在 LAPA / UniVLA / VILLA-X 那条线上（表 9 里它也确实是在换接口做对比）。<b>把「分层 + 分频」读成通用配方是危险的</b>——这两个设计都直接绑在「用帧间变化当动作代理」这个前提上，<b>一旦有真动作标签，它们的意义会大幅下降。</b></li>
+  </ol>
+
+  <div class="box good">
+    <b>一句话总结：</b>它没有发明新范式，它<b>把「一个潜变量装不下两个时间尺度」这件事从直觉变成了一个可训练的结构</b>。最值得带走的两条判断：<b>① 拆开两路不够，必须用频域约束逼它们分工——否则模型会把两路学成一路；② 视频预训练买的是抗扰动，不是任务能力，用它的时候要按这个预期去评。</b>而它留下的最大空白很清楚：<b>「看接触」与「看目标」在这套设计里是互斥的——能不能让模型自己决定在什么任务上该看哪？</b>这篇把权衡测出来了，但没有解掉它。
+  </div>
+</section>
+
+<footer>论文：FreshVLA: Frequency-Regularized Time Scale Hierarchical Latent Actions for Vision-Language-Action Models · arXiv 2611.33635 · 2026-11-25<br>
+Jiaming Liang, Yifeng Zhan, Rongyi He, Mu Li 等 · 香港科技大学（广州）· 小鹏机器人 · 同济大学 · 香港城市大学 · 本篇依据正文（HTML 版）撰写</footer>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第一人称视频能教机器人的是任务，不是手｜3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<div class="head">
+  <h1>第一人称视频能教机器人的，是任务，不是手<span class="sub">EgoStudy · 受控实证研究</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-24</div>
+    <div><b>原文规模</b> 约 9000 字 · 5 节 + 参考文献</div>
+    <div><b>对比对象</b> VLA（StarVLA + Qwen3-VL-4B）· WAM（Fast-WAM + Wan2.1-14B）</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">第一性原理核心立论</div>
+  <p>第一人称视频能教机器人的，不是手的动作，而是任务怎么推进。人手和机器人手的尺寸、自由度、接触方式都不一样，逐关节的轨迹注定迁不过去；真正能迁的是「先抓住、再抬起」这种任务级的运动意图。所以收益一定不均匀：越粗的动作越能迁，越细的越不能。EgoStudy 用一套受控实验把这条直觉坐实了——扩数据只稳定改善手腕平移，旋转和指尖姿态两头不讨好。而数据多样性比数据量更要紧，只用单一来源，误差会涨到两三倍。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">它问了三个能证伪的问题</a>
+  <a href="#why">为什么收益必然不均匀</a>
+  <a href="#how">把变量锁到只剩数据</a>
+  <a href="#formula">五个式子</a>
+  <a href="#worth">这套结论的边界在哪</a>
+</div>
+
+<section id="what">
+  <h2><span class="tag">是什么</span>不是提出一个新模型，是把「人类视频到底有没有用」做成一个可证伪的实验</h2>
+
+  <p>这个领域过去两年的通病，原文一句话点破：<b>不同研究用不同的机器人数据集、不同的动作表示、不同的架构、不同的优化预算、不同的评估协议，所以谁也说不清性能提升到底来自「更多人类经验」、「某种数据处理方式」、还是「针对某个模型调的训练方案」。</b></p>
+
+  <p>EgoStudy 的立场很朴素：<b>把机器人数据固定死，只动人类数据。</b>机器人示范的池子、采样概率、优化预算、参数更新次数全部锁住，唯一变化的量是那批第一人称人类数据——多少、从哪来、怎么切、怎么描述、怎么采样。</p>
+
+  <div class="box good">
+    <b>共享的灵巧动作接口</b>：两只手，每只 1 个手腕姿态 + 5 个指尖姿态，每个姿态是「三维位置 + 六维旋转」，合计 <b>108 维</b>；两个模型都预测长度 <b>32 步</b>的动作块，都用 AdamW + 余弦衰减、都用带掩码的动作流匹配（WAM 另加视频流匹配损失）。<b>于是「VLA 比 WAM 强」这类比较，第一次有了同一个分母。</b>
+  </div>
+
+  <p>三个问题，各有明确答案：</p>
+
+  <table>
+    <tr><th>问题</th><th>答案（原文数字）</th></tr>
+    <tr><td>哪些数据处理/预训练策略最有效？</td><td>语义完整片段 + 详细语言描述 + 多来源混合，三项都有效；<b>只用 EgoDex 单源，误差是混合来源的 2.8~5.7 倍</b></td></tr>
+    <tr><td>动作的哪一部分最受益于规模？</td><td><b>手腕平移</b>稳定受益；手腕旋转、指尖姿态没有一致改善</td></tr>
+    <tr><td>对 VLA 和 WAM 的影响有何不同？</td><td>人类数据从 1% 到 100%：<b>VLA 收益更大，WAM 验证损失更低</b></td></tr>
+  </table>
+
+  <p>还有一条容易被忽略、但工程上最有用的细节：<b>采样方式要按模型家族选。</b>事件级采样（在整个轨迹片段里均匀铺动作目标）让 WAM 更好；固定步长采样（固定时间间隔取同样多的目标）让 VLA 更好。原文给的解释也合理——<b>WAM 靠看完整事件的演化获益，而 VLA 预测位移需要一个一致的时间尺度。</b></p>
+
+  <p>闭环成绩（RoboCasa-GR1，每任务 10 次 × 24 任务 = 240 试）：人类数据 1% → 100% 时，<b>VLA 成功率 38.3% → 43.8%，WAM 39.6% → 45.4%</b>。增量都不大，但方向和离线误差一致——<b>这一点很重要：它证明「离线验证损失」确实能预测闭环表现，而不是又一个漂亮但没用的指标。</b></p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">为什么</span>从人手到机械手，可迁移的信息只有一层，收益就只能落在那一层</h2>
+
+  <div class="step">
+    <div class="t">公理一：人类视频记录的是「手-物交互的像素 + 手部姿态」，不含力矩、不含关节角</div>
+    <div class="d">它能提供的监督有两类：<b>手部运动的目标</b>（跟踪出来的手姿），和<b>动作对场景造成的影响</b>（物体被推到哪里）。<b>两类都不是机器人的控制量，所以必须先经过一次换算。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理二：换算里有一道过不去的墙——具身差</div>
+    <div class="d">人手和机器人手在尺寸、自由度、连杆长度、接触面上都不同。原文直说：<b>即使拥有准确的手部轨迹，人和机器人在运动方式上的差异仍会限制迁移。</b>这道墙不是数据量能推倒的，它是物理的。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理三：于是可迁移的只剩「任务级运动意图」这一层</div>
+    <div class="d">「把手移到杯子左侧再合拢」——<b>这句话在任何手型上都成立。</b>「食指第二关节屈 37 度」——<b>这句话换一只手就错了。</b>前者是意图，后者是实现。<b>意图可迁，实现不可迁。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">推论：收益必然随动作粒度衰减，而且衰减点可以预判</div>
+    <div class="d">手腕平移是大位移、粗粒度、对人的手型几乎不敏感 → <b>应该稳定受益</b>。手腕旋转和指尖姿态是小位移、细粒度、直接暴露手型差异 → <b>应该不受益甚至有害</b>。<b>实测完全符合：两个领域、两个模型家族，手腕平移误差整体下降，旋转和指尖没有一致改善。</b></div>
+  </div>
+
+  <div class="box bad">
+    <b>原文给的机理解释，比结论本身更值得记：</b>从第一人称视频里估出来的动作标签<b>本身带误差</b>，而这些误差对小变化的干扰比对大位移的干扰严重得多；再加上接触过程中<b>极小的姿态误差就会改变手指与物体的接触部位</b>，而「维持接触要做的调整」在人手和机器人手上本来就不一样。<b>所以不是数据不够，是标签精度与接触物理一起卡住了细粒度迁移。</b>
+  </div>
+
+  <h3>还有一层：为什么 VLA 比 WAM 更能吃规模</h3>
+  <p>这是全文最有意思的诊断，而且是靠两组实验逼出来的，不是猜的。</p>
+  <p>第一组看<b>特征分离度</b>：把人类特征均值和机器人特征均值之间的距离，除以两个领域内部的合并离散程度，得到一个相对分离度 R。数据规模一涨，<b>VLA 的 R 在下降（两个领域都降），WAM 各层特征没有收敛趋势。</b></p>
+  <p>第二组换<b>骨干网络容量</b>：VLA 从 Qwen3-VL-4B 换 8B，行为不变，都在降；WAM 把视频骨干换成更弱的 Wan2.2-TI2V-5B，<b>规模带来的收益直接消失</b>。</p>
+  <div class="box good">
+    <b>结论：VLA 学的是「具身无关的共享动作」，所以小模型也能吃；WAM 的动作是从视频预测里「抽」出来的，所以它的上限被视频骨干吸收人类视频的能力锁死。</b>而像素级预测会把模型往「特定具身外观」上拽——<b>这既是 WAM 的优势来源，也是它规模扩展潜力不如 VLA 的原因。</b>
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">怎么做</span>四步把变量锁死，只留「人类数据」一个自由度</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：建一个两边都能用的动作接口</div>
+    <div class="d">人类手姿来自人工标注或跟踪，机器人手姿由正向运动学算出来，<b>两者对齐到统一坐标约定</b>，20 Hz 存 RGB 帧、相机位姿、手部姿态、语言描述。<b>这一步是全部比较的前提：接口不同，任何「VLA vs WAM」的对比都是假的。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：切分 + 描述 + 过滤，把「片段」变成「语义完整的动作」</div>
+    <div class="d">按数据源分别做分割，生成语义完整的动作片段，再让视觉语言模型给每段<b>补详细描述</b>；然后过滤掉视频不可用、手部轨迹不可用、相机轨迹不可用的片段。<b>有效性掩码排除无效姿态坐标，动作归一化用每个来源自己的固定统计量。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：固定机器人侧，只调人类侧</div>
+    <div class="d">全局批次大小和参数更新次数固定，<b>每个机器人数据源贡献的期望样本数保持不变</b>；人类数据混合里，<b>各来源权重与其符合条件时长的平方根成正比</b>（压住大数据集的话语权）。这样「人类数据比例从 1% 到 100%」才是干净的对比。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：三套评估，防止「离线好看、闭环不行」</div>
+    <div class="d">① <b>留出样本</b>（官方验证集，永不进训练、也不进归一化统计）；② <b>分动作组分评估</b>（平移/旋转/指尖分开报，这一步才让「收益不均匀」变得可见）；③ <b>标准化后训练 + 目标域闭环</b>（RoboCasa-GR1，每任务 10 次 × 24 任务）。<b>三套都做，才能说「离线提升转化成了部署效果」。</b></div>
+  </div>
+
+  <div class="box good">
+    <b>三个设计上的「脏活」，恰恰是这篇可信的原因：</b>一是<b>单源消融要控制机器人监督的差异</b>（原文自己承认混合条件同时改了来源多样性和机器人监督，差距里有混杂）；二是<b>规模实验为了让两个模型用同一套时间采样，统一用事件级采样</b>（这会略微不利于 VLA，作者明确写出来了）；三是<b>三个训练随机种子取均值并给误差条</b>。
+  </div>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">公式</span>五个式子：动作怎么定义、误差怎么算、规模怎么拟</h2>
+
+  <div class="fml">
+    <div class="name">① 手腕目标：位移在「初始相机系」里表达</div><div class="exp">\( \Delta\mathbf{p}_w(t) = R_{c,0}^{\top}\big(\mathbf{p}_w(t)-\mathbf{p}_w(0)\big) \)<br><b>大白话：</b>把世界系里的手腕位置减去初始位置，再用初始相机姿态的转置旋过去。<b>为什么非要换到相机系？因为模型看的是相机图像，动作和观测必须同一个坐标系，否则它得自己学这个旋转——而那正是「隐含约定」的典型。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 手腕旋转：同一坐标系里的朝向变化</div><div class="exp">\( \Delta R_w(t) = R_{c,0}^{\top}R_w(t)R_w(0)^{\top}R_{c,0} \)<br><b>大白话：</b>先回到初始朝向，再转到当前朝向，最后整体旋进相机系。<b>这个式子是「相对量」而非「绝对量」，好处是换机器人基座、换桌子位置都不用重训。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 指尖目标：把手指从手腕里「摘出来」</div><div class="exp">\( \mathbf{p}_{f|w}(t)=R_w(t)^{\top}\big(\mathbf{p}_f(t)-\mathbf{p}_w(t)\big),\qquad R_{f|w}(t)=R_w(t)^{\top}R_f(t) \)<br><b>大白话：</b>指尖位置相对手腕、并在手腕坐标系里表达。<b>这一步是全文的关键设计：它把「手往哪走」和「手指怎么抓」拆成两个独立分量</b>——所以后面才能分别测「哪个分量受益」。<b>没有这个拆分，就不会有「收益不均匀」这个结论，只会有一个混在一起的平均误差。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 掩码 MSE：只在有效坐标上算误差</div><div class="exp">\( \mathrm{MSE}_m(\hat{x},x)=\frac{\sum_j m_j(\hat{x}_j-x_j)^2}{\sum_j m_j} \)<br><b>大白话：</b>\(m_j\) 是「这个坐标是否有效」的 0/1 掩码，分母也只数有效的。<b>为什么必须做？因为不同数据源的标注缺失位置不一样，不掩码就等于把「没标」当成「等于 0」在训练。</b>分项损失就是把它分别套到平移 \(L_{\text{trans}}\)、旋转 \(L_{\text{rot}}\)（六维表示 \(r_w=\rho_6(\Delta R_w)\)）、指尖 \(L_{\text{finger}}\) 上。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑤ 规模扩展的半对数拟合：一个斜率说清「值不值得加数据」</div><div class="exp">\( \hat{E}(p)=a+b\log_{10}p \)<br><b>大白话：</b>\(p\) 是人类数据比例（1%→100%），\(E\) 是平均手腕平移误差，\(b\) 就是「数据量每涨十倍，误差降多少」。<b>原文报的是端点变化：</b>Bimanual XHand 上 VLA 降 20.2%、WAM 降 18.8%；RoboCasa-GR1 上 VLA 降 14.6%、WAM 降 9.6%。<b>同一个 \(b\) 在两个领域差了近一倍，说明「加多少人类数据」这件事没有全局答案，得按目标域测。</b></div>
+  </div>
+
+  <div class="box bad">
+    <b>另外两个没写成公式、但决定成败的量：</b>一是<b>动作维数</b>——每手 1 腕（3 位置 + 6 旋转）+ 5 指尖（各 3 + 6）= 54 维，两手 108 维，32 步一块；<b>这个接口决定了「粒度」这个词能不能被量化。</b>二是<b>相对特征分离度 R</b>——人类特征均值到机器人特征均值的距离，除以两域内部合并离散度。<b>R 下降 = 两个域在融合；WAM 不降 = 融合没发生。</b>这是全文唯一一个能解释「为什么 VLA 更能吃规模」的可测量量。
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">价值与局限</span>它最有用的地方是「告诉你别指望什么」</h2>
+
+  <h3>值得带走的</h3>
+  <ul>
+    <li><b>它把「人类视频有用吗」这个是非题，改成了「哪一层有用、有用多少、对谁有用」的分层题。</b>结论可以直接写进采集规范：<b>要手腕轨迹，别苛求指尖精度；要多样性，别只堆单源；要给详细描述，别只写「拿起来」。</b></li>
+    <li><b>「单源数据误差涨到 2.8~5.7 倍」是全篇最可操作的一条。</b>它意味着数据采购的第一优先级是<b>来源覆盖</b>而不是总量——这条对预算分配的影响比任何模型改进都直接。</li>
+    <li><b>VLA / WAM 的选择有了判据，而不是偏好。</b>人类数据少 → WAM 更好（它靠视频先验）；人类数据多 → VLA 收益更大（它学具身无关的共享动作）。<b>而 WAM 一旦换成弱视频骨干，规模收益就消失——这条等于说：选 WAM 必须同时选一个足够强的视频底座。</b></li>
+    <li><b>方法论上，它是这个领域少见的「受控实验」。</b>锁机器人数据、锁优化预算、锁参数更新次数、三个种子、分动作组分报误差、闭环复核——<b>这套协议本身比它的任何单个数字都更值得抄。</b></li>
+  </ul>
+
+  <h3>必须打的折扣</h3>
+  <ol class="crit">
+    <li><b>闭环增益很小，而且只有两个模型各一组数。</b>VLA 38.3 → 43.8（+5.5），WAM 39.6 → 45.4（+5.8），<b>这是在 24 个任务 × 10 次的规模上，没有给置信区间。</b>它足以证明「离线损失能预测闭环」，不足以支撑「人类数据能显著提升部署性能」这种强结论。</li>
+    <li><b>只有一个机器人本体、一个仿真域。</b>真机是 Bimanual XHand 桌面任务，仿真只有 RoboCasa-GR1。<b>「手腕受益、指尖不受益」这个结论高度依赖 XHand 手的自由度配置与标签精度</b>，换成更高自由度的灵巧手、或用更好的手部跟踪，结论可能变。<b>论文没有做这个交叉验证。</b></li>
+    <li><b>「扩展律」只有两个端点，不是真拟合。</b>报的是 1% → 100% 的下降幅度，中间只在 3%、10%、30% 上分动作组分报了误差。<b>用「端点 + 对数拟合」去外推是方便的，但这篇没有验证外推是否成立</b>——而工程决策恰恰总发生在「再加一倍数据会怎样」这个问题上。</li>
+    <li><b>单源消融里有混杂。</b>作者自己承认：混合条件同时保留了机器人示范，<b>所以观察到的差距同时反映了「人类数据来源多样性」和「机器人监督」的变化</b>。2.8~5.7 倍这个区间宽得反常（两倍多的跨度），也暗示里面不只有一个因素。</li>
+    <li><b>规模实验为了让两模型同协议，统一用事件级采样——这恰好是不利于 VLA 的那个选项。</b>作者写明了这一点，很诚实；<b>但也意味着 VLA 的规模收益被低估了一部分，而「VLA 收益更大」这个结论是在偏保守的设定下得出的</b>（方向上更可信，幅度上不可引用）。</li>
+    <li><b>它没有回答「人类数据能不能替代机器人数据」。</b>全文的设计前提是<b>固定机器人数据、只加人类数据</b>。<b>那么「少一半机器人数据 + 多一倍人类数据」会怎样？</b>这才是真实预算下的问题，而它被实验设计排除在外了。</li>
+  </ol>
+
+  <div class="box bad">
+    <b>一句话总结它的位置：</b>它没有让任何模型变强，它<b>把「人类视频」从一个信仰问题降级成一个有刻度的仪表</b>。最值得带走的两条判断：<b>① 可迁移的是任务意图，不是手的动作——所以别指望它教出精细操作；② 数据多样性优先于数据量，单源堆量的边际收益会塌。</b><br>
+    而它留下的最大空白是：<b>当标签精度成为细粒度迁移的瓶颈时，该去改数据（更好的手部跟踪），还是该改接口（换一种不依赖指尖姿态的监督）？</b>这篇把问题定位到了这一层，但没有给出下一步。
+  </div>
+
+  <p class="src">出处：公众号「human five」2026-11-24 推文，正文为 EgoStudy 的论文解读（项目页 puzhenyuan.github.io/EgoStudy-website）。人类数据源：自采示范 + EgoDex、HOI4D、HOT3D、VITRA（后者含 Ego4D、EPIC-KITCHENS、Something-Something V2）；机器人数据：自采 Bimanual XHand 桌面任务 + RoboCasa-GR1 仿真厨房。VLA 骨干 Qwen3-VL-4B-Instruct + GR00T 风格动作专家（StarVLA）；WAM 视频骨干 Wan2.1-I2V-14B-480P + 动作扩散 Transformer（Fast-WAM）。离线评估为三个种子的均值与误差条。</p>
+</section>
+
+<footer>公众号「human five」· 2026-11-24 · 3W1H 与第一性原理拆解</footer>
+</div>
+
+</body>
+</html>

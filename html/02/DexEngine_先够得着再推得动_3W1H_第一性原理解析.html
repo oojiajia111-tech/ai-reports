@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从人手到机械手：先够得着，再推得动｜3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<div class="head">
+  <h1>从人手到机械手：先让手臂够得着，再让物理说了算<span class="sub">DexEngine · 训练数据</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-25 · arXiv 2611.33579</div>
+    <div><b>关键词</b> 人→机数据放大 · 运动学重定向 · 残差强化学习 · 物理可执行 · 双臂灵巧手</div>
+    <div><b>一句话</b> 人体视频变成机器人训练数据，中间要过两道关：关节够得着、物体真被推动</div>
+    <div><b>方向</b> 训练数据</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>人类视频里手在动，机器人要的是关节序列，而且这套序列必须真能推动物体。中间缺两样东西：手臂够得着，也就是运动学可行；物理上推得动，也就是物理可执行。这两件事的求解代价差两个数量级——前者是几何搜索，后者要闭环试错。所以顺序只能是先把手摆到手臂够得着的位置，再让残差策略去补物理；反过来做，会先把手腕推到手臂跟不到的地方，白扔四分之一的数据。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据 <b>arXiv 2611.33579 正文（HTML 版）</b>；式 ①③④ 按原文 LaTeX 转写，式 ② 为<b>按原文流程整理的形式化表达、非原文照抄</b>（原文附录 Eq. S3 的粗路径目标在抓取时被截断）。
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：一条把「人手演示」放大成「双臂灵巧手数据」的流水线</h2>
+
+  <p>它要交付的东西很具体：给定一段人体手-物演示，输出机器人运动 Q（含双臂与双手的全部关节角）——<b>双臂加双手的全部关节角</b>，且必须同时满足两条：</p>
+  <ul>
+    <li><b>运动学可行</b>：在关节位置/速度极限内，不穿桌面、不穿固定物、不穿机身、不穿另一条臂；</li>
+    <li><b>物理可执行</b>：放到仿真里跑，物体真的沿着演示里那条轨迹被推动。</li>
+  </ul>
+
+  <p>这两条听起来像同一件事，其实是两个完全不同的问题，代价差一个数量级——全篇的洞察就建立在这个差别上。</p>
+
+  <table>
+    <tr><th>项</th><th>数值（原文）</th><th>说明</th></tr>
+    <tr><td>输入数据源</td><td><b>9 个</b>公开人体手-物数据集（HOT3D / OakInk2 / TACO / GRAB / ARCTIC / HRDexDB / H2O / HO-Cap / DexCanvas），统一重采样到 <b>50 Hz</b></td><td>不自己采，直接用现成人体数据</td></tr>
+    <tr><td>中间规模</td><td>每只手约 <b>5,200</b> 个 clip × <b>4 种</b>灵巧手</td><td>手型可换，是「重定向」的副产品</td></tr>
+    <tr><td>产出规模</td><td><b>65,000 条轨迹（116 小时）</b> / <b>325,000 个 episode（578 小时）</b></td><td>位姿增强 + 视觉增强把 1 条放大成最多 20 条</td></tr>
+    <tr><td>被接受 clip</td><td>四手合计 <b>20,768 个（37 小时）</b></td><td><b>接受率约 1/3</b></td></tr>
+    <tr><td>模态完整度</td><td>关节位置/目标、物体位姿、每指连杆法向接触力、双目 RGB-D、外中心相机、VLM 生成的语言指令</td><td>作者称这是人→机流水线中最大且唯一双臂的带臂物理数据集</td></tr>
+    <tr><td>成本</td><td>K=64 共享策略时 <b>2.8 GPU-分钟/clip</b>（L40S，仅计 RL 训练）</td><td>对比 CHORD 118.4、FlashDexRetarget 44.7</td></tr>
+  </table>
+
+  <p>流水线对比（64 个 TACO clip，SharpA 手）：</p>
+
+  <table>
+    <tr><th>方法</th><th>K</th><th>GPU-分/clip</th><th>ADD-AUC</th><th>SP-SR</th><th>MP-SR</th></tr>
+    <tr><td>ManipTrans（悬浮手）</td><td>1</td><td>122.7</td><td>0.63</td><td>70.3</td><td>26.6</td></tr>
+    <tr><td>SPIDER</td><td>1</td><td>2.3</td><td>0.62</td><td>78.1</td><td>23.4</td></tr>
+    <tr><td>CHORD</td><td>1</td><td>118.4</td><td>0.87</td><td>90.6</td><td>78.1</td></tr>
+    <tr><td>FlashDexRetarget</td><td>64</td><td>44.7</td><td>0.86</td><td>89.1</td><td>71.9</td></tr>
+    <tr><td><b>DexEngine（悬浮手）</b></td><td><b>64</b></td><td><b>2.8</b></td><td><b>0.93</b></td><td><b>98.4</b></td><td><b>89.1</b></td></tr>
+    <tr><td>DexEngine（装到 RB-Y1 双臂）</td><td>64</td><td>3.9</td><td>0.90</td><td>98.4</td><td>84.4</td></tr>
+    <tr><td>DexEngine</td><td>1</td><td>290.0</td><td>0.97</td><td>100.0</td><td>93.8</td></tr>
+  </table>
+
+  <p>两个读法：<b>① 成本比 CHORD 低约 42 倍、比 FlashDexRetarget 低约 16 倍，同时 ADD-AUC 更高</b>；<b>② K 从 1 放到 64，成本降约 75 倍，质量只从 0.97 掉到 0.90</b>——因为一个残差策略可以在几十条 clip 之间共享。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：必须先把手臂装上去，再谈物理</h2>
+
+  <div class="step">
+    <div class="t">公理一：人体演示只给「手和物体的位姿」，不给关节</div>
+    <div class="d">输入是 MANO 手模型与物体轨迹，输出要的是双臂双手的关节角序列。<b>这中间隔着一个逆问题：给定末端轨迹，求一条关节轨迹。</b>而它有无数解，还可能无解。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理二：「有解」不是给定条件，而是可以搜索出来的</div>
+    <div class="d">演示里的手在某个位置动，机器人手臂能不能跟到<b>取决于场景怎么摆</b>——桌子多高、物体在基座前方多远、朝哪个方向。<b>所以「可行」不是关于运动本身的性质，而是关于（运动, 摆放）这一对的性质。</b>原文把摆放参数化成 ξ（平移 x/y/z + 绕竖直轴偏航），然后<b>离散成网格去搜</b>。<b>这一步的实测很说明问题：默认场景位置只能保留 1.6% 的 clip，搜遍候选能保留 45.3%。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">公理三：「推得动」不能靠几何算，只能靠闭环试错</div>
+    <div class="d">手摆对了位置，物体也不一定按演示走——<b>接触力、摩擦、物体会不会翻、手指是否打滑，这些几何完全不知道。</b>所以必须放进仿真跑，用残差策略一点点修。<b>这就是代价差两个数量级的地方：前者是可达性图 + IK 解分支搜索，后者是 PPO 强化学习。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">推论：顺序不能反，因为物理校正会改变手腕的位置</div>
+    <div class="d">这是全篇最锋利的一条实证：<b>如果先做「悬浮手」的物理校正、再把手臂装上去，即使采用本文搜出来的最优摆放，能通过手臂 IK 的 clip 仍然少 26%。</b>原因很直白——<b>悬浮手阶段没有手臂约束，物理校正会把手腕推到手臂根本跟不到的地方；等你要装手臂时，这些 clip 已经废了。</b>反过来，先搜摆放、再解 IK、最后在这个可行解附近做物理残差修正，就只剩「小幅偏移」要修。</div>
+  </div>
+
+  <div class="box bad">
+    <b>第二个顺序陷阱在 RL 的重置里。</b>残差策略随机重置到一个中间帧时，如果把手臂 IK <b>重新解一遍</b>，很可能落到<b>另一个解分支</b>——几何上都对，但关节角差很远，策略学到的是错的对应关系。原文的解法是：<b>直接把手臂 reset 到预计算好的那条 IK 解上。</b>实测差距很大：手臂关节残差 + 随机重解 IK 是 0.544 ADD-AUC / 25.0% SP-SR；改成 reset 到参考解，是 0.856 / 76.6%。<b>同一个算法，只改重置方式，成功率翻三倍。</b>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：四个阶段，前两个纯几何，第三个才是 RL</h2>
+
+  <div class="step">
+    <div class="t">阶段 1：数据准备——对齐、切 clip、过滤</div>
+    <div class="d">先把序列转到<b>统一的重力对齐坐标系</b>；物体停桌面时，从序列取桌面平面或设为物体静止高度。<br>再切 clip：<b>每只手每个 clip 只保留一个被操作对象</b>（选移动时间/驱动关节时间最长的那个）；换物体处切分（handover 除外）；静止段过长在中点切；每段尽量 ≥5 秒；<b>单手任务里闲置的那只手保持在身侧静止</b>。<br>最后过滤掉物理不一致的（物体跳变、陷入桌面）和重定向后指尖偏离过大的。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">阶段 2：几何求解——重定向、修穿透、搜摆放、解 IK、重定时</div>
+    <div class="d"><b>手部重定向</b>用 SPIDER 的 MuJoCo 关键点法（软等式约束 + IK，50 Hz 逐帧 warm-start）。<b>初始穿透要修</b>：首帧手穿进桌面/物体时，用最小的腕姿 + 指关节改动消除，再用短 lead-in 混回原运动；权重设计很讲究——<b>1 厘米腕移动约等于 0.6 弧度拇指/食指运动</b>，所以改手指比改手腕便宜。<br><b>摆放搜索</b>用预计算的可达性图（每格 96 个朝向、每姿态最多 4 个 IK 解）：候选要求 ≥80% 帧被覆盖、物体停在桌面区域。<b>IK 求解</b>先在稀疏覆盖帧上用动态规划选一条关节运动最小的连续分支（= 粗路径），再从粗路径起点 + 31 个随机配置共 32 次运行逐帧续解，漂移 >1 cm 的帧重解；<b>通过标准是 99% 帧腕部误差在 3 cm 内、无跳变、无穿透</b>，最后保留肘部旋摆变化最小的那次。<b>重定时</b>把各时间区间拉伸，让最快关节速度略低于限速。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">阶段 3：残差 RL——只修物理，不重新发明动作</div>
+    <div class="d">每 ≤64 个 clip 共享一个残差策略（PPO，从零训，每只手独立 actor/value head 与奖励）。<b>动作定义在腕空间而不是关节空间</b>，因为腕的自由度更少、更接近任务空间；微分 IK 把修正后的腕姿转成手臂关节目标。<b>clip 接受判据：训练后并行跑一批 rollout，≥10% 能到达 clip 末尾且未提前终止，才接受。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">阶段 4：数据生成——记录 + 两种增强</div>
+    <div class="d">重跑被接受的 clip，<b>保留物体最接近参考姿态的那条完整 rollout</b>；记录关节位置、关节目标（作为动作）、物体位姿、每指连杆法向接触力、双目 RGB-D、外中心视图和 VLM 自动生成的语言指令。<br><b>位姿增强</b>：在筛选通过的其它摆放上重跑 IK + 重定时，<b>策略不用重训</b>。<b>视觉增强</b>：每轨迹渲 5 种外观（其中 4 种随机材质/光照/桌面/干扰物）。每 clip 最多 20 个 episode。</div>
+  </div>
+
+  <div class="box good">
+    <b>为什么这套流程能便宜一个数量级？</b>因为它<b>把「搜索」和「学习」分给了不同的工具</b>：几何上可解的东西用可达性图 + DP + 32 次 IK 运行硬搜（确定性、可并行、几秒钟）；物理上不可解析的东西才交给 RL，而且<b>RL 只学「残差」，起点已经是几何最优解</b>。<b>如果一上来就用 RL 学整条动作，那就是把几何问题也当物理问题解。</b>
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：一条带约束的优化，加三处只改一点点的局部修正</h2>
+
+  <div class="fml">
+    <div class="name">① 主目标：物理可执行是目标，运动学可行是约束</div><div class="exp">\( \min_{\mathcal{Q},\,\bm{\xi}}\; E=\sum_{t}\sum_{j}d\big(\hat{\mathbf{O}}^{j}_{t},\mathbf{O}^{j}_{t}\big)\quad\text{s.t.}\quad \mathcal{Q}\in\mathcal{F}(\bm{\xi}) \)<br><b>大白话：</b>\(\hat{\mathbf{O}}\) 是目标物体位姿，\(\mathbf{O}\) 是仿真里跑出来的位姿，\(d\) 是位姿距离，\(\mathcal{F}(\bm{\xi})\) 是「在摆放 \(\bm{\xi\) 下运动学可行的全部运动」这个集合。<b>注意约束是集合包含关系，不是一个罚项</b>——这正是「先几何、后物理」的数学表达：<b>可行域先被划出来，优化只在里面找。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">② 残差修正：只在参考动作上加一点点</div><div class="exp">\( \mathbf{p}^{*}_{t}=\hat{\mathbf{p}}_{t+\ell}+\delta_{p}\,\mathrm{sat}(\mathbf{u}^{p}_{t}),\qquad \mathbf{R}^{*}_{t}=\hat{\mathbf{R}}_{t+\ell}\exp\!\big(\delta_{R}\,\mathrm{sat}(\mathbf{u}^{R}_{t})\big) \)<br><b>大白话：</b>策略输出的是残差 \(\mathbf{u}\)，截断到 [−1, 1] 再乘一个缩放 \(\delta\)，<b>加到参考腕姿上</b>；\(\ell\) 是 look-ahead，用来补偿手臂控制器的跟踪滞后。<b>这一行是「RL 不重新发明动作」的技术定义</b>：起始点永远是那条几何解，策略只能动一个小区间。<b>（按原文流程整理，非原文照抄）</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">③ 手部重定向：一个带先验的 IK</div><div class="exp">\( \mathbf{q}^{h}=\arg\min_{\mathbf{q}}\sum_{i=1}^{5}k_i\|\mathbf{p}_i(\mathbf{q})-\hat{\mathbf{p}}_i\|^2+k_p\|\mathbf{p}_w(\mathbf{q})-\hat{\mathbf{p}}_w\|^2+k_R\|\log(\hat{\mathbf{R}}_w^{\top}\mathbf{R}_w(\mathbf{q}))\|^2+\lambda\|\mathbf{q}-\mathbf{q}^{h}_{t-1}\|^2 \)<br><b>大白话：</b>五个指尖位置 + 手掌位置 + 手掌朝向，三项加权求和，<b>最后一项是把「别乱动」当正则</b>——它让相邻帧的解连续，避免手指抖动。<b>旋转用对数映射而不是直接减矩阵，是因为旋转没有减法。</b></div>
+  </div>
+
+  <div class="fml">
+    <div class="name">④ 初始穿透修复：宁可改手指，也不改手腕</div><div class="exp">\( \min_{\Delta\mathbf{q}^{h}}\;\|\mathbf{w}\odot\Delta\mathbf{q}^{h}\|^{2}+\lambda_n\,n_{\mathrm{pen}}\big(\mathbf{q}^{h}_{1}\oplus\Delta\mathbf{q}^{h}\big)+\lambda_d\,d_{\mathrm{pen}}\big(\mathbf{q}^{h}_{1}\oplus\Delta\mathbf{q}^{h}\big) \)<br><b>大白话：</b>第一项要改得少（\(\mathbf{w}\) 让拇指/食指最便宜、腕最贵），后两项罚「穿进去的点数」和「穿透深度」（\(\lambda_n=10^3\)/点，\(\lambda_d=5\times10^4\)/米）。<b>为什么权重这么设？因为穿透是首帧的局部接触问题，动手指几毫米就能解决，动手腕却会破坏整条轨迹的关系。</b>用 Nelder–Mead 三阶段求解（仅手指 → 仅腕 → 两者）。</div>
+  </div>
+
+  <div class="fml">
+    <div class="name">⑤ 数据放大倍数：一个乘法决定「1 条能变 20 条」</div><div class="exp">\( N_{\text{ep}}=\sum_{c}\;\big|\Xi_{c}\big|\times\big|V\big|,\qquad \big|\Xi_{c}\big|\le 4,\ \ |V|=5 \)<br><b>大白话：</b>\(\Xi_c\) 是通过筛选的摆放集合（位姿增强），\(V\) 是外观集合（视觉增强），所以每条 clip 最多 20 个 episode。<b>关键在于位姿增强不需要重训策略</b>——只重跑 IK 与重定时，因为「换一个摆放」对残差策略来说是分布内的变化。<b>这是把 37 小时变成 578 小时的真正来源。</b><b>（按原文流程整理，非原文照抄）</b></div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限：数据工厂是真的，接受率三分之二是硬伤</h2>
+
+  <h3>值得带走的</h3>
+  <ul>
+    <li><b>「先几何、后物理」这个顺序，可以被任何做人类数据放大的人直接抄。</b>它不是一个实现技巧，而是一个可验证的判断：<b>先做物理校正会白扔 26% 的 clip</b>（原文实测）。做这类流水线的人几乎都踩过这个坑。</li>
+    <li><b>物理校正不是可选项，是生死线。</b>同一批数据：运动学回放 + Diffusion Policy 在仿真上 L0/L1 成功率 <b>0% / 1%</b>，GR00T 是 6% / 5%（而且还用了 3.5–5 倍微调步数）；经过物理校正的数据，DP 是 <b>53% / 40%</b>，GR00T 是 <b>65% / 50%</b>。<b>「合理的图像 + 动作标签」远不够，物理一致性才是数据能不能用的分界。</b></li>
+    <li><b>成本结构做得漂亮。</b>K=64 共享策略 → 2.8 GPU-分钟/clip，比 CHORD 便宜 42 倍、比 FlashDexRetarget 便宜 16 倍，质量还更高。<b>它把「数据生产」从科研项目变成了可预算的工程。</b></li>
+    <li><b>mid-training 的价值被单独测出来了。</b>同样 40K 微调步，GR00T 从 65% → <b>76%</b>（L0）、50% → <b>57%</b>（L1）；而单纯加长微调只把 L0 提到 82%、L1 还停在 50%。<b>说明同本体大数据改善的是「留出摆放的泛化」，不是「拟合得更狠」</b>——这个区分对数据采购决策很有用。</li>
+  </ul>
+
+  <h3>必须打的折扣</h3>
+  <ol class="crit">
+    <li><b>三分之二的数据被扔掉，而且主要原因是「几何不可行」。</b>接受率约 1/3，作者自己指出：<b>除采集缺陷外，大部分丢失是因为「固定躯干 + 固定基座」下根本不存在手臂能跟随的摆放。</b>换句话说，<b>这个 1/3 是「RB-Y1 这台机器人」的接受率，不是「方法」的接受率</b>；换成移动底盘或可动躯干会变，但论文没测。</li>
+    <li><b>物理校正仍是整条链最贵的一环。</b>几何部分已经是秒级（K=64 时 2.8 分钟/clip 里主要是 RL），<b>而 RL 那部分是「每 ≤64 个 clip 训一个 PPO」</b>。扩到万级 clip 时这部分怎么摊，论文没有给规模化曲线。</li>
+    <li><b>真机只做了 3 个任务、每层 5 次试验，样本量极小。</b>而且有一组数很值得警惕：<b>录制的仿真轨迹在真机上开环回放是 87% / 80%，但只用仿真数据微调的 GR00T 闭环只有 20% / 0%</b>。<b>开环能复现、闭环不能执行——这说明「物理可执行」的判据是在仿真里定义的，它并不能保证策略在真机上闭环可用。</b></li>
+    <li><b>「物理可执行」的度量是间接的。</b>报告的是 ADD-AUC、SP-SR、MP-SR 三个指标，而<b>它们都是「物体跟得像不像」的代理量，不是「接触力是否合理」「是否打滑」这类物理正确性指标</b>。数据里记了每指法向接触力，但论文没有对接触质量做评估。</li>
+    <li><b>强依赖 9 个外部数据集的标注质量。</b>手部姿态来自人工标注或跟踪，<b>误差会一路传到重定向、IK、RL</b>。论文用「重定向后指尖偏离」做过滤，但<b>没有报过滤掉了多少、也没有报残留误差的分布</b>——而这直接决定细粒度操作能不能学。</li>
+    <li><b>只在一种手（SharpA / Wuji 2）与一种双臂（RB-Y1，7 自由度固定躯干）上验证。</b>「4 种灵巧手」只体现在生成规模上，<b>没有做「换手对策略迁移影响」的实验</b>。</li>
+  </ol>
+
+  <div class="box good">
+    <b>一句话总结：</b>它没有提出新策略，它<b>把「人体数据」这条供应链上的两个断点分别用对的工具接上了</b>。最值得带走的两条判断：<b>① 求解顺序决定数据存活率——先约束可行域，再优化目标，反了就是白干；② 「物理可执行」必须由闭环仿真验证，光有合理的图像和动作标签，策略成功率会掉到个位数。</b>而它留下的最大空白很清楚：<b>接受率 1/3 里那 2/3 的损失，主要是机器人的形态决定的，不是数据决定的——那么「为采集而设计的机器人」会不会比「为数据而改进的算法」更划算？</b>这个问题它提出了，但没回答。
+  </div>
+</section>
+
+<footer>论文：DexEngine: Scaling Human Demonstrations into Physically Executable Whole-Robot Data · arXiv 2611.33579 · 2026-11-25<br>
+POSTECH · RLWRLD · 本篇依据正文（HTML 版）撰写；项目页 wongyun-yu.github.io/dexengine</footer>
+
+</div>
+
+</body>
+</html>
