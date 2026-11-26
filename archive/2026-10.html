@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2026-10 归档 · 具身智能 3W1H 知识库</title>
+<title>2026 年 10 月归档 · 具身智能 3W1H 知识库</title>
 <style>
   :root {
     --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --text-muted: #64748b;
@@ -57,6 +57,8 @@
   }
   .month:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
   .month b { color: var(--text); font-weight: 600; }
+  .month.current { border-color: var(--brand); background: var(--brand-light); color: var(--brand); cursor: default; }
+  .month.current b { color: var(--brand); }
   .empty { color: var(--text-muted); font-size: 14px; padding: 16px 18px; }
   footer { text-align: center; margin-top: 48px; font-size: 12px; color: var(--text-muted); }
 </style>
@@ -64,9 +66,16 @@
 <body>
 <div class="container">
   <header>
-    <h1>2026-10 归档</h1>
-    <p class="desc"><a href="../index.html">← 返回首页</a> · 共 42 篇 · 按原文发布月归档</p>
+    <h1>2026 年 10 月归档</h1>
+    <p class="desc"><a href="../index.html">← 返回首页</a> · 组内按原文发布日排列（首页按解析入库日）</p>
+    <p class="updated">本月 42 篇 · 最新原文发布 2026-10-31 · 解析至 2026-11-10</p>
   </header>
+  <div class="sec-title">🗂 月份导航</div>
+  <div class="months">
+      <a class="month" href="2026-11.html"><b>2026-11</b> · 83 篇</a>
+      <span class="month current"><b>2026-10</b> · 42 篇</span>
+  </div>
+
   <div class="list">
       <div class="day-sep">2026-10-31<span class="day-cnt">4 篇</span></div>
       <a class="item" href="../html/01/统一训练_摘要与正文差一个定语_3W1H_第一性原理解析.html" title="原文发布 2026-10-31"><span class="col c01">01</span><span class="title">统一训练：重构 Foundation Model 的训练范式</span></a>
