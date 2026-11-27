@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motubrain 2.0：数据对齐决定零样本 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>Motubrain 2.0：跨数据源真正难的，是把「同一个动作」记成同一种样子<span class="sub">20B 四流 World Action Model + 可编辑 Agent Harness · 250 万小时数据金字塔（200 万互联网视频 / 38.6 万第一视角 / 9 万 UMI / 2.3 万真机遥操作）· Canonical55 统一动作空间 · 冻结 DA3 几何注入 · 30 步蒸馏到 4 步 · 真实机器人 zero-shot 提升 21.2 个百分点</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-26</div>
+    <div><b>正文规模</b> 约 2 万字（Technical Report 全文译文 · 非单篇论文）</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>机器人想跨数据源学习，卡住它的从来不是数据不够，而是同一件事被记成了不同的样子：头一偏，同一段动作的标签就变了；人手五指，对不上夹爪的一个开合；动作塞进固定基坐标系，换个本体就没法比。Motubrain 2.0 的全部设计，都是在把「动作」换算成一种与头、与身体长相无关的语言，然后小心翼翼地不去惊动预训练视频模型已经学会的世界常识——一边换算，一边给旧能力装隔板。它最后把两件事彻底分开了：模型的物理手感冻结起来当硬件，系统的改法写成可编辑的代码。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据公众号 human five 译文《Motubrain 2.0》撰写，原文为该团队的 Technical Report（项目页 motubrain.cn，代码与权重已放出）。文中所有规模与指标（250 万小时数据、34,656,294 个 episode、LIBERO-Plus 95.1%、EBench 73.5% / 83.5、RoboCasa365 64.7%、VLABench 67.08%、RoboTwin 2.0 87.29%、RoboDojo 33.91%、真实机器人 22%→91%、RSI 44%→63%）均取自原文；公式按原文转写，个别符号做了归一化以便阅读。<b>这是厂商自评报告，不是同行评议论文，所有 baseline 均为作者自行微调。</b>
+</div>
+
+<section id="what">
+  <h2><span class="tag">是什么</span>不是一篇论文，是「一个 20B 的手 + 一层可改的脑子」</h2>
+
+  <p>先把最容易误会的地方拆掉：<b>这不是一个模型，是两个东西拼起来的系统。</b></p>
+
+  <ul>
+    <li><b>Motubrain 2.0-WAM</b>：20B 参数的世界动作模型。输入多视角 RGB 加一句语言指令，<b>同时输出两样东西</b>——未来 24 步的动作块，和未来的多视角画面。底座用视频生成模型 Vidu 的权重初始化，四流 Transformer（文本 / 视频 / 动作 / 3D 几何）。</li>
+    <li><b>Motubrain-Harness</b>：外层 Agent 系统。一个固定的规划 VLM（GPT-6.1-sol）+ 21 个工具 + 15 份书面技能，<b>把冻结的 WAM 当作一个「动作工具」来调用</b>，其余时间用几何工具和导航自己干活。</li>
+  </ul>
+
+  <p>这个拆分本身就是主张：<b>模型层的物理手感，和系统层的任务编排，是两种可以用完全不同方式改进的东西。</b>前者要几百万小时数据、几千张 GPU；后者改的是文字和 Python，一台机器上改完推给整个机队。</p>
+
+  <h3>先把量级摊开，判断它站在哪</h3>
+
+  <table>
+    <tr><th>维度</th><th>数值</th><th>为什么这个数字重要</th></tr>
+    <tr><td>数据金字塔总量</td><td>约 250 万小时</td><td>其中 200 万小时是互联网视频，<b>真正带动作监督的只有约 37 万小时</b>（ego 38.6 万 + UMI 9 万 + 真机 2.3 万）</td></tr>
+    <tr><td>带动作的 episode 数</td><td>34,656,294 个</td><td>工业场景占 62%，家庭占 23.6%，商业服务 4.1%</td></tr>
+    <tr><td>动作空间</td><td>55 维（Canonical55）+ 逐维 mask</td><td>不是压缩成公共子空间，而是「最大维度并集 + 有效性掩码」</td></tr>
+    <tr><td>动作块</td><td>24 步 @ 10 Hz = 2.4 秒</td><td>预测视野决定它能不能做接触密集型任务</td></tr>
+    <tr><td>推理</td><td>蒸馏后 4 步去噪，单次请求中位 331 ms</td><td>不进 400 ms 以内，闭环控制就无从谈起</td></tr>
+    <tr><td>仿真成绩</td><td>LIBERO-Plus 95.1 / EBench 73.5 / RoboCasa365 64.7 / VLABench 67.08</td><td>四项 Overall Top-1，但都是自己跑的</td></tr>
+    <tr><td>真机</td><td>zero-shot 成功率 +21.2 个百分点；加 Harness 后 22%→91%</td><td>后者才是这篇最想讲的数字</td></tr>
+  </table>
+
+  <p>注意那个「250 万小时」和「37 万小时」的落差。<b>报告在标题级数字上用的是前者，在方法论证上用的是后者。</b>这不是造假，但读的时候要清楚：纯视频只在视觉动态上被监督（动作损失被 mask 掉），它对「动作」的贡献是零，它的作用是保住世界常识。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">为什么</span>公理链：跨源学习的第一道墙是「标签不可比」</h2>
+
+  <p>这份报告最值得抄的不是任何一个模块，是它推导问题的顺序。顺着往下走五步，你会发现每个设计都是被逼出来的，不是选出来的。</p>
+
+  <div class="step">
+    <div class="t">第 1 步：要泛化，就必须跨源；跨源的第一障碍不是分布差异，是坐标差异</div>
+    <div class="d">sim-to-real、ego-to-robot、跨本体——这些说法听着像三种问题，其实是同一个：<b>同一个物理交互，在不同数据源里被记成了不同的数字。</b>分布差异可以靠数据量盖过去，坐标差异不能：它会让同一段动作产生两个互相矛盾的监督信号。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：只要头会动，固定基坐标系就一定失效</div>
+    <div class="d">他们点出的三个事实很硬：第一视角视频里人的头可以自由转，UMI 演示的操作者头也在动，Astribot S1 这类平台的头和躯干本身就是自由度。<b>在固定 base frame 下，头姿一变，物理上完全相同的视觉-动作交互就会映射成不同的动作目标。</b>更糟的是未标定的 ego 视频——它连 base frame 都定义不出来。所以动作标签必须相对「此刻的相机光轴」和「这个动作块的起点」表达。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：本体差异不能靠「压缩到公共子空间」解决</div>
+    <div class="d">把双臂人形和单臂夹爪压到同一个最小公共维度，等于把信息最丰富的部分先扔掉。<b>正确做法是取并集：每个形态学部位（左臂/右臂/躯干/头/底盘）按整个语料库里的最大表示维度分配槽位，再给每个 step、每个维度打一个 0/1 有效性掩码。</b>模型于是同时知道「这个通道存在」和「这一帧这个通道有真值」。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：人手的五指协同，没法映射成一个夹爪开合</div>
+    <div class="d">这是全篇最诚实的一处取舍。用 pinch distance（拇指到食指的距离）当夹爪开合的代理，看起来聪明，实际会灌进去大量标签噪声——<b>同一个开合度，可能是捏、可能是扶、可能是托。</b>他们的选择是：ego 数据<b>只监督每只手 9 维末端位姿</b>（3 维位置 + 6 维旋转），把夹爪那 1 维和所有机器人关节/躯干/底盘/头部维度全部 mask 掉。宁可少监督，不要假监督。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：预训练视频先验是资产，也是易碎品</div>
+    <div class="d">一个已经看懂世界的视频模型，你想让它学会「动作」，最直觉的做法是改结构、加分支、全量微调。但每一次侵入都会把原来的世界常识冲掉一部分。于是有了贯穿全文的设计原则：<b>把新能力做成不打扰旧通路的插件</b>——动作只能单向读视频，视频永远读不到动作；几何编码器整个冻住，只外挂一对可训练的 Key/Value 适配器；摄像机身份用零初始化的加法嵌入，初始化那一刻等于没加。</div>
+  </div>
+
+  <p>第五步之后，还有第六步，也是这份报告真正的落点：<b>模型的能力有天花板，系统的能力没有。</b>既然「什么时候调用模型、怎么组织指令、失败了怎么退回去」这些东西可以写成文字和代码，那就让失败轨迹去改代码，而不是去改 20B 的权重。两个数量级更便宜，而且一次部署覆盖整个机队。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">怎么做</span>五件对齐 + 三道隔板 + 一层可改的壳</h2>
+
+  <h3>一、数据对齐：五件套把五种数据摁进同一个坐标系</h3>
+
+  <table>
+    <tr><th>动作</th><th>解决什么</th><th>不做会怎样</th></tr>
+    <tr><td>Canonical55 统一维度 + 掩码</td><td>异构本体的动作空间</td><td>压缩到公共子空间 → 丢掉最丰富的那部分</td></tr>
+    <tr><td>夹爪极性统一（下界闭合、上界张开）</td><td>不同驱动、不同 UMI 硬件的符号约定相反</td><td>同一个「抓」在不同源里是 +1 和 −1</td></tr>
+    <tr><td>针孔坐标约定（+z 前 / +x 右 / +y 下）</td><td>URDF、VIO、手部追踪三套局部轴不一致</td><td>轨迹对齐全错，且错得看不出来</td></tr>
+    <tr><td>相机相对的 SE(3) 位移</td><td>头在动导致的标签不稳定</td><td>同一物理动作产生两个监督目标</td></tr>
+    <tr><td>手掌中心 + Savitzky-Golay 平滑（9 帧窗口、二阶）</td><td>人手没有「末端执行器原点」，单目追踪有高频抖动</td><td>动作原点漂移，抖动被当成了动作</td></tr>
+  </table>
+
+  <p>还有一个细节值得单独拎出来：<b>末端位姿和关节位置记录的是「测量到的本体状态」，而不是「遥操作下发的指令」。</b>因为不同平台的追踪延迟和控制增益差异很大，用指令当标签，等于把每台机器人的控制器缺陷也一起教给了模型。夹爪相反——它记录的是离散的开/合<b>动作</b>，不是被柔性变形影响的实测开合宽度。</p>
+
+  <h3>二、架构：三道隔板</h3>
+
+  <ul>
+    <li><b>非对称注意力（第 7–24 层才开桥）</b>：前 6 层，动作流自己做自注意力，看不到任何视觉和文本；第 7 层起，动作 Query 才能读视频、读语言、读几何。反向永远不通——<b>视频 Query 和语言 Query 始终看不到动作 Token</b>。这意味着动作学习不会反过来改写视频分支的表征。</li>
+    <li><b>冻结的几何编码器</b>：并行跑一个 Depth Anything 3 Large（304M），只取第 10/12/…/24 层这 8 个全局注意力层的特征，通过一对无 bias 的可训练适配器映射成几何 Key/Value，<b>全程 stop-gradient</b>。好处是不需要深度标签、不需要相机外参，也不用反向传播穿过几何主干。消融显示：冻结 12.94% 成功率，联合微调反而只有 12.54%。</li>
+    <li><b>零初始化的视角嵌入</b>：每个相机一个可学习向量，只加一次。初始化为零的意思是「初始化时这个操作等于没做」，预训练模型的输入特征一字不改。消融里这一项拿到 41.6%，比不加视角嵌入（38.7%）和像素拼接（39.5%）都高。</li>
+  </ul>
+
+  <h3>三、实时：30 步压到 4 步，再压内核</h3>
+
+  <p>扩散/流匹配模型的原始推理是 30 步去噪，30 × 每步几百毫秒，闭环控制直接没戏。他们的做法是三层叠加：</p>
+
+  <ol>
+    <li><b>步数蒸馏</b>：DMD + PCM 正则 + 真值正则三项一起，把学生模型压到 4 步；</li>
+    <li><b>模型级缓存</b>：速度场外推、AdaLN 缓存、观测条件缓存、文本嵌入缓存；</li>
+    <li><b>内核级</b>：MXFP8 线性层（255 个 DiT 模块 + 72 个 DA3 模块）、SageAttention（QK 用 INT8、PV 用 FP8）、动作分支用 BF16 FlashAttention-2、DA3 走 CUDA Graph 重放。</li>
+  </ol>
+
+  <p>结果：单次请求中位延迟 642.4 ms → 331.2 ms（降 48.4%），P95 645.9 → 335.1 ms。<b>注意，这个数字是「固定四步欧拉采样、不含网络传输和仿真执行」的本地推理耗时</b>，不能当成端到端控制周期。</p>
+
+  <h3>四、Harness：让失败轨迹去改代码</h3>
+
+  <p>外层壳的设计有三条原则，每条都在解决「LLM 调机器人为什么老是原地打转」：</p>
+
+  <ul>
+    <li><b>返回测量状态，不返回指令状态</b>：每个运动工具回的是从编码器和相机读到的、机器人真正到达的位姿。Agent 于是不会「以为」自己到位了。</li>
+    <li><b>把几何封在工具里</b>：Agent 只说「抓那个红苹果」，分割、抬到 3D、规划路径全在工具内部。它不需要算逆运动学，也不需要读深度图。</li>
+    <li><b>拒绝要带原因</b>：目标超可达范围时，返回实测值 + 违反了哪条约束 + 建议下一步。这样 Agent 通常一个回合就能改路线。</li>
+  </ul>
+
+  <p>RSI（Harness 级递归自改进）跑四步：整个机队并行跑当前版本 → coding agent 读每个 episode 的工具日志、把信号映射成原因码 → 只改工具/技能/指令三处（<b>权重、任务定义、成功判定全部冻结</b>）→ 推给全机队。诊断数据很能说明问题：<b>691 个已诊断问题里，84% 靠改技能解决，16% 靠改工具；722 个问题里有 720 个至少在两台机器人上出现过</b>——所以一台修好，全队受益；反过来说，单机跑发现不了大部分失败。</p>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">公式</span>三个式子，分别对应「换算」「学动作」「改系统」</h2>
+
+  <div class="fml">
+    <div class="name">式 1　相机相对的动作标签：把「头动了」从标签里扣掉</div>
+    \[
+    \Delta p^{c}_{t_k}=R_c^{\top}\left(p_{t_k}-p_{t_0}\right),\qquad
+    \Delta R^{c}_{t_k}=R_c^{\top}R_{t_k}R_{t_0}^{\top}R_{c},\qquad k=1,\dots,H
+    \]
+    <div class="exp">
+    \(R_c\) 是动作块起点时刻主相机的朝向，\((R_{t_0},p_{t_0})\) 是起点末端位姿，\((R_{t_k},p_{t_k})\) 是第 k 步的目标位姿，\(H=24\) 是预测步数。<br>
+    <b>说人话：</b>别在世界坐标系里记「手往哪走」，改成记「相对我此刻视线，手往前、往右、往下走了多少」。<br>
+    关键性质在论文自己点出的那句：旋转项等价于对局部相对旋转做一次共轭变换，<b>只依赖相机的朝向，不依赖相机的平移</b>。所以相机被举高、被人走两步，不影响标签。附带好处是消除了逐步累积的漂移，也对关节零位标定的偏移不敏感（因为关节通道也用「相对起点的位移」参数化）。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　异步双时间步的流匹配：视频和动作各走各的噪声进度</div>
+    \[
+    y^{q}_{s_q}=(1-s_q)\,y^{q}_{0}+s_q\,\epsilon_q,\quad
+    u^{*}_{q}=\epsilon_q-y^{q}_{0},\quad
+    \mathcal{L}_{\mathrm{WAM}}=\sum_{q\in\{\mathrm{vid},\mathrm{act}\}}\lambda_q\,\mathbb{E}\big[D_q(u^{\theta}_{q},u^{*}_{q})\big]
+    \]
+    <div class="exp">
+    \(q\) 走两个模态：vid（未来视频隐变量）和 act（归一化动作）。\(s_q\) 是各自独立的扩散时间，\(\epsilon_q\) 是高斯噪声，\(u^*_q\) 是目标速度场。<br>
+    <b>说人话：</b>训练时不要「整段视频和整段动作用同一个噪声等级」——视频可以从很糊到很清，动作不需要跟着一起糊。<b>两条时间轴独立采样</b>，模型就学会了在任何噪声组合下把两者一起还原。<br>
+    两个实现细节决定了它不跑偏：一是动作损失<b>只在有效维度上取平均</b>（掩码为 1 的位置），假标签不参与；二是<b>观测帧不参与噪声调度、也不算视频损失</b>——条件帧永远是干净的，不然模型会去重建它已经看到的东西。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3　Harness RSI 的目标：只改代码，不改权重</div>
+    \[
+    A^{\star}=\arg\max_{A=(T,S,P)}\ \mathbb{E}_{u\sim U,\ \tau\sim D}\Big[\,\mathrm{succ}\big(A,u,\tau\big)\Big]
+    \]
+    <div class="exp">
+    \(T\) 是工具代码和工具说明，\(S\) 是技能库（一段段书面操作流程），\(P\) 是 Agent 指令（含什么时候调 WAM 的规则）。\(U\) 是机器机队，\(D\) 是任务分布，\(\mathrm{succ}\) 是任务成功。<br>
+    <b>说人话：</b>把「机器人怎么干活」里所有<b>不是权重</b>的部分打包成一个可编辑对象 A，然后在真实机队上不断改它、测它、留下更好的那个版本。<br>
+    这里必须看清约束：<b>WAM 权重、任务定义、成功判定标准全部冻结</b>。所以 44%→63% 的提升，来源只能是文字和代码的修改；这也意味着它优化不了「模型手感本身不够」这一类问题——报告自己在结尾承认，剩下的瓶颈是细粒度接触失败和分钟级的规划延迟。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">值不值</span>它把「对齐」提到了第一性的位置，但所有数字都是自己跑的</h2>
+
+  <h3>值得拿走的四条</h3>
+
+  <div class="box good">
+    <b>1. 「标签可比性」优先于「数据规模」。</b>破坏轨迹配对一致性后，六项真机任务从 83.5 掉到 41.3。这是全篇最硬的一条因果证据：不是数据不够，是数据被记坏了。<br>
+    <b>2. 有效 epoch 不平衡是真问题，而且有反直觉签名。</b>23K 小时真机数据 vs 386K 小时 ego 数据，约 1:17。真机数据过采样到 120k–150k 步之后，<b>干净场景成功率稳在 63%→64%，随机场景从 62.34% 塌到 44.92%</b>。模型不是在退化，是在<b>记住摄影棚的灯光和桌布</b>。他们给的采样比例建议（真机 : UMI : ego/视频 ≈ 1 : 5 : 10~20）和「必须用扰动场景选 checkpoint」这条，任何做多源预训练的人都能直接用。<br>
+    <b>3. 非侵入式接口省下的不只是算力。</b>冻结 DA3 反而比联合微调高（12.94% vs 12.54%），参数量只有 VGGT 方案的三分之一，还不需要深度标签。这类「不动它反而更好」的结论，比任何涨点都值钱。<br>
+    <b>4. 把系统改进和模型改进解耦，账算得很清楚。</b>V6 比 V1 成功数从 31 涨到 45（71 次试验），代价是中位耗时 144→487 秒、工具调用 14→62 次、Token 0.67M→5.19M。<b>这不是免费的提升，是用推理成本买执行可靠性。</b>工程上这个交换常常划算，但报告没有藏着。
+  </div>
+
+  <h3>必须打的六个问号</h3>
+
+  <ul class="crit">
+    <li><b>没有一个数字是第三方复现的。</b>20B 模型、250 万小时数据、13 台机器人连跑 20 天、3,137 个 episode——这套配置全球没几个团队能重跑。所有 baseline 都是作者自己用相同数据微调的，公平但不独立。</li>
+    <li><b>「250 万小时」的说法有营销成分。</b>真正带动作监督的是约 37 万小时（14.8%）。纯互联网视频只监督视觉动态，它对「动作能力」的直接贡献接近零，作用是把世界常识保住。这不是错，但把 250 万当成「动作数据量」读就会高估一个数量级。</li>
+    <li><b>Harness 的提升，有多少来自 GPT-6.1-sol？</b>规划器在所有实验里固定为同一个强模型，但<b>没有做弱规划器的对照</b>。于是无法区分：是「工具+技能+分层」这套设计带来了 22%→91%，还是「背后有个很强的 VLM」带来了它。这是该方法最需要补的一组消融。</li>
+    <li><b>RSI 的成功判定仍然是人在环。</b>Agent 自己提交 verdict，再由人工复核。也就是说这个「自动改进循环」里同时有 LLM 的判断和人的判断，循环的自动化程度被高估了。</li>
+    <li><b>真机评估的样本量偏小。</b>六项任务每项每 checkpoint 148 个 trial，受控套件每项每设置 8 轮；One-Shot 结论建立在 20 次试验上（14/20）。这种量级能看出趋势，撑不起「one-shot 就够」的强结论。</li>
+    <li><b>它自己承认的两个天花板很关键。</b>一是细粒度接触失败——这说明 20B 世界动作模型的物理精度还没到「能替代力控」的程度；二是反复调 VLM 带来的分钟级规划延迟——<b>这意味着 91% 的成功率不是实时拿到的</b>，228 秒完成一个双物品摆放任务，和人类差了一个数量级。</li>
+  </ul>
+
+  <div class="box note">
+    <b>一句话结论：</b>如果只从这份报告里拿一条，就拿「<b>先对齐，再加数据</b>」——它用 83.5→41.3 的崩塌证明了标签一致性比数据规模更靠前；如果拿两条，第二条是「<b>冻结模型，去改壳</b>」——44%→63% 的提升没动一个权重，这是很多团队完全没在算的一笔账。但要清楚，这两条结论的置信度不同：前者有受控消融支撑，后者只有单一强规划器下的自评。
+  </div>
+
+  <p class="src">来源：公众号 human five《Motubrain 2.0：250 万小时多源数据如何喂进一个 WAM》（2026-11-26）· 原文为 Motubrain 团队 Technical Report · 项目页 motubrain.cn · 代码 github.com/shengshu-ai/Motubrain-2.0</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div>
+
+</body>
+</html>

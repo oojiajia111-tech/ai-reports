@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sim2Real：先诊断差距，再买仿真器 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>仿真器教出来的是仿真器：Sim2Real 该先诊断「缺哪一块」，再决定买什么<span class="sub">四类现实差距（物理简化 / 传感器 / 渲染 / 环境变化）· 按主导差距选仿真器 · Domain Randomization 先上、Domain Adaptation 后补 · 真机 30–50 个 episode 是最低测试要求 · 20 个 episode 时 95% 置信区间约 ±22 个百分点</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-26</div>
+    <div><b>正文规模</b> 约 3.4 万字（工程实践指南 · 非单篇论文）</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>在仿真里训练策略，本质上是让模型去学「仿真器这个世界的规律」，而不是真实世界的规律。所以 sim2real 失败从来不是一个笼统的「有差距」，而是四件不同的事：物理被简化了、传感器被理想化了、画面被简化了、环境被冻住了。这四件事要用四种完全不同的钱去补——买更好的物理引擎、加噪声模型、扫真实场景、采真实数据。搞不清主导项就上最高保真，等于把钱花在你不缺的那一块上。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据公众号 human five《Sim2Real 入门》（2026-11-26）撰写。原文是一篇<b>工程实践指南，不是论文</b>，没有方法章节、没有 arXiv 号，文末列了 20 篇参考文献（Tobin 2017 的 DR、Tan 2018 的四足迁移、OpenAI 2018/2019 的手内操作与魔方、RialTo 2024 的 real-to-sim-to-real 等）。文中数字（RialTo 平均成功率 +67%、Tobin 的 1.5 cm 检测精度、DA 结合仿真最多省 50 倍真实样本、20 个 episode 时 ±22 个百分点 / 50 个时 ±14 个百分点、数据量级 500–2000 / 1000–10000 / 10000+）均取自原文。<b>第 4 节三个式子是「按原文流程与数字整理的形式化表达，非原文照抄」</b>——原文全篇没有写出任何一条数学公式。
+</div>
+
+<section id="what">
+  <h2><span class="tag">是什么</span>不是一种技术，是一份「差距诊断 + 预算分配」的操作手册</h2>
+
+  <p>先把定位说清楚：这不是一篇提出新方法的论文，是一份写给一线团队的<b>决策手册</b>。它要回答的不是「怎么训得更准」，而是三个更前置的问题：</p>
+
+  <ol>
+    <li><b>我这个项目到底卡在哪种差距上？</b>（物理 / 传感器 / 渲染 / 环境）</li>
+    <li><b>该买哪种仿真器？</b>（物理倾向 / 均衡 / 渲染倾向）</li>
+    <li><b>该花多少钱采真实数据？</b>（500 条？5,000 条？还是别采，先随机化？）</li>
+  </ol>
+
+  <p>它给出的主线顺序是「成本从低到高」：</p>
+
+  <table>
+    <tr><th>顺序</th><th>手段</th><th>需要真实数据吗</th><th>解决什么</th></tr>
+    <tr><td>0</td><td>System Identification（可测量参数对齐）</td><td>不需要，需要测量</td><td>质量、摩擦、执行器响应、延迟</td></tr>
+    <tr><td>1</td><td>Domain Randomization</td><td><b>不需要</b></td><td>把真实世界变成训练分布里的又一个样本</td></tr>
+    <tr><td>2</td><td>RL 专项调优（PPO、循环策略、防漏洞奖励）</td><td>不需要</td><td>让策略在随机化环境里稳定收敛</td></tr>
+    <tr><td>3</td><td>Domain Adaptation</td><td><b>需要</b>（特征对齐可无标签）</td><td>对齐仿真与真实的特征分布</td></tr>
+    <tr><td>4</td><td>完整 SysID + Meta-Learning</td><td>需要</td><td>让模型自己适应新环境</td></tr>
+  </table>
+
+  <p>而判断「要不要往下走一层」的工具只有一个：<b>在真机上跑 30–50 个标准化 episode，然后看失败长什么样。</b>不是看 loss，不是看仿真里的成功率，是看真机上的失败类型。</p>
+
+  <h3>四类差距，对应四种完全不同的钱</h3>
+
+  <table>
+    <tr><th>差距</th><th>典型表现</th><th>该花在哪</th></tr>
+    <tr><td>物理简化</td><td>仿真里抓得稳，真机上滑；可变形物、颗粒物、接触密集型任务最严重</td><td>更好的物理引擎 / SysID / 真实数据微调</td></tr>
+    <tr><td>传感器仿真</td><td>仿真点云完美，真机有噪声、运动模糊、深色表面丢数据</td><td>噪声模型 + 延迟建模（比提高画质更值）</td></tr>
+    <tr><td>视觉渲染</td><td>换光照、换材质就失效；依赖不存在的统一纹理和缺失阴影</td><td>渲染器 / 纹理管线 / 真实图像微调</td></tr>
+    <tr><td>环境变化</td><td>静态场景能跑，有人走过、东西挪位就崩</td><td>场景随机化 / 真实场景扫描</td></tr>
+  </table>
+
+  <p>原文给了一条很好用的经验法则：<b>接触密集型任务主要受物理精度限制，基于摄像头的导航主要受渲染限制，户外部署主要受环境变化限制。</b>三条一句话就能定位自己该先补哪块。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">为什么</span>公理链：为什么「上最高保真」是错的</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：用仿真不是因为仿真真，是因为真机训练的成本结构不同</div>
+    <div class="d">现实里碰撞会烧硬件，仿真里碰撞只烧电和一次重置；几千个并行实例能在几小时内产出几百万个 episode；危险场景可以按需构造。RL 恰恰需要几百万次交互。<b>所以「用仿真」不是一个技术偏好，是一道成本方程的解。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：但模型学的是仿真器，不是世界</div>
+    <div class="d">原文这句说得很直白：「通过这种方式训练出来的模型，学到的是仿真器本身，而不是真实世界。」一个受控的到达（Reaching）基准里，除了完全随机化之外，其他所有训练策略在真机上的表现都明显低于仿真。这就是问题的形式：<b>你优化的目标是仿真器分布上的期望，交付的战场是真实分布。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：所以真正要保证的，是「真实落在训练分布里面」</div>
+    <div class="d">这句话是整个 sim2real 的第一性表述：<b>不要求仿真像真的，只要求真的被仿真覆盖。</b>Domain Randomization 之所以是第一选择，不是因为随机化能提高保真度，而是因为它把「覆盖」这件事直接做成了训练目标——真实世界只是随机化范围里的又一个采样。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：但覆盖是要付代价的——随机化过头，模型学不到东西</div>
+    <div class="d">原文点出两个反向约束：一次性引入太多参数、或范围开太大，环境会变得过于不稳定，学不动；而且 2022 年 ICLR 的分析表明，有效的 DR 通常<b>需要记忆</b>——策略得能从当前观测推断「我现在处在哪一种变化里」，所以循环策略（Recurrent Policy）几乎是标配。这就解释了为什么「把参数全开到最大」在实践中经常不如「挑三个参数、范围开到刚好」。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：既然覆盖不可能完美，就必须有一个「还剩多少没盖住」的测量手段</div>
+    <div class="d">于是评估协议成了方法的一部分。<b>zero-shot 与「少量真实数据微调后」的差值，是最有诊断价值的指标</b>：一次微调就大幅提升，说明仿真漏掉了重要的变化因素；微调也不动，说明差距不在分布覆盖，而在模型容量或标签质量。这个指标之所以好用，是因为它不需要你知道漏了什么，只需要你测出「补上一点真数据能涨多少」。</div>
+  </div>
+
+  <p>五步走完，结论自然浮现：<b>sim2real 是一个迭代循环，不是一次迁移事件。</b>原文建议在项目计划里就为「仿真-真机之间的多轮诊断」预留预算，通常三到五轮——因为每一轮迭代只会暴露下一个主导失效原因。</p>
+</section>
+
+<section id="how">
+  <h2><span class="tag">怎么做</span>选型 → 对齐 → 随机化 → 测 → 按失败类型分支</h2>
+
+  <h3>一、选仿真器：按主导差距选，不按功能数量选</h3>
+
+  <table>
+    <tr><th>类型</th><th>代表</th><th>强在哪</th><th>什么时候选它</th></tr>
+    <tr><td>物理倾向</td><td>MuJoCo、PyBullet</td><td>接触、摩擦、刚体动力学</td><td>依赖接触/力/操作的任务</td></tr>
+    <tr><td>均衡</td><td>Gazebo、Isaac Sim</td><td>物理 + 传感器模型 + 完整环境</td><td>既要感知又要接触，如料箱抓取</td></tr>
+    <tr><td>渲染倾向</td><td>Unity ML-Agents</td><td>照片级图像与光照</td><td>纯视觉导航/感知类策略</td></tr>
+  </table>
+
+  <p>原文有一个很容易被忽略的提醒：<b>选仿真器不只是工程决策，也是数据管线决策。</b>因为仿真器决定了你会缺哪一类真实数据——选了物理精确但渲染粗糙的引擎，后面必然要补「真实光照下的图像标注」；选了画质好但物理近似的引擎，后面必然要补「力/接触数据」。</p>
+
+  <p>还有一个「几何不能靠仿真器解决」的点，值钱：通用厨房场景会让策略学到一个现实中不存在的厨房。<b>做法是扫真实场景做数字孪生</b>——LiDAR 保证几何测量精度、摄影测量重建单个物体，把房间布局从差距里彻底剔除，剩下的问题就只剩物体动力学和材料。原文引用 MIT 的 RialTo：真实场景扫成仿真孪生、在其中微调，八项操作任务平均成功率比基线高 67%。</p>
+
+  <p>他们也老实交代了扫描的坑：<b>光照是最难的</b>——提高 ISO 会增噪点破坏 ColMap 的帧匹配，开大光圈会让部分物体脱焦，长曝光要求相机完全静止；扫出来的环境是静态的，抽屉和柜门打不开。<b>所以扫描之前要先列清「任务里哪些物体必须能动」。</b></p>
+
+  <h3>二、Domain Randomization：先挑与主导差距直接相关的参数</h3>
+
+  <ul>
+    <li><b>视觉任务</b>：光照强度与方向、表面纹理、相机噪声。</li>
+    <li><b>操作任务</b>：摩擦系数、物体质量、阻尼、执行器增益。</li>
+  </ul>
+
+  <p>顺序很重要：<b>先把主导差距相关的那几个参数随机化，再逐步加别的。</b>原文的两条实证：Tobin 等人只用「带非真实随机纹理」的仿真图训练，就做出了真机上 1.5 cm 精度的物体检测器；OpenAI 先靠纯 DR 让机械手完成方块重定向，再用 Automatic Domain Randomization（随能力提升逐步扩大随机化范围）解出了魔方。</p>
+
+  <p>还有一条防坑经验：<b>Physics Exploitation</b>——智能体学会利用仿真器的漏洞（比如过于宽松的碰撞检测）刷高分，到真机上完全不工作。<b>对策不是改奖励函数，而是尽早在真机上验证</b>，别等到项目最后阶段。</p>
+
+  <h3>三、真实数据要多少：按用途给量级，不给标准</h3>
+
+  <table>
+    <tr><th>用途</th><th>有标签样本量级</th><th>说明</th></tr>
+    <tr><td>验证（Validation）</td><td>500–2,000</td><td>从实际部署环境采，必须独立于训练集</td></tr>
+    <tr><td>Domain Adaptation</td><td>1,000–10,000</td><td>专补仿真漏掉的那部分情况</td></tr>
+    <tr><td>完整监督微调</td><td>10,000 以上</td><td>原文说「这种情况并不常见」</td></tr>
+  </table>
+
+  <p>原文对「数据质量 vs 数量」的态度很硬：<b>5 万张高质量标注图像，可能优于 50 万张有标签噪声的图像。</b>另一条同样硬的：一组覆盖不同光照、角度、物体状态的数据，比一组规模更大但全在同一条件下采集的数据更有用。</p>
+
+  <h3>四、评估：30–50 个 episode，五步流程</h3>
+
+  <ol>
+    <li>定义标准化真机测试集：固定场景与受控条件，30–50 个 episode；</li>
+    <li>跑 zero-shot：不做任何微调；</li>
+    <li><b>给失败分类</b>：感知 / 控制 / 环境不匹配；</li>
+    <li>必要时用带标签真机数据微调，在同一测试集上重跑；</li>
+    <li>对比 zero-shot、微调后、纯仿真三个结果。</li>
+  </ol>
+
+  <p>为什么是 30–50 而不是 10？原文给了统计理由：<b>20 个 episode 且成功率接近 50% 时，95% 置信区间约 ±22 个百分点；50 个时收窄到约 ±14 个百分点。</b>换句话说，跑 20 次拿到 55% 和 65%，在统计上你根本分不出谁更好。</p>
+
+  <h3>五、按失败类型分支修</h3>
+
+  <table>
+    <tr><th>失败类型</th><th>症状</th><th>修法</th><th>成本</th></tr>
+    <tr><td>视觉失效</td><td>仿真里认得的物体，真机认不出</td><td>扩纹理/光照随机化 → 加传感器噪声模型 → 少量真图微调感知</td><td>低</td></tr>
+    <tr><td>物理失效</td><td>看得见，抓不住 / 插不进</td><td>调摩擦/质量/阻尼/执行器随机化 → 用真机 rollout 或遥操作示范微调控制策略</td><td><b>最高</b>（要额外仪器化）</td></tr>
+    <tr><td>分布失效</td><td>只在某些光照/布局下能跑</td><td>从失败条件下采一小批真数据</td><td>中</td></tr>
+  </table>
+
+  <p>原文还有一句诊断力很强的话：<b>如果模型在仿真和真机的成功率都是 80%，但两边失败原因不同，那它并没有完成 sim2real transfer。</b>所以错误类型比总体成功率更重要——这也是为什么第 3 步「给失败分类」不是可选项。</p>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">公式</span>原文没有公式，这三个是按它的流程与数字整理的形式化表达</h2>
+
+  <div class="box note">
+    <b>标注</b>：本节三个式子是<b>按原文流程整理的形式化表达，非原文照抄</b>。原文全篇为工程叙述，未写出任何数学公式；其中式 1 的常数可由原文给出的置信区间反推验证，式 2、式 3 是对原文定性的差距分解与覆盖条件的数学改写。
+  </div>
+
+  <div class="fml">
+    <div class="name">式 1　真机测试要跑多少次：二项分布的置信区间</div>
+    \[
+    \hat{p}\pm z_{1-\alpha/2}\sqrt{\frac{\hat{p}(1-\hat{p})}{n}},\qquad
+    n=20,\ \hat{p}=0.5,\ z=1.96\ \Rightarrow\ \pm 0.219
+    \]
+    <div class="exp">
+    \(\hat p\) 是真机上测到的成功率，\(n\) 是 episode 数，\(z\) 取 1.96（95% 置信）。<br>
+    <b>说人话：</b>你只扔了 20 次骰子，就别声称自己知道骰子的准确胜率。算一下：\(0.5\times0.5/20=0.0125\)，开方 0.1118，乘 1.96 得 0.219 ——<b>正好对上原文那个「±22 个百分点」</b>；换成 50 次，得 0.139，对上「±14 个百分点」。<br>
+    这就是「30–50 个 episode 是最低测试要求」的数学来源：<b>不是经验，是采样误差。</b>顺带一个实用推论——当成功率明显偏离 50%（比如 90%）时，同样的 n 下区间会变窄，所以「已经很好的策略」不需要跑那么多次也能分出差别；最难分辨的恰恰是 50% 附近。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　四类差距的误差分解：总差距是四块的和，不是一块</div>
+    \[
+    \mathcal{G}\;=\;\underbrace{\mathcal{G}_{\mathrm{phy}}}_{\text{物理简化}}+\underbrace{\mathcal{G}_{\mathrm{sen}}}_{\text{传感器}}+\underbrace{\mathcal{G}_{\mathrm{ren}}}_{\text{渲染}}+\underbrace{\mathcal{G}_{\mathrm{env}}}_{\text{环境变化}}
+    \]
+    <div class="exp">
+    把「真机性能 − 仿真性能」这个总差距拆成四个可分别归因的部分。<br>
+    <b>说人话：</b>这份指南的全部实用性都建立在「这四项可以分别攻」这个假设上。它没有给每一项怎么量化（这恰是它最大的空缺），只给了一条经验法则来定主导项：<b>接触密集 → 看物理项；摄像头导航 → 看渲染项；户外 → 看环境项。</b><br>
+    工程含义是反直觉的：<b>把总差距当成一个数去优化，会导致你把预算投向「最容易改的那一项」，而不是「占比最大的那一项」。</b>常见的浪费就是在一个物理受限的任务上拼命提升画质。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3　随机化要保证的事：真实分布被训练分布覆盖</div>
+    \[
+    \mathrm{supp}\left(p_{\mathrm{real}}\right)\ \subseteq\ \mathrm{supp}\left(p_{\mathrm{train}}(\theta)\right)
+    \quad\Longrightarrow\quad
+    \mathbb{E}_{p_{\mathrm{real}}}\big[\ell\big]\ \lesssim\ \mathbb{E}_{p_{\mathrm{train}}(\theta)}\big[\ell\big]+\delta
+    \]
+    <div class="exp">
+    \(p_{\mathrm{train}}(\theta)\) 是随机化参数 \(\theta\) 决定的训练分布，\(\mathrm{supp}(\cdot)\) 是它取值的支撑集，\(\delta\) 是覆盖内的残差。<br>
+    <b>说人话：</b>sim2real 要的不是「仿真像真的」，而是<b>「真的落在仿真练过的范围里」</b>。随机化就是把训练分布的支撑集撑大，直到把真实世界装进去。<br>
+    这个式子同时解释了随机化的两难：<b>\(\theta\) 撑得越大，覆盖越可能成立，但分布越散、模型越难学</b>（原文说「环境过于不稳定，模型难以学习」）。所以最优的 \(\theta\) 不是最大，而是「刚好把真实装进去」——这也就是为什么 Automatic Domain Randomization 要随能力提升逐步扩大，而不是一开始就开到最大。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">值不值</span>最有用的三条判据，和它没说清的三件事</h2>
+
+  <h3>值得直接抄进项目文档的三条</h3>
+
+  <div class="box good">
+    <b>1. 「30–50 个 episode」是硬底线，而且能自己验算。</b>20 次试验下 ±22 个百分点的区间，意味着很多团队引以为据的「A 比 B 好 10 个点」在统计上就是噪声。这条能省掉大量无效调参。<br>
+    <b>2. zero-shot 与微调后的差值 = 差距诊断器。</b>不需要知道漏了什么，只要测「补一点真数据能涨多少」：涨得多 → 覆盖不足；几乎不涨 → 问题不在分布，在容量或标签。<br>
+    <b>3. 「错误类型一致」比「成功率一致」更重要。</b>两边都 80% 但失败原因不同，等于没迁移成功。这条判据比任何单一指标都更能防止自欺。
+  </div>
+
+  <h3>必须打的三个问号</h3>
+
+  <ul class="crit">
+    <li><b>它是一家数据采集服务公司的视角，结论天然偏向「多采真实数据」。</b>原文在多个关键处把结论导向「与其继续改仿真器，不如采真实数据微调」，并且结尾直接写「如果你的策略需要真实世界验证集，可以告诉我们你需要采集什么数据」。<b>这个建议在多数情况下是对的，但读者要知道它的利益位置。</b></li>
+    <li><b>四类差距只有定性清单，没有可测量的分解方法。</b>它告诉你「有四块」，却没说「怎么测出我这块占 60%」。实际项目里这恰恰是最难的一步——你只能靠经验法则（接触→物理、视觉→渲染）粗判，而这套法则在「既接触又靠视觉」的任务（料箱抓取、插装）上直接失效，原文只能用「考虑均衡型仿真器或拆分式管线」这种模糊说法带过。</li>
+    <li><b>引用偏旧，2026 年的新东西基本没进来。</b>核心引文集中在 2017–2022（Tobin 2017、Tan 2018、Peng 2018、Bousmalis 2018、Chen 2022），最新的也只有 RialTo（2024）和几篇 2025 综述。<b>而 2025–2026 真正在改这个格局的是「视频生成模型造数据」和「世界模型当仿真器」两条线</b>——原文只在「未来方向」里提了一句「Learned Simulators 与 Differentiable Simulators」和「仿真环境中的 Foundation Models」，没有展开，也没有给出任何量化对比。以 sim2real 这个方向的迭代速度，这是明显的缺口。</li>
+  </ul>
+
+  <div class="box note">
+    <b>一句话结论：</b>把它当<b>检查清单</b>用，价值很高——尤其是「先诊断主导差距」「30–50 个 episode」「zero-shot vs 微调差值」这三条，几乎是免费的项目体检。把它当<b>技术路线图</b>用则要小心：四类差距的分解不可测、引用停在 2022、结论带着数据服务商的立场。真正的顺序应该是：<b>先用它的清单定位差距 → 再用当年最新的工具（生成式渲染、世界模型）去补那一块 → 最后才决定要不要买真实数据。</b>
+  </div>
+
+  <p class="src">来源：公众号 human five《Sim2Real 入门：仿真到现实的差距、方法与评估》（2026-11-26）· 工程实践指南，非论文 · 参考 Tobin et al. 2017 / Tan et al. 2018 / OpenAI 2018·2019 / RialTo 2024 等 20 篇文献</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RePace：加速是逐窗口的取舍 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>VLA 动作慢，很多时候不是模型慢，是教它的人慢<span class="sub">RePace · 示范重定时（offline retiming）· 候选因子 {1.0, 1.5, 2.0} 逐窗口分配 · 让 LLM 看着画面判断「这一步能不能跳」· 有效加速比 ES：LIBERO 1.257 唯一双套件破 1 · 真机 Stack Cup 41.6 → 21.4 秒且成功率只掉 1 次</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-25 · arXiv 2611.34864</div>
+    <div><b>关键词</b> 演示重定时 · 加速剖面 · LLM 推理选择器 · 有效加速比 · GR00T N1.6</div>
+    <div><b>一句话</b> 加速多少不该由整段演示决定，该由每一小段「到底需不需要精度」决定</div>
+    <div><b>方向</b> 模型性能</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>人做示范时会停、会犹豫、会慢慢对准，模型把这些节奏一起学了进去，于是动作又慢又拖。整体加速 2 倍最省事，但它会把「对准」那几帧也删掉——速度是快了，成功率掉下来。RePace 的判断很朴素：该加速多少不该由整段演示决定，该由每一小段「这一步到底需不需要精度」决定。而这件事没法用规则算出来，只能看着画面判——所以它交给一个语言模型，并且先把这个因子会删掉什么算成具体数字，摆在模型面前。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据 <b>arXiv 2611.34864 正文（HTML 版）</b>撰写，作者 Insup Lee、Hojin Jeon、Sunguk Shin、Seoungbin Bae、Taekwan Kim、Jinwoo Shin、Dongsu Han，2026-11-25 提交。<b>关键数字（LIBERO 整体 SR 92.45% / ES 1.257 vs 原始 97.45% / 1.000、RoboCasa ES 1.015、真机 Stack Cup 41.6→21.4 秒、压缩比 1.718、消融去掉候选效应 ES 1.257→1.142）均取自原文</b>；公式按原文转写。
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：训练之前，先重写一遍示范的时间轴</h2>
+
+  <p>先把它在流水线里的位置钉住：<b>它发生在微调之前，不在部署之后。</b></p>
+
+  <p>VLA 策略是模仿学习的产物，它模仿的不只是「动作」，还有「节奏」。真实示范里大量时间是无效的：等物体稳定、犹豫、慢慢靠近对准。这些帧会一起训练进策略，结果就是推理时动作拖沓、任务完成时间长。已经有几条路子在处理这件事：在部署时加一个速度选择模块（推理时选快慢）、在训练时对整条轨迹统一加速固定倍数。</p>
+
+  <p>RePace 走的是第三条：<b>在训练前，把一条示范按时间窗切开，给每个窗单独决定加速因子，重新采样出一条新的示范。</b>它只做一件事，但位置选得很关键——<b>改的是数据，不是模型，也不是推理栈。</b></p>
+
+  <table>
+    <tr><th>维度</th><th>设置</th><th>说明</th></tr>
+    <tr><td>候选加速因子</td><td>{1.0, 1.5, 2.0}</td><td>1.0 = 不动；2.0 = 默认起点；1.5 = 需要更多观测或更细指令时的折中</td></tr>
+    <tr><td>窗口粒度</td><td>名义 16 步（LIBERO）</td><td>不重叠、有序；一条 episode 切成若干窗口，每个窗口一个因子</td></tr>
+    <tr><td>决策者</td><td>Qwen3.8-27B（选择）+ Qwen3-VL-32B（提视觉上下文）</td><td>输出完整 episode 的加速剖面 r 和一句理由 E</td></tr>
+    <tr><td>被训练的策略</td><td>GR00T N1.6（3B）</td><td>所有对比都从同一个预训练 checkpoint 出发</td></tr>
+    <tr><td>主指标</td><td>有效加速比 ES + 成功率 SR</td><td>ES 只统计「成功试次」的耗时，避免用失败换速度</td></tr>
+    <tr><td>评测规模</td><td>LIBERO 2,000 次 / RoboCasa 1,200 次 / 真机每任务 32 次</td><td>比多数同类的评测规模大一档，这点值得肯定</td></tr>
+  </table>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：整段加速的错，不在倍数，在「一刀切」</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：慢的根源在数据里，不在推理栈里</div>
+    <div class="d">策略输出的是逐帧动作。如果训练数据里「从 A 到 B」用了 60 帧，模型就学会了用 60 帧走完这段路。<b>这不是模型算得慢，是它认为这就是对的节奏。</b>所以正确的修法是在数据上修，而不是在推理时加个「跳帧」模块——后者需要额外的速度判定，还会引入新的失败模式。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：整段统一加速，会在「需要精度的位置」制造不可逆的损失</div>
+    <div class="d">把整段都除以 2，等于假设每个时刻的信息密度一样。但显然不是：<b>长距离移动时中间帧几乎不提供新信息，删掉无损；而瓶盖对位的那 3 帧删掉，任务就完了。</b>原文的表述是：即使在同一个段内，适合稳定运动的加速倍数，在需要精确对准时也可能过高。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：所以真正的变量是「删掉这些中间帧之后，剩下的观测-动作对还能不能表达这个动作」</div>
+    <div class="d">这是全篇的第一性判断。加速的本质不是「让时间变快」，是<b>减少训练样本数</b>：原本 60 个（观测, 动作）对，加速 2 倍只剩 30 个。<b>能不能删，取决于「剩下的这 30 对是否还覆盖了这段运动的信息」。</b>如果这段运动是匀速直线，30 对绰绰有余；如果这段里藏着一个「先下压再旋转」的转折，删一半就丢了这个转折。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：这个判断依赖语义和视觉，规则写不出来</div>
+    <div class="d">「这里要不要精度」需要知道：这是什么任务、这一步在建立什么空间关系、间隙有多窄、夹爪什么时候闭合。<b>这四件事里，前两件是语义，后两件是视觉。</b>纯几何规则（比如「速度低于阈值就加速」）会把「慢慢对准」误判成「闲着没事」，因为它只看速度不看意图。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：但 LLM 也不能凭空判断——必须先把「每个因子会删掉什么」算成数字喂给它</div>
+    <div class="d">这是它比「直接让 VLM 选个倍数」严谨的地方。每个窗口的推理输入是三元组：<b>视觉上下文、原始运动、以及每个候选因子对应的重定时效应</b>——包括输出步数、额外节省步数、指令峰值、最大路径跨度、夹爪映射。也就是说，LLM 不是「感觉这段能快」，而是看着「选 2.0 会把这段从 16 步压到 8 步、指令峰值从 0.986 涨到 1.821 m/s」来做决定。</div>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：切窗、压缩、让模型选、只在三种情况下让步</h2>
+
+  <h3>一、重定时算子：加速不是丢帧，是「合并区间」</h3>
+
+  <p>这一步决定了它和「每 k 帧取一帧」的区别。做法是：</p>
+
+  <ol>
+    <li>在一个窗口内，按所选因子把连续源步分组成区间（因子 1.5 时，n 步分成 ⌈n/1.5⌉ 组）；</li>
+    <li><b>夹爪指令的每次切换处强制开始新区间</b>——这是硬约束，因为抓/放是离散事件，不能和相邻动作合并；</li>
+    <li>保留每个区间的<b>首帧观测</b>和<b>末帧的夹爪指令</b>，动作取区间内增量指令的和（并裁剪到指令上限）；</li>
+    <li>对手指的实测运动，压缩上限硬性限制在 1.5（从夹爪切换起到首个稳定步，最多 40 步）。</li>
+  </ol>
+
+  <p>这样做的物理含义很清楚：<b>观测取区间起点（你从哪儿开始做这个动作），动作取区间累加（这一整段总共走了多远）。</b>它保住的是「位移总量」，牺牲的是「中间的细微轨迹」——所以它天生适合移动类动作，天然不适合需要中途修正的接触类动作。这也正是为什么必须有逐窗口的选择机制。</p>
+
+  <h3>二、LLM 的决策规则：默认激进，只在有证据时让步</h3>
+
+  <p>选择器的优先级是固定的四步：这个窗口要建立什么空间关系 → 原始运动是怎么建立它的 → 每个候选会怎么改变训练数据 → 定因子。默认选 <b>2.0</b>，只有三种情形才降到 1.0/1.5，而且必须指出证据：</p>
+
+  <ul>
+    <li>需要建立抓取对准、放置、插入、夹具啮合这类<b>空间关系</b>；</li>
+    <li>视觉上下文显示传送或旋转路径<b>间隙狭窄</b>；</li>
+    <li>夹爪指令前后的运动属于上面第一种情形。</li>
+  </ul>
+
+  <p>候选支持度接近时，<b>选节省步数更多的那个</b>。这个「默认激进 + 举证让步」的设计，比「默认保守」更符合目标——因为加速的收益是确定的，而掉点的风险只在特定窗口。</p>
+
+  <h3>三、结果：唯一在两个基准上都跑赢原始数据的方法</h3>
+
+  <table>
+    <tr><th>方法（LIBERO，GR00T N1.6）</th><th>整体 SR</th><th>整体时间（步）</th><th>ES</th></tr>
+    <tr><td>原始示范</td><td>97.45</td><td>151.0</td><td>1.000</td></tr>
+    <tr><td>统一加速（Uniform）</td><td>84.55</td><td>94.2</td><td>1.053</td></tr>
+    <tr><td>DemoSpeedup</td><td>82.40</td><td>97.1</td><td>0.932</td></tr>
+    <tr><td>VOLT</td><td>78.95</td><td>87.3</td><td>0.889</td></tr>
+    <tr><td><b>RePace</b></td><td><b>92.45</b></td><td>96.0</td><td><b>1.257</b></td></tr>
+  </table>
+
+  <p>怎么读这张表：<b>原始示范的 ES 恒为 1.000（它是分母），所以「ES &gt; 1」意味着「在成功试次上真的更快了」。</b>Uniform 虽然把时间压到 94.2 步，但成功率掉了近 13 个点，ES 只有 1.053；RePace 用 96.0 步换来只掉 5.13 个点，ES 到 1.257。<b>它是唯一在 Spatial（1.366）和 Goal（1.322）两个套件上 ES 都大于 1 的方法。</b></p>
+
+  <p>真机上更能说明问题（Franka Research 3，每任务 32 次）：<b>Stack Cup 成功率 68.8% vs 原始 71.9%（32 次里只少成功 1 次），但成功试次耗时从 41.6 秒降到 21.4 秒——快了 48.6%。</b>另外两个任务同样：成功率持平或略降，时间显著缩短。<b>这是「用一点点成功率换大量时间」的典型交易，而且交易比率相当划算。</b></p>
+
+  <h3>四、消融：真正起作用的是「候选效应」那一栏</h3>
+
+  <p>去掉「候选重定时效应」这个输入（也就是不让 LLM 看到每个因子会删掉什么），压缩比从 1.718 掉到 1.682、成功率 92.45% → 90.40%、<b>ES 1.257 → 1.142</b>。去掉视觉上下文则几乎没影响（ES 1.243）。</p>
+
+  <p><b>这条消融很关键，它说明方法的收益不来自「LLM 很懂任务」，而来自「把选择的后果量化后摆出来」。</b>LLM 在这里更像一个会读表的决策者，而不是一个懂物理的专家。原文还给了具体例子：某个窗口因子 1.0 / 1.5 / 2.0 对应输出 16 / 11 / 8 步、指令峰值 0.986 / 1.592 / 1.821 m/s；RePace 因为间隙开阔选了 2.0，去掉候选效应则保守地选 1.5。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：重定时算子、决策函数、以及「只算成功者」的效率</h2>
+
+  <div class="fml">
+    <div class="name">式 1　重定时算子：把一条示范按剖面 r 改写成另一条</div>
+    \[
+    \tau=\{(o_{t},q_{t},a_{t})\}_{t=1}^{T},
+    \qquad
+    \widetilde{\tau}=\Phi(\tau,\mathbf{r}),
+    \qquad
+    \mathbf{r}=(r_{1},\dots,r_{W})
+    \]
+    \[
+    \widetilde{o}_{j}=o_{s_{j}},\qquad
+    \widetilde{g}_{j}=g_{e_{j}-1},\qquad
+    \widetilde{\mathbf{u}}_{j}=\operatorname{clip}_{c}\Big(\sum_{t=s_{j}}^{e_{j}-1}\mathbf{u}_{t}\Big)
+    \]
+    <div class="exp">
+    \(\tau\) 是原始示范（观测 \(o\)、机器人状态 \(q\)、动作 \(a\)），\(\mathbf{r}\) 是每个窗口的加速因子组成的剖面，\(\Phi\) 是重定时算子；\(s_j,e_j\) 是第 j 个区间的首末步，\(\mathbf{u}\) 是机械臂增量指令，\(g\) 是夹爪指令，\(c\) 是指令上限。<br>
+    <b>说人话：</b>加速不是「抽帧」，是<b>把几步合并成一步</b>——观测取区间第一帧（起点），动作取区间内所有增量的和（总位移），夹爪取区间最后一刻的指令（最终状态）。<br>
+    那个 \(\operatorname{clip}_c\) 是个容易被忽略的紧箍咒：<b>合并后的动作一旦超过指令上限就被削平</b>。所以「加速 2 倍」在物理上并不等于「快 2 倍」，它同时意味着「单步动作更大、更容易被裁剪」。这就是为什么压缩比只有 1.718 而不是接近 2。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　决策函数：LLM 读的是「后果」，不是「视频」</div>
+    \[
+    x_{w}=\Big(v_{w},\ m_{w},\ \{e_{w}(r)\}_{r\in\mathcal{R}}\Big),
+    \qquad
+    (\mathbf{r},E)=f_{\mathrm{LLM}}\big(\ell,\ x_{1},\dots,x_{W};\ \mathcal{I}\big)
+    \]
+    <div class="exp">
+    \(v_w\) 是视觉上下文，\(m_w\) 是原始运动，\(e_w(r)\) 是候选因子 r 带来的重定时效应（输出步数、指令峰值、最大路径跨度、夹爪映射），\(\ell\) 是任务指令，\(\mathcal{I}\) 是选择指令，\(E\) 是输出的理由。<br>
+    <b>说人话：</b>喂给模型的不是一个问题，是<b>三个东西的对照表</b>——这段画面长什么样、原始运动是什么、每个候选会把它变成什么样。<br>
+    这是整篇最可复用的工程思想：<b>让 LLM 做数值决策时，不要问它「你觉得多少合适」，要把每个选项的后果算成数字摆出来让它选。</b>消融已经证明，去掉这一栏（\(e_w\)）ES 就从 1.257 掉到 1.142，模型本身的推理能力没变，变的是它看不看得见后果。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3　有效加速比：只统计成功的试次，避免「用失败换速度」</div>
+    \[
+    \mathrm{ES}=\frac{T_{\mathrm{eff,orig}}}{T_{\mathrm{eff}}},
+    \qquad
+    T_{\mathrm{eff}}=
+    \frac{\sum_{j:\,s_{j}=1}t_{j}+\sum_{j:\,s_{j}=0}H_{j}}{\sum_{j=1}^{M}s_{j}}
+    \]
+    <div class="exp">
+    \(s_j\) 是第 j 次试验是否成功（1/0），\(t_j\) 是成功试次的实际完成步数，\(H_j\) 是失败试次被记入的惩罚上限（horizon 上限），\(M\) 是总试验数。<br>
+    <b>说人话：</b>分子分母都只算「成功的那几次」，失败的统一按「跑满上限」记账。<b>这个设计专门防一种作弊：把策略搞得很快但经常失败，平均时间看起来更短。</b><br>
+    所以 ES &gt; 1 的含义很硬：<b>在成功率大致不变的前提下，成功任务的完成时间真的缩短了。</b>这也解释了为什么原始示范的 ES 恰好等于 1.000——它是自己的分母。
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>值不值：一个便宜且可解释的增益，上限被候选集合锁死</h2>
+
+  <h3>它的价值在哪</h3>
+
+  <div class="box good">
+    <b>1. 位置选得对：改数据而不是改模型。</b>不引入部署时的速度模块，不加推理开销，不需要重新设计策略架构。<b>对已经在跑 GR00T / π0 系列的人来说，这是一个「只动数据管线」的增益。</b><br>
+    <b>2. 指标设计比方法本身更值得抄。</b>ES 只统计成功试次、失败按上限记账——这个口径把「快但失败」彻底排除了。很多加速论文用「平均完成时间」，那个指标可以被失败策略刷得很漂亮。<br>
+    <b>3. 消融诚实地指出了收益来源。</b>去掉候选效应 ES 掉到 1.142，去掉视觉上下文几乎不变（1.243）。<b>这说明真正起作用的是「把后果量化」，而不是「模型懂物理」</b>——这条结论对一个想复制它的人极其有用：你不需要一个特别强的 VLM，你需要一个把选项后果算清楚的表格。<br>
+    <b>4. 真机结果没有掉点式崩塌。</b>Stack Cup 32 次只少成功 1 次，时间减半。这是能直接进产线的量级。
+  </div>
+
+  <h3>它撑不起什么</h3>
+
+  <ul class="crit">
+    <li><b>上限被候选集合死锁在 2.0。</b>候选只有 {1.0, 1.5, 2.0}，所以最好的情况也就压缩到 1.718。真实示范里「等物体稳定」这种段落完全可以加速 4–5 倍，但这套框架表达不出来。<b>这不是实现细节，是方法的结构性上限</b>——它的收益天花板由人工设定的候选集决定。</li>
+    <li><b>成功率仍然是净损失，不是净增益。</b>LIBERO 掉 5.13 个点、RoboCasa 掉 3.7 个点、真机三个任务全部持平或略降。<b>它换的是「时间」，代价是「可靠性」。</b>在成功率本来就吃紧的任务上（比如长时程多阶段），这个交易可能不划算，而论文没有给出「什么时候不该用」的判据。</li>
+    <li><b>依赖一个 27B 的 LLM 做离线标注，成本与可复现性都没算。</b>每条 episode 要跑一次窗口级的 LLM 推理，还要一个 VLM 提视觉上下文。<b>论文没有给单条示范的处理成本、也没有给 LLM 选择的一致性检验（同一段跑两次会不会选出不同剖面）。</b>对一个「数据管线」方法，这两项缺失让人难以估算真实落地成本。</li>
+    <li><b>只在 3B 策略上验证。</b>全部实验用 GR00T N1.6（3B）。<b>更大的 VLA（7B/20B 级）是否同样受益于「训练数据节奏变快」完全未知</b>——大模型可能对小样本更鲁棒，也可能更依赖数据里的时序先验。这是最该补的一组实验。</li>
+    <li><b>动作被 clip 到 ±3，这本身就是一个隐性加速上限。</b>合并后的增量指令超限就被削平，等于物理上禁止了「更大的单步」。<b>所以它的「加速」在快速段会退化成「动作变形」</b>，而不是真的更快。原文没有分析这部分被裁剪的样本占比。</li>
+  </ul>
+
+  <div class="box note">
+    <b>一句话结论：</b>这是一篇「想法朴素、执行扎实、上限清楚」的工作。<b>它最值钱的不是那个 LLM，而是两个设计：一是把「能不能加速」翻译成「删掉这些观测-动作对后信息还在不在」，二是把每个候选的后果算成数字摆给决策者看。</b>这两条可以搬到任何「用 LLM 做数值决策」的场景。但它换来的只是时间（约 35–49%），代价是成功率（3–5 个点），而且提升天花板由人工设定的候选集决定——把它当成数据管线的常规清理步骤是合适的，当成性能突破则高估了。
+  </div>
+
+  <p class="src">论文：RePace: Reasoning about Demonstration Speedup for Faster Vision-Language-Action Policies · arXiv 2611.34864 · 2026-11-25<br>Insup Lee, Hojin Jeon, Sunguk Shin, Seoungbin Bae, Taekwan Kim, Jinwoo Shin, Dongsu Han</p>
+</section>
+
+<footer>
+  RePace：加速是逐窗口的取舍 · 3W1H 第一性原理解析 · arXiv 2611.34864
+</footer>
+
+</div>
+
+</body>
+</html>

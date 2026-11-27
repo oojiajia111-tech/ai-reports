@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ego2Real：触觉补上视觉的空子 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>第一视角示范缺的不是「看见」，是「碰到」<span class="sub">Ego2Real · 触觉手套（1123 taxels @125 Hz）+ RGB-D @30 Hz · 触觉进两个地方：HOI 重建的接触约束 + RL 的接触奖励 · 54 个解剖触觉区域 · Bottle Handover 真机 80% vs 基线 13.3% · 触觉只给 critic，部署不带手套</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-24 · arXiv 2611.32101</div>
+    <div><b>关键词</b> 第一视角示范 · 触觉手套 · 手物交互重建 · 接触奖励 · 残差强化学习</div>
+    <div><b>一句话</b> 动作可以看着学，接触必须摸着学——触觉进两次，一次进几何，一次进奖励</div>
+    <div><b>方向</b> 数采</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>用人的视频教机器人，缺的从来不是「看见」，是「碰到」。画面能告诉你手在瓶子旁边，不能告诉你用了多大力、哪几根手指在承重、什么时候松手。这些信息不在像素里，所以再多视频也补不出来。Ego2Real 的做法是把触觉手套的信号塞进两个地方：重建时用它把手的姿势压到物体表面上，训练时把人的接触模式翻译成奖励。它最后想说的其实是一句更朴素的话——手能不能用，取决于接触对不对，而不是轨迹像不像。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据 <b>arXiv 2611.32101 正文（HTML 版）</b>撰写，作者 Ange Bao、Haishan Zhang、Lingzi Xie、Shuang Li、Pei Zhao、Ling Shi、Bidan Huang，2026-11-24 提交，19 页 9 图。<b>关键数字（真机 Bottle Handover 12/15=80% vs REGRIND 2/15=13.3%、Box Rotation 双方 15/15、无触觉精化时 0/15、仿真追踪误差 4.73 mm / 2.29 mm、手套 1123 taxels @125 Hz、D435i @30 Hz、OmniHand 3 十个主动关节）均取自原文</b>；公式按原文转写，符号做了统一。
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：把触觉塞进「重建」和「训练」两处，而不是塞进「部署」</h2>
+
+  <p>先看它的结构组成为什么是这样。<b>这是一条三段式流水线，触觉在前两段各出现一次，第三段完全消失。</b></p>
+
+  <table>
+    <tr><th>阶段</th><th>输入</th><th>触觉怎么用</th><th>产出</th></tr>
+    <tr><td>① 触觉引导 HOI 重建</td><td>RGB-D（30 Hz）+ 手套触觉（125 Hz，1123 taxels）+ 物体网格</td><td>把触觉池化成 <b>54 个解剖区域</b>，每个区域绑到 MANO 手模型表面的锚点上，<b>只在「测到力」的区域施加接触约束</b></td><td>贴合物体表面的手部轨迹（位姿 + 关节）</td></tr>
+    <tr><td>② 人→机重定向</td><td>人手轨迹 + 机器人手模型（OmniHand 3）</td><td>不用</td><td>可执行的机器人参考轨迹</td></tr>
+    <tr><td>③ 接触引导残差 RL</td><td>参考轨迹 + 仿真</td><td>把人的接触区域与力大小变成 <b>奖励项</b>；触觉特征<b>只喂 critic</b></td><td>能落地的策略（actor 不需要触觉）</td></tr>
+  </table>
+
+  <p>这个「触觉只进训练、不进部署」的取舍是全文最工程化的一处，也是它比多数触觉论文更实用的原因：<b>手套是用来产生监督信号的传感器，不是机器人的一部分。</b>部署时机器人手上没有 1123 个测点，actor 也看不到触觉，所以策略不依赖手套存在。</p>
+
+  <h3>规模与配置</h3>
+
+  <table>
+    <tr><th>维度</th><th>数值</th><th>为什么重要</th></tr>
+    <tr><td>视觉采集</td><td>Intel RealSense D435i，30 Hz RGB-D</td><td>重建阶段的唯一几何来源，深度精度直接决定接触约束能不能落到位</td></tr>
+    <tr><td>触觉采集</td><td>全掌覆盖手套，1123 taxels，125 Hz</td><td>比视觉高 4 倍采样率，接触瞬间的力变化只有它能捕捉</td></tr>
+    <tr><td>触觉标定</td><td>六轴力/力矩传感器拟合仿射映射 → 法向力</td><td>不标定，触觉读数只是无量纲的「压了多少」，不能参与力相似性奖励</td></tr>
+    <tr><td>机器人</td><td>Tianji Marvin Pro 双臂 + OmniHand 3（10 主动 + 6 被动关节）</td><td>只有 2 个刚性连杆的手指结构，直接决定了重定向只能匹配腕部 + 远端指节</td></tr>
+    <tr><td>仿真</td><td>mjlab，物理 120 Hz / 控制 30 Hz</td><td>控制频率对齐视觉采样，避免策略学到仿真特有的时序</td></tr>
+    <tr><td>任务</td><td>Bottle Handover、Box Rotation</td><td><b>只有两个</b>，这是它最大的样本瓶颈</td></tr>
+  </table>
+
+  <p>成绩上，仿真里它在 Bottle Handover 拿到 100% 且追踪误差 4.73 mm（基线 REGRIND 误差更低 3.98 mm，也是 100%）；真正的分野在真机：<b>Bottle Handover 上 Ego2Real 12/15（80%），REGRIND 2/15（13.3%）</b>。Box Rotation 两者在有触觉精化时都是 15/15。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：视觉到接触之间有一道不可补的信息缺口</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：第一视角人类视频是目前唯一「规模够大」的示范来源</div>
+    <div class="d">遥操作贵、外骨骼难扩、动捕要实验室。人的第一视角视频便宜、丰富、天然带任务语义。<b>所以「用人的视频教机器人」不是可选项，是必然要走的路。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：但视频里没有「力」，而力恰恰是灵巧操作的自变量</div>
+    <div class="d">原文那句判断很准：视觉对物理接触和演示者的<b>力意图</b>提供的信息有限，导致手-物交互的解释存在歧义。<b>歧义的具体形态是：同一个画面（手指贴着瓶盖），可能是轻扶，可能是紧捏，可能是正在旋转。</b>这三种情况的正确动作完全不同，而像素里没有区分它们的证据。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：歧义在「重建」阶段就已经造成伤害，不是只影响策略</div>
+    <div class="d">这是很多人会漏掉的一层。如果重建出来的手只是「看起来贴着」物体，实际上有几毫米穿模或悬空，那么后面所有监督都建立在一个错的几何上。<b>所以触觉的第一个用途不是教策略，是纠正几何</b>——用实测的接触区域，把手的位姿压到真正接触的位置上。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：人的手和机器人的手不同构，所以「复制轨迹」必然失败</div>
+    <div class="d">人手 20+ 自由度、指尖柔软、能包裹；OmniHand 3 每指只有两个刚性连杆，共 10 个主动关节。<b>把人的关节角一一映射过去，在数学上就不成立。</b>能迁移的只有两样东西：末端轨迹的骨架，和「接触该发生在哪、该用多大力」这个意图。前者靠重定向，后者只能靠触觉。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：既然只能迁移意图，那就要把意图变成奖励，让 RL 自己去找动作</div>
+    <div class="d">这是全篇的方法论核心：<b>不给机器人答案，给机器人判分标准。</b>把人的接触区域、接触力大小、以及「不该过早接触」这三件事写成奖励项，让策略在仿真里自己摸索出符合这些标准的手指动作——它会长出自己的形态学解，而不是拙劣模仿人手。</div>
+  </div>
+
+  <p>五步下来，触觉之所以要出现两次就清楚了：<b>第一次是为了让参考轨迹是真的，第二次是为了让策略学会「为什么这么动」。</b>只做第一次，你得到一条更准的轨迹，但机器人手做不出来；只做第二次，奖励建立在错的参考上，等于在错的坐标系里判分。</p>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：54 个锚点、一次拉普拉斯匹配、三项奖励</h2>
+
+  <h3>一、重建：用触觉把「贴上了」变成「压进去了」</h3>
+
+  <ol>
+    <li><b>初始化</b>：SAM 3 出左右手与物体掩码，FoundationPose 估物体轨迹，HaMeR 出 MANO 的手腕位姿、手指关节与手形。</li>
+    <li><b>触觉映射</b>：1123 个测点池化成 54 个解剖区域，每个区域绑一个 MANO 表面锚点（固定重心坐标），于是「第 17 区有 80 counts 的力」变成「这个具体的指尖位置在受力」。</li>
+    <li><b>接触约束</b>：只在触觉读数超过激活阈值（80 counts）的区域上施加——锚点到物体表面的有符号距离要被压进容差带，法向偏差角要小于 30 度。</li>
+    <li><b>容差退火</b>：距离容差从 3 mm 逐步收紧到 0.2 mm。<b>先松后紧是关键</b>——一开始就要求 0.2 mm，优化会卡在穿模的局部解里。</li>
+    <li><b>时间一致</b>：接触保持正则只在相邻两帧都接触时激活，权重随触觉强度增大。<b>它防的是「手在物体表面抖」</b>——单帧约束满足、逐帧跳变，出来的轨迹没法用来训练。</li>
+  </ol>
+
+  <h3>二、重定向：只匹配两个点，比全手匹配更稳</h3>
+
+  <p>做法是把人和机器人手的<b>关键点拉普拉斯坐标</b>做匹配，但只匹配两组点：<b>腕部</b>（对应机器人掌心）和<b>远端指节</b>（人的 DIP 关节 / 拇指 IP → 机器人远端关节 + 指尖）。中间关节不管。</p>
+
+  <p>原因是形态学：OmniHand 3 的非拇指手指只有两个刚性连杆，你硬要匹配三个关节，优化器只能靠扭曲手形来凑，结果就是手看起来在动、实际接触全错。<b>宁可只锁住「手掌在哪」和「指尖在哪」，中间让求解器自由。</b>物体侧每件一次性均匀采 100 个点固定在物体坐标系，用 MOSEK 做序列凸规划求解。</p>
+
+  <h3>三、RL：残差叠加在参考上，触觉只给 critic</h3>
+
+  <ul>
+    <li><b>残差形式</b>：策略输出的不是绝对动作，而是叠加在参考轨迹上的增量（位置、旋转用指数映射、关节角带上下限裁剪）。<b>零动作 = 原样回放重定向轨迹</b>，这让训练从「已经能动」的状态起步，而不是从随机抖动开始。</li>
+    <li><b>三项接触奖励</b>：接触状态一致性（这个区域该接触的时候接触了吗）、力相似性（力的大小像不像人）、过早接触惩罚（比人更早接触就扣分）。<b>最后一项专门治「先抓住再说」</b>——很多策略会提前闭合手指刷成功率，在真机上就是撞物体。</li>
+    <li><b>特权触觉</b>：触觉特征（8 个接触区域的接触指示 + 总力的对数）<b>只输入 critic</b>。actor 靠视觉和本体感知决策，部署时不需要手套。这是非对称 actor-critic 在这个问题上的标准用法，但它在这里有额外意义：<b>它把「训练时要触觉」和「部署时要触觉」这两件事彻底解耦了。</b></li>
+    <li><b>运动跟踪奖励</b>：物体项权重高（优先完成任务），腕部权重小（允许机器人手自己调整姿态）。这个权重设计本身就是一个论断：<b>物体的状态比手的姿势重要。</b></li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：约束、奖励、以及「只在有接触的地方算账」</h2>
+
+  <div class="fml">
+    <div class="name">式 1　整条重建流水线的总目标：视觉 + 正则 + 触觉约束</div>
+    \[
+    \min_{\{\mathbf{T}^{h}_{t},\boldsymbol{\theta}^{h}_{t}\}_{t,h}}
+    \mathcal{L}_{\mathrm{visual}}+\mathcal{L}_{\mathrm{reg}}
+    +\lambda_{c}\mathcal{L}_{\mathrm{contact}}
+    +\lambda_{n}\mathcal{L}_{\mathrm{normal}}
+    +\lambda_{p}\mathcal{L}_{\mathrm{pres}}
+    \]
+    <div class="exp">
+    \(\mathbf{T}^h_t\) 是第 h 只手的腕部位姿，\(\boldsymbol{\theta}^h_t\) 是手指关节角；\(\mathcal{L}_{\mathrm{visual}}\) 是轮廓与深度的重投影一致性，\(\mathcal{L}_{\mathrm{reg}}\) 是解剖学先验（防手指反折）。<br>
+    <b>说人话：</b>这不是「拟合一张好看的图」，而是在四种力之间找平衡——<b>看起来要对（视觉）、长得要像手（正则）、碰到的地方要真碰上（接触）、碰的方向要垂直于表面（法向）、且不许逐帧抖（保持）。</b><br>
+    权重很能说明优先级：接触项 \(10^6\)、保持项 \(10^4\)、解剖项 50、视觉 10、深度 1。<b>接触约束比视觉一致性高五个数量级</b>——这句话翻译过来就是：宁可轮廓对不齐，也不许手上没接触到却当成接触。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　触觉约束只在「真的测到力」的地方生效</div>
+    \[
+    \mathcal{L}_{\mathrm{contact}}=\Big\langle
+    \big[-d^{h}_{t,a}\big]_{+}^{2}+\big[d^{h}_{t,a}-\epsilon\big]_{+}^{2}
+    \Big\rangle_{\mathcal{C}},\qquad
+    \mathcal{C}=\{(t,h,a):\tilde{\tau}^{h}_{t,a}>\tau_{\mathrm{act}}\}
+    \]
+    \[
+    \mathcal{L}_{\mathrm{normal}}=\Big\langle\big[\alpha^{h}_{t,a}-\alpha_{0}\big]_{+}^{2}\Big\rangle_{\mathcal{C}}
+    \]
+    <div class="exp">
+    \(d^h_{t,a}\) 是锚点到物体表面的<b>有符号距离</b>（负值 = 穿模），\(\epsilon\) 是容差（3 mm 逐步退火到 0.2 mm），\(\alpha\) 是锚点法向与物体表面法向的夹角，\(\alpha_0=30^\circ\)，\(\tilde\tau\) 是池化后的区域触觉读数，\(\tau_{\mathrm{act}}=80\) counts。<br>
+    <b>说人话：</b>两项惩罚一左一右夹住接触——<b>穿进去了罚（左项），离太远也罚（右项），中间那条带子才是「恰好贴上」。</b>而这一切只在集合 \(\mathcal{C}\) 上取平均，也就是「手套真的测到力的那些时刻」。<br>
+    这个「只在有证据的地方算账」的设计是整篇最值得学的技巧：<b>没测到力的地方不惩罚也不奖励</b>，否则优化器会为了降低损失把所有手指都往物体上贴，把「没接触」也拟合成了「接触」。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3　把人的接触意图翻译成奖励：状态 + 力 − 过早接触</div>
+    \[
+    r_{t}=\Delta t\,\big(r_{\mathrm{tr}}+r_{\mathrm{con}}+r_{\mathrm{reg}}\big),\qquad
+    r_{\mathrm{con}}=\sum_{h\in\{L,R\}}\Big(\lambda_{C}\,r^{C}_{h}+\lambda_{F}\,r^{F}_{h}-\lambda_{P}\,r^{\mathrm{pre}}_{h}\Big)
+    \]
+    <div class="exp">
+    \(r^C_h\) 是接触状态一致性（人手在某区域接触、机器人在对应区域也应该接触），\(r^F_h\) 是力相似性，\(r^{\mathrm{pre}}_h\) 是过早接触惩罚；\(r_{\mathrm{tr}}\) 是物体与腕部的跟踪奖励，\(r_{\mathrm{reg}}\) 是正则。<br>
+    <b>说人话：</b>我们不告诉机器人「手指该弯到 37 度」，只告诉它三件事：<b>该碰的地方要碰上（\(r^C\)）、力气要像人（\(r^F\)）、别抢在人的前面碰（\(r^{\mathrm{pre}}\)）。</b>剩下的手指动作，让它自己在仿真里试出来。<br>
+    负号那项值得单独看：<b>它是唯一一个「做得太早也扣分」的项。</b>没有它，策略会发现「提前闭合手指」是个便宜的解——在仿真里常常能蒙对，到真机上就是直接撞上去。
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>值不值：两个任务上的干净证据，和撑不起的普适性</h2>
+
+  <h3>它证到了什么</h3>
+
+  <div class="box good">
+    <b>1. 触觉在两个阶段都有独立贡献，而且能分开测。</b>Box Rotation 里，<b>不做触觉精化，两种方法都是 0/15；做了精化，都是 15/15</b>——这一刀把「重建精度」的贡献单独切了出来，而且证明它是<b>生死线</b>级别（0 到 100%），不是边际改善。<br>
+    <b>2. 策略阶段的接触奖励，在难任务上才是决定性的。</b>在更容易的 Box Rotation 上两者打平；到需要双手交接的 Bottle Handover，<b>同样的参考轨迹下 80% vs 13.3%</b>。这个对比很有说服力：说明奖励项补的正是「双手协调、力要刚好」这类参考轨迹表达不了的东西。<br>
+    <b>3. 工程上最值钱的一点：部署不需要触觉。</b>触觉只做特权信息喂 critic，actor 纯视觉+本体。这意味着<b>采集端的手套成本和部署端的硬件成本被彻底分开了</b>——一套手套可以服务很多台机器人。
+  </div>
+
+  <h3>它撑不起什么</h3>
+
+  <ul class="crit">
+    <li><b>只有两个任务，每个任务真机 15 次试验。</b>80% vs 13.3% 这个差距很大，大到 15 次也能看出显著；但 100% vs 100% 的那组（15/15）连一次失败都没有，说明任务本身可能偏简单、方差太小。<b>两个任务撑不起「这套方法对灵巧操作普遍有效」的结论。</b></li>
+    <li><b>结论锁死在 10 个主动自由度的手上。</b>OmniHand 3 每指两个刚性连杆，所以重定向只需要匹配腕部 + 远端指节。换成 20+ 自由度、带软指尖的手，这套「只锁两个点」的简化立刻失效，接触约束的锚点映射也要重做。<b>原文的形态学假设比它的方法更窄。</b></li>
+    <li><b>采集成本被低估了。</b>1123 taxels 的全掌手套 + 六轴力/力矩标定 + 30 Hz 深度相机同步，这套装备不是「便宜的第一视角采集」。<b>它把「ego 数据便宜」这个前提换成了「ego 数据要配触觉手套才有效」</b>——规模优势因此被削弱了一大截，而论文没有讨论「一套手套能采多少小时、多少任务」这个摊薄问题。</li>
+    <li><b>重建依赖物体网格。</b>目标函数里直接用了物体网格 M_o 和表面采样点。新物体要先重建/建模，这一步的成本和失败模式在论文里没有展开。<b>对一个号称「scalable」的管线来说，这是隐藏的人工环节。</b></li>
+    <li><b>没有被回答的反问：是触觉的功劳，还是「多了一个 modality 的监督信号」的功劳？</b>对比基线 REGRIND 也用触觉精化，所以这一层有控制；但没有「用同样精度的视觉重建 + 更多数据」的对照。<b>如果触觉的价值只是「让重建更准」，那用更好的深度/多视角方案可能同样有效，且更便宜。</b></li>
+  </ul>
+
+  <div class="box note">
+    <b>一句话结论：</b>这篇的真正贡献不是「触觉有用」（这几乎是共识），而是<b>把触觉的收益拆成了两笔可以分别结账的账</b>：几何重建那笔是生死线（0→100%），奖励学习那笔只在难任务上兑现（13.3%→80%）。工程上最该抄的是「触觉只进 critic」——它让采集端和部署端的成本解耦，这是把触觉从实验室推向产线的必要条件。但要清楚：这套结论长在「两个任务 + 十自由度手 + 有物体网格」这三个前提下，拔掉任何一个都要重做。
+  </div>
+
+  <p class="src">论文：Ego2Real: Learning Bimanual Dexterous Manipulation from Egocentric Visuo-Tactile Demonstrations · arXiv 2611.32101 · 2026-11-24<br>Ange Bao, Haishan Zhang, Lingzi Xie, Shuang Li, Pei Zhao, Ling Shi, Bidan Huang</p>
+</section>
+
+<footer>
+  Ego2Real：触觉补上视觉的空子 · 3W1H 第一性原理解析 · arXiv 2611.32101
+</footer>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DemoFoundry：只换外观，不碰动作 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>合成数据的两条死路，刚好互相是对方的解药<span class="sub">DemoFoundry · 仿真给动作但画面对不上，视频生成给画面但动作对不上 · 用 1,884 对真实-代理视频训一个「只换外观」的渲染器 · coding agent 写程序搭场景 · 仅用生成数据 46.7% / 60.0%（DP / π0.5），仅用原始仿真 12.2% / 27.8% · 单条成本 0.774 美元 vs 遥操作 2.42 美元</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-25 · arXiv 2611.34671</div>
+    <div><b>关键词</b> 合成数据 · 生成式渲染 · proxy 视频 · coding agent · 动作-视频一致性</div>
+    <div><b>一句话</b> 不让生成模型碰动作，只让它换画面——动作标签因此一直是准的</div>
+    <div><b>方向</b> 训练数据</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>合成数据一直死在两个地方：仿真有正确的动作和严重失真的画面，视频生成有逼真的画面和靠不住的动作。这两条路各自去补自己的短板都补不动——仿真器再改也画不出真实光照，生成模型再训也给不出物理一致的动作。DemoFoundry 干脆不补，改成拆：用物理仿真产出「动作正确、画面难看」的代理视频，再训一个只负责把画面换成真的渲染器。动作标签从头到尾没被生成模型碰过，所以它还是准的。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据 <b>arXiv 2611.34671 正文（HTML 版）与项目页</b>撰写，作者 Ruixiang Wang、Xinyue Yao、Xuanning Zhou、Yueci Deng、Yongyi Su、Kui Jia，2026-11-25 提交。<b>关键数字（1,884 对 / 1,522.03 分钟、silhouette IoU ≥ 0.80、PSNR 23.317 / FID 52.88 / FVD 258.81、PCK@5% 97.24、仅生成数据 DP 46.7% π0.5 60.0%、真实+生成 72.2% / 82.2%、单条成本 0.774 美元 vs 遥操作 2.42 美元、生成数 25→200 时 42.2%→85.6% 均取自原文</b>；公式按原文转写。
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：把「动作」和「画面」拆成两条独立可优化的产线</h2>
+
+  <p>一句话概括这套系统的分工：<b>物理仿真负责「做得对」，渲染器负责「看得真」，coding agent 负责「搭场景」，三者之间只用一个东西相连——代理视频。</b></p>
+
+  <table>
+    <tr><th>阶段</th><th>谁在干活</th><th>输入</th><th>输出</th></tr>
+    <tr><td>① 配对构建</td><td>coding agent + 物理回放</td><td>四个公开数据集（DROID / AgiBot World / RoboMIND / RH20T）的真实 episode</td><td>1,884 对「真实视频 ↔ 代理视频」，1,522.03 分钟</td></tr>
+    <tr><td>② 渲染器训练</td><td>视频生成模型（LoRA 微调）</td><td>代理视频 + 真实视频首帧作参考图</td><td>一个「代理 → 真实」的外观翻译器</td></tr>
+    <tr><td>③ 新场景生成</td><td>coding agent 写程序 + 随机布局</td><td>一张参考图 + 机器人规格 + 相机标定 + 任务指令</td><td>新的（渲染后视频, 状态, 动作）三元组</td></tr>
+    <tr><td>④ 策略学习</td><td>Diffusion Policy / π0.5</td><td>渲染观测 + 对齐的仿真动作</td><td>可部署策略（25 Hz 控制）</td></tr>
+  </table>
+
+  <p>关键在阶段 ③ 的「零样本」性质：<b>给一张参考图和一个任务指令，不需要目标场景的人类示范，也不需要人在生成过程中操作。</b>agent 自己重建任务相关几何、组装场景、写出带位姿的程序，在物理仿真里跑出来的就是带正确动作的代理视频。</p>
+
+  <h3>成绩摊开看</h3>
+
+  <table>
+    <tr><th>指标</th><th>数值</th><th>参照</th></tr>
+    <tr><td>视觉真实感（PSNR ↑）</td><td>23.317</td><td>最强基线 RoboRender 16.925；原版 MiniMax-H3 15.462</td></tr>
+    <tr><td>分布距离（FVD ↓）</td><td>258.81</td><td>RoboRender 815.21；原版 H3 808.74</td></tr>
+    <tr><td>动作-视频一致性（PCK@5% ↑）</td><td>97.24</td><td>RoboRender 86.57；原版 H3 93.55</td></tr>
+    <tr><td>真机成功率（仅生成数据，50 条/任务）</td><td>DP 46.7% / π0.5 60.0%</td><td>仅原始仿真 12.2% / 27.8%；仅真实 48.9% / 62.2%</td></tr>
+    <tr><td>真机成功率（真实+生成，50+100 条）</td><td><b>DP 72.2% / π0.5 82.2%</b></td><td>真实+原始仿真 47.8% / 63.3%</td></tr>
+  </table>
+
+  <p>最值得盯的一行是倒数第二行：<b>只用生成数据（50 条），就已经追平只用真实数据（50 条）</b>——46.7 vs 48.9、60.0 vs 62.2。<b>但最后一行更说明问题：真实数据打底 + 生成数据增广，能到 82.2%，远超纯真实。</b>所以它的定位从一开始就不是「替代真实数据」，而是「把真实数据的边际价值放大」。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：两个短板是互补的，所以不该分别去修</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：机器人学习要的样本，必须同时满足两个条件</div>
+    <div class="d">一是<b>观测要真</b>（否则学到的视觉特征在真机用不上），二是<b>动作要对</b>（否则学的是一个物理上不可能的策略）。少任何一个，数据都是废的——这就是「演示」比「视频」贵得多的根本原因。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：仿真的问题不在物理，在「照片级真实感的成本」</div>
+    <div class="d">仿真天然给出精确的动作和状态，代价是外观。要让它看起来真实，传统做法是给每个场景做精细材质建模——<b>这活儿的工作量随场景数量线性增长，而且永远追不上真实世界的丰富度。</b>这是仿真合成数据十几年的老瓶颈。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：视频生成的问题反过来——外观免费，物理不免费</div>
+    <div class="d">生成模型能给你任何场景的照片级画面，<b>但它生成的运动不保证物理一致，更关键的是它不吐动作标签。</b>你可以事后用逆动力学去猜动作，但猜出来的动作误差会直接变成策略的偏差。所以「纯视频生成造数据」在需要精确动作的任务上一直不稳。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：既然短板互补，就把它们串成流水线，让每个模块只做自己擅长的事</div>
+    <div class="d">物理仿真出「代理视频 + 精确动作」，渲染器只做「代理 → 真实」的<b>外观翻译</b>。<b>这一步是整个方法的枢纽：动作从不经过生成模型，所以它一直是精确的；渲染器只需要学「同一段运动在不同画风下长什么样」，这是一个远比「生成物理正确运动」简单的任务。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：但渲染器要学外观翻译，就必须有成对数据</div>
+    <div class="d">这是最容易被忽略的一环。要训「代理 → 真实」，你需要同一段运动的两种画风。他们的办法是<b>反向构造</b>：拿已有的真实 episode，用 agent 重建场景、在仿真里回放记录的动作，得到一段「动作相同、画面是仿真」的代理视频，于是自动获得配对。<b>验收标准是逐视角轮廓 IoU ≥ 0.80，允许三轮修正，仍不达标就丢弃。</b>最终 1,884 对通过。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 6 步：剩下的瓶颈是「搭场景」这件事本身要靠人</div>
+    <div class="d">于是引入 coding agent：让它读参考图、重建几何、调工具库（场景查询、抓取提议、逆运动学、运动规划、机器人控制）、写出可执行的位姿程序，再靠试执行来改代码。<b>这一步把「场景工程」从人力变成了可自动化的编程任务</b>，也是它敢叫「scalable」的原因。</div>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：一个 IoU 阈值、一个流匹配损失、一个成本方程</h2>
+
+  <h3>一、配对构建：0.80 这个阈值决定了渲染器的上限</h3>
+
+  <p>流程是：SAM 3.1 出物体掩码 → 拟合桌面支撑面 → 简单物体用参数化形状经 Blender 脚本转网格、复杂资产用 SAM 3D Objects 重建 → 在 MuJoCo / DexSim 里回放记录动作 → <b>逐视角轮廓 IoU ≥ 0.80 才算对齐</b>。</p>
+
+  <p>为什么 IoU 阈值这么重要：<b>代理视频和真实视频对不齐，渲染器学到的就是「把 A 场景的画风换成 B 场景」，而不是「同一场景换画风」。</b>这会直接污染动作-观测的对应关系。原文的数据也印证了这条路有多难走：初始回放接受率只有 33.1%，三轮修正后升到 39.7%，轮廓 IoU 从 0.517 升到 0.601，轨迹误差从 1.370% 降到 0.956%。<b>也就是说，六成的真实 episode 根本没法用。</b></p>
+
+  <h3>二、渲染器：只学外观，所以只需要 LoRA</h3>
+
+  <p>两个底座都用了参数高效微调：LTX-2.5 用 rank-128 的 LoRA（121 帧），MiniMax-H3 用 rank-32 的 attention LoRA（158 帧 @ 24 fps）。<b>主干和视觉编码器全部冻结</b>，监督信号是同一段运动的真实视频。</p>
+
+  <p>这个「冻结主干」的选择和它要解决的问题一致：如果连主干一起训，模型会开始「创作」运动，动作一致性就丢了。<b>只训 LoRA 等于给模型加了一条「换画风」的窄通道，它想改运动也没那个自由度。</b></p>
+
+  <h3>三、生成：agent 写程序，随机布局，逐窗口自回归</h3>
+
+  <ol>
+    <li>agent 重建资产、组装场景，用工具库写出位姿感知的程序；试执行失败就改代码；</li>
+    <li>随机化物体布局得到场景变体，执行得（代理视频, 状态, 动作）；失败的轨迹直接跳过；</li>
+    <li>用图像编辑模型生成参考图：<b>布局来自代理视频首帧，外观来自给定参考图</b>——这一步让「换场景不换风格」成为可能；</li>
+    <li>渲染器逐窗口自回归渲染长轨迹（窗口间 1 帧重叠）；</li>
+    <li>自动任务执行检查筛掉失败轨迹，合格的进数据集。</li>
+  </ol>
+
+  <h3>四、训练策略：为什么「仿真 + 生成」反而不如「只用生成」</h3>
+
+  <p>这个结果很反直觉，值得单独说：真实 + 原始仿真只有 47.8% / 63.3%，而真实 + 生成数据能到 <b>72.2% / 82.2%</b>。<b>加原始仿真数据几乎没增益（−1.1 / +1.1 个百分点），加生成数据提升 23.3 / 20.0 个百分点。</b></p>
+
+  <p>解释只有一个：<b>原始仿真数据的视觉分布离真实太远，它对策略的贡献是「噪声」而不是「多样性」。</b>而生成数据把视觉对齐了，于是它携带的动作信息才真正被用上。<b>这条结论比任何一个涨点都重要——它说明合成数据的瓶颈从来不是「量」，是「画面对不对得上」。</b></p>
+
+  <p>数据缩放也给了明确曲线：每任务生成 25 / 50 / 100 / 200 条，π0.5 成功率 42.2% / 60.0% / 77.8% / 85.6%。<b>200 条生成数据（85.6%）已经明显超过 50 条真实数据（62.2%）</b>，但仍需真实数据打底才到 82.2% 的混训水平——两条曲线的关系是「互补」而非「替代」。</p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：一条执行、一条渲染、一条算钱</h2>
+
+  <div class="fml">
+    <div class="name">式 1　代理数据的产生：物理仿真给出「动作 + 状态 + 难看但正确的视频」</div>
+    \[
+    (P,Q,A)=\operatorname{Execute}\big(E,\ p;\ C\big)
+    \]
+    <div class="exp">
+    \(E\) 是仿真场景，\(p\) 是 agent 写出的任务程序，\(C\) 是相机标定；输出 \(P\) 是代理视频、\(Q\) 是对齐的机器人状态序列、\(A\) 是执行的动作。<br>
+    <b>说人话：</b>这一行是整个方法的信任来源——<b>\(Q\) 和 \(A\) 是物理引擎算出来的，不是任何模型猜的。</b>它可能画面很假，但它「手真的抓到了、杯子真的倒了」。<br>
+    注意 \(p\) 是<b>程序</b>而不是策略：一段可执行的位姿序列，可以随机布局后重跑无数次。这就是它比遥操作便宜的结构性原因——<b>遥操作的成本随条数线性增长，而一段程序跑一百次只花算力。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　渲染器的训练目标：条件流匹配，条件里装的全是「结构」</div>
+    \[
+    \mathcal{L}_{\mathrm{FM}}=\mathbb{E}\Big[\big\|\,v^{\mathrm{train}}_{\theta}(z_{u},u;P,I^{\mathrm{ref}})-(z-\epsilon)\,\big\|^{2}_{\mathrm{valid}}\Big],
+    \qquad z_{u}=(1-u)\epsilon+uz
+    \]
+    <div class="exp">
+    \(z=\mathcal{E}(V)\) 是真实视频的隐变量，\(\epsilon\) 是高斯噪声，\(u\) 是流匹配时间；\(P\) 是代理视频（提供运动与几何），\(I^{\mathrm{ref}}\) 是参考图（提供外观）。<br>
+    <b>说人话：</b>模型学的不是「从噪声生成一段视频」，而是「<b>给定这段难看的代理视频 + 这张参考图，把噪声还原成这个场景的真实样子</b>」。<br>
+    两个条件各管一件事，这是全篇的设计核心：<b>\(P\) 管「怎么动、东西在哪」，\(I^{\mathrm{ref}}\) 管「长什么样、什么颜色材质」。</b>因为运动信息由 \(P\) 完全给定，模型没有动力去编造运动，动作一致性（PCK 97.24）才保得住。<br>
+    那个 \(\|\cdot\|_{\mathrm{valid}}\) 的脚标也别放过：只在有效目标隐变量上取平均，<b>条件帧不计入损失</b>——和视频生成里的通行做法一致，避免模型把力气花在重建已经喂进去的东西上。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3　成本方程：编程是一次性投入，所以「多生成」才便宜</div>
+    \[
+    \overline{C}(N)=\frac{C_{\mathrm{plan}}}{N}+c_{\mathrm{gen}},
+    \qquad C_{\mathrm{plan}}\approx \$9,\quad c_{\mathrm{gen}}=\$0.765
+    \]
+    <div class="exp">
+    \(N\) 是同一任务的生成条数，\(C_{\mathrm{plan}}\) 是 agent 写程序的一次性成本，\(c_{\mathrm{gen}}\) 是每条渲染的边际成本。<br>
+    <b>说人话：</b>搭场景那 9 美元是<b>摊</b>出去的。生成 1 条要 9.765 美元（比遥操作还贵），生成 100 条摊到 0.855 美元，1,000 条 0.774 美元——<b>而人类遥操作一条是 2.42 美元。</b><br>
+    这个式子解释了为什么它的经济性只在「同一任务要很多条」时成立，也解释了为什么它必须靠 coding agent 而不是人工搭场景：<b>\(C_{\mathrm{plan}}\) 一旦由人来做，就降不到 9 美元这个量级。</b>
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>值不值：把「数据贵」改写成「画面对不上」，代价是整条链更脆</h2>
+
+  <h3>它真证到的东西</h3>
+
+  <div class="box good">
+    <b>1. 「只换外观」这个拆法是有效的，而且有干净的对照。</b>同样 50 条数据，仅仿真 12.2% / 27.8%，仅生成 46.7% / 60.0%，仅真实 48.9% / 62.2%。<b>生成数据把仿真数据的可用性抬了 3 倍多，直接追平真实数据</b>——这是「视觉分布才是瓶颈」这个论断的最硬证据。<br>
+    <b>2. 混训增益说明它和真实数据是互补的。</b>真实+生成 72.2% / 82.2%，比真实+仿真高 24.4 / 18.9 个百分点。<b>加原始仿真数据几乎零增益，加生成数据涨两个档</b>——这个对比把「数据的价值不在量而在对齐」讲透了。<br>
+    <b>3. 场景泛化是它相对仿真 DR 的真实优势。</b>换绿色瓶子 21 vs 5、换背景色 22 vs 10、换光照 18 vs 2（30 次试验）。<b>DR 只能随机化参数，它能把整个场景换掉</b>，这是两种不同层级的多样性。
+  </div>
+
+  <h3>它的代价和疑点</h3>
+
+  <ul class="crit">
+    <li><b>整条链的产率很低。</b>真实 episode 反推代理的接受率只有 39.7%（三轮修正后），<b>六成数据被丢掉</b>。这不是一个小损耗——它意味着「用现成数据集造配对」这条路，实际上要消耗 2.5 倍的原始数据才能得到一份配对集。</li>
+    <li><b>三个任务、每个 30 次试验。</b>真机结论建立在「罐→托盘 / 叠块 / 笔入架」三个桌面任务上，每个 30 次。<b>这足以证明方法有效，但不足以证明它在长时程、接触密集、双手协调任务上同样成立</b>——而那几类恰恰是合成数据最该解决的问题。</li>
+    <li><b>「接近真实数据」这句话要看清量级。</b>它是「50 条生成 ≈ 50 条真实」，而在 200 条生成时已经超过 50 条真实（85.6% vs 62.2%）。<b>但论文没有做「200 条真实 vs 200 条生成」的对照</b>——真实数据的 scaling 曲线在哪、什么时候饱和，完全未知。缺失这一组，就无法判断生成数据的上限到底在哪。</li>
+    <li><b>依赖物理回放能复现真实 episode。</b>代理视频靠「在仿真里重放记录的动作」得到。如果真实 episode 里有仿真复现不了的接触（软物、颗粒、强摩擦），回放就失败，这条数据也就没了。<b>换句话说，这套方法在最难的接触场景上会自动退化——而那里正是最需要合成数据的地方。</b></li>
+    <li><b>coding agent 的失败率没有被报告。</b>论文报告了「自动任务执行检查」会筛掉失败轨迹，但没给筛掉的比例、没给 agent 写程序的一次成功率、也没给「程序写错了但检查没发现」的假阳性率。<b>对一个把可靠性押在 agent 写代码上的系统，这是最关键的缺失指标。</b></li>
+  </ul>
+
+  <div class="box note">
+    <b>一句话结论：</b>它把一个老问题重新定义了——<b>合成数据的瓶颈不是「不够真」，而是「动了之后画面对不上」。</b>于是它不去改仿真器，也不去改生成模型，而是让两者各管一半，中间用一个「只换外观」的窄通道连起来。这条思路干净、可解释、成本算得清（0.774 vs 2.42 美元）。但要清楚它的边界：<b>它只在「同一任务要很多条 + 场景能被仿真复现」时成立</b>，而六成的配对产率和三个桌面任务，还撑不起「通用数据工厂」这个名头。
+  </div>
+
+  <p class="src">论文：DemoFoundry: Toward Scalable Photorealistic Robot Data with Coding Agents and Generative Rendering · arXiv 2611.34671 · 2026-11-25<br>Ruixiang Wang, Xinyue Yao, Xuanning Zhou, Yueci Deng, Yongyi Su, Kui Jia · 项目页 robbinw.github.io/DemoFoundry-Web</p>
+</section>
+
+<footer>
+  DemoFoundry：代理写程序，渲染出真机数据 · 3W1H 第一性原理解析 · arXiv 2611.34671
+</footer>
+
+</div>
+
+</body>
+</html>
