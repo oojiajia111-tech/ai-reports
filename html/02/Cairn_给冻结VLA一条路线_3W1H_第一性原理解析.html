@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cairn：给冻结的 VLA 一条路线 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>冻结的 VLA 不缺技能，缺一条路线<span class="sub">Cairn（UPenn / Athena RC）· 4.35M 参数路线先验 + 完全冻结的 π0.5 · 16,049 演示 + 79,470 条替代路线 · LIBERO-Shift 24.5%→95.1% · 标准 LIBERO 96.5%→97.0%（不遗忘）· LIBERO-PRO 抓对后 54.4%→81.1% · 真机 0/10→9/10 · 每 chunk 190 ms</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-25 · arXiv 2611.34914</div>
+    <div><b>关键词</b> 物体级路线先验 · 冻结 VLA · 双向耦合 · 阻尼高斯牛顿 · 不遗忘</div>
+    <div><b>一句话</b> 微调会遗忘、能量场会卡局部极小——缺的是一个物体级的全局路线</div>
+    <div><b>方向</b> 模型性能</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>VLA 常常不是不会做，是不知道往哪走。物体一挪位置，它就把东西送到训练时的老地方；路上有障碍，它照直撞上去。Cairn 不重训它，而是把「路线」单独拎出来学：一个四百多万参数的小网络专门预测被持物体的三维路径，冻结的 VLA 只管执行，两边互相纠偏，一个权重都不改。它想说的一句话很干脆——缺的不是技能，是路线。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据 <b>arXiv 2611.34914 正文（HTML 版）</b>撰写，作者 Agelos Kratimenos、Kostas Daniilidis、Evangelos Chatzipantazis，单位宾夕法尼亚大学 / Athena RC，2026-11-25 提交，CC BY 4.0。<b>关键数字均取自原文</b>：先验 4.35M 参数 / 0.37 s / 到达率 97.3%；LIBERO-Shift 5,823 episodes；π0.5 24.5%→95.1%（detour 17.3→92.4、turn 13.4→88.8）；标准 LIBERO 96.5%→97.0%，微调 π0.5 掉到 70.5%；LIBERO-PRO 27.3%→38.0%（抓对 + 单次搬运 54.4%→81.1%）；真机 0/10→9/10、0/10→8/10；每 chunk 190 ms。<b>公式按原文式 (1)~(8) 转写</b>，符号做了统一。
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：一个 435 万参数的小模型，管住一个冻结的大模型</h2>
+
+  <p>先看它的结构组成为什么是两层：<b>上层专家只会一件事（预测物体该走哪条路），下层通才是完整的 VLA（只会执行）。</b>两者之间是双向的，但只有一条方向会改参数——而那条方向的参数是上层的小网络。</p>
+
+  <table>
+    <tr><th>组件</th><th>规模</th><th>职责</th><th>是否更新</th></tr>
+    <tr><td>路线先验（上层）</td><td><b>4.35M 参数</b>，改自 3DFA</td><td>输入场景点云 + 被持物体点云 + 抓取位姿 + 指令，输出 K 个 SE(3) 路点</td><td>训练时更新</td></tr>
+    <tr><td>π0.5（下层）</td><td>完整 VLA</td><td>生成动作块，决定「怎么动」</td><td><b>完全冻结</b></td></tr>
+    <tr><td>耦合</td><td>—</td><td>VLA 的意图修正路线；选定路线反过来引导 VLA 的去噪</td><td>只走梯度步，不回传网络</td></tr>
+  </table>
+
+  <p>这个「小模型管路线、大模型管执行」的分工，本质是把<b>「去哪」和「怎么去」拆成两个可分别训练的问题</b>。而它最狠的地方是：<b>拆开之后，大模型一个权重都不用改，所以也不可能遗忘。</b></p>
+
+  <h3>三组数字，一组比一组意外</h3>
+
+  <table>
+    <tr><th>场景</th><th>π0.5 单独</th><th>+ Cairn</th><th>说明</th></tr>
+    <tr><td>标准 LIBERO（原布局）</td><td>96.5%</td><td><b>97.0%</b></td><td>不降反微升——<b>冻结带来的直接好处</b></td></tr>
+    <tr><td>LIBERO-Shift（换布局 / 有障碍）</td><td>24.5%</td><td><b>95.1%</b></td><td>detour 17.3→92.4、turn 13.4→88.8</td></tr>
+    <tr><td>微调 π0.5（在 Shift 上）</td><td>91.3%（Shift）</td><td>—</td><td><b>但标准 LIBERO 掉到 70.5%</b></td></tr>
+    <tr><td>真机：碗在盒子后面</td><td>0/10</td><td><b>9/10</b></td><td>先验只在实验室复刻场景的仿真数据上微调</td></tr>
+    <tr><td>真机：柜子顶部（臂展极限）</td><td>0/10</td><td><b>8/10</b></td><td>同一套先验，没为这两个任务单独训练</td></tr>
+  </table>
+
+  <p>第三行是全文最有说服力的一行：<b>微调能拿到 91.3%，但代价是标准 LIBERO 从 96.5 掉到 70.5。</b>这不是「微调不够好」，而是微调在结构上就会覆盖旧分布。而 Cairn 走的是另一条路——<b>97.0 与 95.1 同时拿到，因为它们根本不共享参数。</b></p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：VLA 把「去哪」和「怎么动」绑在同一套权重里</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：VLA 的失败不是「动作做不对」，是「方向错了」</div>
+    <div class="d">原文给了两个很具体的诊断：物体被移动时，失败 episode 的<b>终点中位数距目标容器 45 厘米</b>；有障碍时，<b>39% 的场景发生碰撞</b>。这两个数字都不是「抓不稳」，而是「走错路」。<b>所以问题定位很明确：缺的是一条通往目标的路径。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：微调能修布局，但会覆盖旧分布</div>
+    <div class="d">在 Shift 上微调后 91.3%，看起来不错。但标准 LIBERO 从 96.5 掉到 70.5——<b>这不是调参问题，是参数共享的必然结果。</b>只要路线信息和执行能力住在同一套权重里，改一个就动另一个。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：测试时引导（能量场）只能给局部信息</div>
+    <div class="d">OmniGuide 这类方法提供的是「碰撞排斥 + 目标吸引」的局部能量场。<b>问题有三个：不知道全局目标在哪、容易陷入局部极小、而且作用在夹爪而不是被持物体。</b>消融很能说明：OmniGuide 加目标吸引能到 50.9%，但 Cairn 到 95.1%——差在「有没有一条完整的路线」。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：所以路线必须被解耦出去——否则又被绑回同一套权重</div>
+    <div class="d">这是方法成立的逻辑前提：<b>只要路线还由 VLA 内部隐式表示，改路线就等于改 VLA。</b>把路线拎出来单独用一个 4.35M 的网络学，才能做到「改路线不动 VLA」。<b>解耦不是为了模块化好看，是为了「不遗忘」这个硬指标。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：但完全解耦也不行——路线得能被「意图」修正</div>
+    <div class="d">VLA 才知道「我要把这个放进哪个碗」。所以先验的采样要接受 VLA 动作的引导（用能量项 E_C 把路线往 VLA 当前预测的终点拉），不合格的路线丢弃、取接受路线的 medoid。<b>这就是「双向耦合」的确切含义：路线约束动作，动作也重塑路线。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 6 步：耦合怎么实现？只走梯度步，不回传网络</div>
+    <div class="d">最直接的做法是把修正通过 VLA 网络回传（RTC）。原文试了，<b>结果 −15.7 分</b>——因为修正被网络压缩掉了，而且时间步强行给路线加了节奏。改用阻尼高斯牛顿步直接在去噪变量上修正，绕开网络，才成立。<b>这是一条很实用的教训：想让两个模型耦合，别走反向传播。</b></div>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：造数据 → 学路线 → 双向引导</h2>
+
+  <h3>一、先造数据：原始演示的路线差异只有 2~4 厘米</h3>
+
+  <p>LIBERO 原始约 50 条演示<b>共享同一布局、无遮挡，路线差异只有 2~4 厘米</b>——这种数据学不出「通用路线」，只能学到「一条固定轨迹」。所以团队用 MimicGen 式生成器重造：重锚定抓取、为新容器解算放置、拉伸搬运段；六类障碍置于名义路径上；每个场景额外生成绕左/绕右/绕上/开放弧线的替代路线；最后用 MPLib 检查 + MuJoCo 仿真硬校验（成功、单一刚性抓取、无接触、关节与速度限制）。</p>
+
+  <p>结果：<b>4,605 条人类演示 → 16,049 条演示 + 79,470 条替代路线</b>，路线差异拉到 <b>23~31 厘米</b>（原来是 2~4 厘米）。<b>这个「把差异放大一个量级」的操作，是整篇真正的数据工作。</b>没有它，先验学到的仍然是「一条路」。</p>
+
+  <h3>二、学路线：点云编码 + 局部注意力 + 整流流</h3>
+
+  <ul>
+    <li>把被持物体从场景点云里<b>移除</b>，单独用 Point MLP 编码（让它专心感知自身形状）；场景用 <b>Point Transformer V3</b>；两者与指令的 CLIP 特征互相注意力，保留三维位置。</li>
+    <li><b>局部注意力增强</b>：每个路点在每个采样步检索<b>最近的场景 token</b>，显式拿到相对几何（邻居每步重算、场景特征缓存）。<b>这是为了「绕障碍」——全局注意力容易忽略近处那根柱子。</b></li>
+    <li>位置与旋转分叉分别预测速度，用<b>整流流（rectified flow）</b>训练，并加测地旋转损失。</li>
+    <li>采样 16 条路线 × 20 路点 × 10 步 Euler；「清晰」标准 = 物体与场景保持 ≥1.5 cm。</li>
+  </ul>
+
+  <h3>三、双向引导：一个能量项 + 一个牛顿步</h3>
+
+  <p>VLA 引导先验：用能量项 E_C 把路线位置往 VLA 当前预测的终点拉（对齐算子 B 按平移弧长插值对齐路段，<b>速度交给 VLA，不由路线决定</b>），丢掉离场景太近的路线，取接受路线的 medoid 作为计划。</p>
+
+  <p>先验引导 VLA：在去噪的每一步叠一个<b>阻尼高斯牛顿步</b>，把当前位置往路线拉，且把 VLA 的雅可比近似为单位阵（<b>避免对 VLA 反向传播</b>）。三个分量分别修正位置、旋转、夹爪。</p>
+
+  <p>最能说明「高层规划器」定位的一组消融：<b>沿路线密集放置目标点（低层控制式）在 Shift 上 −10.5 分、PRO 上 −19.3 分</b>；<b>去掉旋转项在 Shift 上 −13.8 分</b>。也就是说——<b>路线要稀疏、要管朝向，但节奏必须留给 VLA。</b></p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：采样、训练、耦合、修正</h2>
+
+  <div class="fml">
+    <div class="name">式 1　路线采样：一个以「场景 + 物体 + 抓取 + 指令」为条件的生成模型（原文式 1）</div>
+    \[
+    \boldsymbol{\xi}=(\mathbf{w}_1,\dots,\mathbf{w}_K)\sim p_\theta(\cdot\mid\mathbf{c}),\qquad \mathbf{c}=(\mathcal{S},\mathcal{G},A,\ell)
+    \]
+    <div class="exp">
+    \(\mathcal{S}\) 是场景点云，\(\mathcal{G}\) 是被持物体点云，\(A\) 是抓取时刻的物体位姿，\(\ell\) 是语言指令；\(\mathbf{w}_k\) 是第 k 个 SE(3) 路点，且 \(\mathbf{w}_1=A\)、最后一个是放置位姿。<br>
+    <b>说人话：</b>给它四样东西——屋子长什么样、手里拿的是什么、在哪儿抓的、要干什么——让它画出一条从手到目标位置的线。<b>注意这条线是「物体」的路线，不是夹爪的路线。</b><br>
+    为什么强调物体？因为夹爪路线会随抓取姿态变，物体路线才是任务层面的量。<b>原文的消融印证：把引导对象换成夹爪，turn 场景掉 3.1 分。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　训练损失：整流流 + 测地旋转（原文式 3）</div>
+    \[
+    \mathcal{L}=\mathbb{E}\big\|f_\theta(\mathbf{Y}_u,u,\mathbf{c})-(\mathbf{Y}-\boldsymbol{\epsilon})\big\|^{2}+\lambda_R\,\mathbb{E}\Big[\mathbf{1}_{u>u_R}\,\frac{1}{K-1}\sum_{k\geq 2}d_{\mathrm{SO}(3)}\big(\widehat{R}_k,R_k\big)\Big]
+    \]
+    <div class="exp">
+    \(\mathbf{Y}\) 是真实的路线（位置与旋转拼成），\(u\) 是流时间，\(\boldsymbol{\epsilon}\) 是噪声，\(f_\theta\) 预测速度场；第二项只在 \(u>u_R\) 的后期阶段施加，\(d_{\mathrm{SO}(3)}\) 是旋转的测地距离。<br>
+    <b>说人话：</b>主损失教它「怎么从噪声里长出路线」，第二项专门盯「朝向对不对」。<b>为什么朝向要单独管？因为平移到位的路线，朝向可能完全错——手是到了，但杯子是横着过去的。</b><br>
+    只在后期加旋转损失是个小技巧：早期噪声太大，算旋转距离没有意义，反而干扰收敛。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3　双向耦合：路线给动作一个能量，动作给路线一个约束（原文式 5~6）</div>
+    \[
+    q(\mathbf{Y},\mathbf{X})\propto p^{Y}_\theta(\mathbf{Y}\mid\mathbf{c})\;p^{X}_\phi(\mathbf{X}\mid\mathbf{o})\;e^{-\mathcal{E}(\mathbf{Y},\mathbf{X})},\qquad
+    E_{\mathrm{C}}(P)=\tfrac{1}{2}\big\|BP-\Phi_{\mathrm{pos}}(\mathbf{a}^{\pi})\big\|^{2}
+    \]
+    <div class="exp">
+    \(\mathbf{Y}\) 是路线，\(\mathbf{X}\) 是动作块，\(\mathcal{E}\) 是耦合能量；\(P\) 是路线位置，\(B\) 是按平移弧长插值的对齐算子，\(\Phi_{\mathrm{pos}}(\mathbf{a}^\pi)\) 是把 VLA 预测动作映射到物体位姿。<br>
+    <b>说人话：</b>把「路线」和「动作」看成两个分布，用一个能量项把它们绑在一起——<b>路线要合理，动作要符合路线，而且动作的终点要落在路线的终点附近。</b><br>
+    那个 \(B\) 的作用容易被忽略：路线是稀疏路点、动作是密集块，两者长度不同，必须先按弧长对齐才能比位置。<b>而「速度交给 VLA」这句话，就是消融里「密集目标 −19.3 分」的由来——路线一旦管节奏，VLA 反而不会走了。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 4　引导步：绕开网络，直接在去噪变量上修正（原文式 7~8）</div>
+    \[
+    \mathrm{vec}(\Delta^{\mathrm{pos}}_s)=-\kappa\,J^{\top}\big(JJ^{\top}+\varepsilon I_3\big)^{-1}\mathbf{r},\qquad
+    \mathbf{X}_{s'}=\mathbf{X}_s+(s'-s)\,v_\phi(\mathbf{X}_s,s,\mathbf{o})+\Delta_s
+    \]
+    <div class="exp">
+    \(J=\partial\mathbf{r}/\partial\,\mathrm{vec}(\widehat{\mathbf{X}}_s)\) 是残差对动作块的雅可比，\(\kappa=0.7\)，\(\varepsilon=10^{-4}\,\mathrm{m}^2\) 是阻尼项（防止 \(JJ^\top\) 奇异），\(\Delta_s=\Delta^{\mathrm{pos}}_s+\Delta^{\mathrm{rot}}_s+\Delta^{\mathrm{grip}}_s\)。<br>
+    <b>说人话：</b>每一步去噪之后，别急着接受，先算一下「现在离路线差了多远」，然后朝减小这个差的方向挪一小步——<b>只挪动作，不动网络。</b><br>
+    这就是「冻结 VLA」能成立的技术关键：<b>修正发生在去噪变量上，不需要对 VLA 求导，也就不需要它的权重参与。</b>原文的对照很硬：改成把修正通过 VLA 网络回传（RTC），−15.7 分。<b>因为网络会把修正压缩掉，还顺手给路线强加了一个节奏。</b>
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限：一次干净的「解耦」，但解耦也划出了边界</h2>
+
+  <h3>值得拿走的四条</h3>
+
+  <div class="box good">
+    <b>1. 「缺路线不缺技能」是一个可检验的诊断，而且被证实了。</b>24.5%→95.1% 不是涨点，是<b>「换了个失败原因」</b>——原来失败是因为走错路，现在路线给了，技能本来就在。<b>这个诊断方式值得学：先看失败 episode 的终点分布，再判断是「不会做」还是「没走对」。</b><br>
+    <b>2. 解耦带来的不只是模块化，是「不遗忘」这个硬指标。</b>微调 91.3% / 70.5%，Cairn 95.1% / 97.0%——<b>两条曲线放在一起，说明「参数共享」本身就是遗忘的根源。</b>任何要做多环境部署的 VLA，都得面对这笔账。<br>
+    <b>3. 4.35M 参数、0.37 秒，打败了 45.5 秒的 RRT-Connect。</b>路线到达率 97.3% vs 90.3%，多样性 3.4 vs 1.0。<b>这说明「学习出来的路线先验」在速度与多样性上都已经超过经典采样式规划器</b>，这是很硬的一条工程结论。<br>
+    <b>4. 消融的失败模式直接指出了「怎么用错」。</b>密集目标 −19.3、RTC −15.7、去旋转 −13.8、引导夹爪 −3.1——<b>四条负结果拼起来，就是一份「别这么做」的说明书。</b>这种消融比正结果有用。
+  </div>
+
+  <h3>必须打的五个问号</h3>
+
+  <ul class="crit">
+    <li><b>引导从「抓取之后」开始。</b>这意味着<b>抓错物体的 episode 完全救不回来</b>。所以 LIBERO-PRO 全量只从 27.3% 涨到 38.0%——而「已抓对 + 单次搬运」的子集能到 81.1%。<b>这两个数字要一起看：方法的有效范围比标题数字窄得多。</b></li>
+    <li><b>非单次搬运任务不适用。</b>PRO 的 40 个任务里有 13 个是双物体、抽屉、炉子这类多阶段任务，<b>一个都没施加引导</b>。而真实家务几乎全是多阶段。<b>这是它离落地最远的一段距离。</b></li>
+    <li><b>先验需要为新场景造数据。</b>训练依赖 MimicGen 式生成 + MuJoCo 硬校验，真机迁移还依赖「实验室复刻场景的仿真微调」。<b>所以「不用为每个布局采真机数据」是对的，但「不用为每个布局做工作」是错的——工作从采集转移到了仿真建模。</b></li>
+    <li><b>真机每任务只有 10 次试验。</b>9/10 和 8/10 是很好的信号，但 10 次的置信区间极宽（9/10 的 95% 区间大约覆盖 55%~99%）。<b>而且只有两个任务、一个平台（FR3 + DROID）。</b></li>
+    <li><b>雅可比被近似为单位阵。</b>式 4 里把 VLA 的雅可比 J 当作单位阵，是为了绕开反向传播。<b>这在工程上合理，但它意味着「修正方向」不是真正的最速下降方向</b>——而是「假设 VLA 局部是恒等映射」下的近似。当 VLA 对动作的响应非线性很强时，这个近似会失准。</li>
+  </ul>
+
+  <div class="box note">
+    <b>一句话结论：</b>如果只拿一条，就拿「<b>先看失败终点分布，判断是『不会做』还是『没走对』</b>」——这个诊断决定了你该改策略还是加规划；如果拿两条，第二条是「<b>把路线解耦出去，用一个小模型单独学</b>」——它同时买到了不遗忘和可解释，代价是多一层需要造数据的模块。<b>但要记住边界：引导从抓取后开始，多阶段任务它管不了。</b>
+  </div>
+
+  <p class="src">来源：arXiv 2611.34914《Cairn: Object-Centric 3D Trajectory Priors for Steering Frozen VLAs》（2026-11-25，CC BY 4.0）· 作者 Agelos Kratimenos、Kostas Daniilidis、Evangelos Chatzipantazis · 宾夕法尼亚大学 / Athena RC</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 前沿论文拆解 · 深度拆解前沿成果，说人话讲明白</footer>
+
+</div>
+
+</body>
+</html>

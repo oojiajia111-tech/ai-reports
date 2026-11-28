@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZERITH-V2.5：预测表征要被接住，不是被塞进去 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>预测表征不是「额外输入」，是必须被接住的那个起点<span class="sub">ZERITH-V2.5 双分支（Wan2.2 中间表征 + VGGT 几何）· 30,000 步里先花 3,000 步做视觉适配 · LIBERO-Plus 37.64%→56.80%（+19.16）· 单模型 LIBERO 98.95 / LIBERO-Plus 93.70 / MT50 92.3 · ESI 双系统 RoboDojo 62.03 分 / 49.41% · 多模态本体全程冻结 · H1-1K 1,129 小时 / 356 任务配置</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-27</div>
+    <div><b>体裁</b> 厂商技术博客 · 无 arXiv 号</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>视频模型早就看懂了东西怎么动、怎么变形，可它一个字都没告诉动作模型。零次方这次没去改那个视频模型，而是把它的中间表征接到动作头上，然后逼问一个更硬的问题：这份先验到底该接在哪一层、要被多宽的监督覆盖才算数。答案是——先花三千步把视觉对齐做扎实，再谈动作。第二件事更狠：让多模态大模型和动作模型互相挑错，把这场对话本身当成训练信号，而大模型本体一个权重都不动。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据公众号 human five《Robot Use Agent 走向真实场景，具身智能如何实现持续进化？》（2026-11-27）撰写，原文为零次方新一代具身动作模型与框架的<b>官方发布稿</b>，附技术报告与开源链接（zerith.com / huggingface）。<b>本文不含 arXiv 编号，未经同行评议，全部指标均为厂商自评，baseline 由作者自行复现</b>。文中数字（10,000 小时预训练、37.64%→56.80%、98.95 / 93.70 / 92.3、RoboDojo 62.03 分 / 49.41%、1,129 小时 / 356 任务配置）均取自原文。<b>原文未给编号公式，第四节三式为按原文流程整理的形式化表达，非原文照抄</b>——这三式的价值在于把它的训练顺序与优化对象摊开，便于与别的方案比较。
+</div>
+
+<section id="what">
+  <h2><span class="tag">是什么</span>三件东西，回答三个不同的问题</h2>
+
+  <p>先把最容易混的地方拆开：<b>这不是一个模型，是三件可以分开评价的东西。</b>原文把它们绑在一次发布里，但它们的证据强度完全不同。</p>
+
+  <table>
+    <tr><th>产物</th><th>回答的问题</th><th>关键设计</th><th>证据强度</th></tr>
+    <tr><td><b>ZERITH-V2.5</b>（动作模型）</td><td>视频模型学到的动态先验，怎么被动作策略用上？</td><td>预测与控制<b>解耦的双分支</b>：一支读 Wan2.2 视频模型的<b>中间表征</b>，一支用 VGGT 拿空间几何，再合成动作</td><td>有受控实验（同数据同预算），相对最硬</td></tr>
+    <tr><td><b>ESI</b>（自进化框架）</td><td>基座模型与动作模型的能力，怎么对齐并持续变强？</td><td>把两者之间的 <b>Agentic 交互过程本身</b>当监督信号：回合内协作 + 跨回合优化，<b>只改提示词、技能接口、动作权重</b></td><td>单一强规划器下的自评，缺对照</td></tr>
+    <tr><td><b>ZERITH-H1-1K</b>（数据集）</td><td>多任务、长序列操作需要什么样的数据？</td><td>1,129 小时真机示范，356 个任务配置，10 余种场景，一高两腕三路 RGB，带语言时序与子任务区间</td><td>数据本身可核（LeRobot v3.0 已开源）</td></tr>
+  </table>
+
+  <p>注意它们的<b>因果链是自上而下的</b>：V2.5 解决「单个模型怎么把先验用起来」，ESI 解决「多个模型怎么互相纠错」，H1-1K 解决「纠错用的经验从哪来」。少了最后一环，前两环就只能在实验室里转。</p>
+
+  <h3>把量级摊开，判断它站在哪</h3>
+
+  <table>
+    <tr><th>维度</th><th>数值</th><th>为什么这个数字重要</th></tr>
+    <tr><td>预训练数据</td><td>10,000 小时真机</td><td>这个量级已进入「千小时俱乐部」，比的是数据工程而不只是算法</td></tr>
+    <tr><td>受控实验预算</td><td>30,000 步（前 3,000 步只做视觉适配）</td><td><b>10% 的预算花在「让视觉先对齐」上</b>，这是全篇最可复用的操作细节</td></tr>
+    <tr><td>增益幅度</td><td>LIBERO-Plus 37.64%→56.80%，三次训练均值 +19.16 pp</td><td>三种几何条件下增益稳定在 17.55~19.16 pp，说明不是抽签抽中的</td></tr>
+    <tr><td>单模型成绩</td><td>LIBERO 98.95 / LIBERO-Plus 93.70 / MT50 92.3</td><td>LIBERO 已接近饱和，真正有区分度的是 LIBERO-Plus（扰动泛化）</td></tr>
+    <tr><td>双系统成绩</td><td>RoboDojo 平均 62.03 分 / 成功率 49.41%</td><td>原文称超 GPT6-Astra 近 24 个百分点——<b>但这个 baseline 无法独立复现</b></td></tr>
+  </table>
+
+  <p>一个必须点出来的落差：<b>LIBERO 的 98.95% 在 2026 年已经不算新闻</b>（π0.5、GR00T 都在 96~97 一带）。这篇真正的新东西是 LIBERO-Plus 的 93.70 与那句「先做视觉适配」的预算分配——前者说明扰动下不塌，后者说明它知道先验要先用对地方。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">为什么</span>公理链：先验的价值不在「有」，在「接得住」</h2>
+
+  <p>顺着原文的推导走五步，会发现它的每个设计都是被前一步逼出来的。</p>
+
+  <div class="step">
+    <div class="t">第 1 步：视频模型学到的是「世界会怎么变」，不是「手该怎么动」</div>
+    <div class="d">这两件事在表征上高度相关，在输出上毫无关系。视频模型能预测袋子会被撑开、会滑、会被桶沿卡住，但它没有动作通道。<b>所以先验必须以「表征」而不是「输出」的形式被借用</b>——这就是为什么要读中间层，而不是拿它的预测结果当输入。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：中间表征如果直接接，会被后续层洗掉</div>
+    <div class="d">原文引用 2005 年 Mattar 与 Gribble 的观察实验：看别人适应外力，能改善自己随后的动作表现，但「看得快、做得慢」。<b>这正好对上一个工程事实：预测能力可以迁移得很快，控制精度却要慢慢磨。</b>于是训练必须分两段——先让视觉分支把目标域的画面拟合好，再让动作分支在这个起点上学。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：先验有没有用，取决于「接在哪」和「覆盖多宽」</div>
+    <div class="d">这是全篇唯一做了受控实验的论断：固定示范数据与总更新步数，只改两件事——先验进入哪个模块、监督覆盖多大范围。结论是两者都与最终效果相关。<b>换句话说，「加了视频先验所以变强」这种说法在这里不成立，必须说清加在哪、盖多少。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：两个模型能力互补，但接口是自然语言，天然模糊</div>
+    <div class="d">基座模型擅长场景与任务泛化，动作模型擅长物理执行。让它们串起来，中间那层是「一句话的意图」——而一句话说不清接触力、抓取点、退让顺序。<b>所以真正的瓶颈不是模型能力，是接口的表达精度。</b>ESI 的全部设计就是围着这个瓶颈：让大模型先给意图、再复核动作、必要时接管，把这个来回过程记录下来。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：既然接口能改，就该让「改接口」成为学习的一部分</div>
+    <div class="d">关键取舍：<b>多模态大模型本体全程冻结</b>。冻结之后，可优化的只剩三样——提示词、技能接口、动作模型权重。这三样都比 4B/7B 级大模型便宜几个数量级，而且改完可以立刻在机队上验证。<b>这就是「能力复利」的工程版本：不是让模型自己变聪明，是让系统自己变得会说。</b></div>
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">怎么做</span>两段训练 + 双分支 + 两层循环</h2>
+
+  <h3>一、训练顺序：先对齐视觉，再联合优化</h3>
+
+  <p>受控实验的预算分配是 30,000 步总数，<b>前 3,000 步只做视觉适配</b>，其余 27,000 步联合训练。这个 1:9 的比例不是随手定的，原文的解释是：初始损失与梯度分析显示，预测适配通过改善<b>目标域视觉拟合</b>，为动作学习提供了一个更有利的优化起点。</p>
+
+  <p>说人话：<b>先让模型认熟这间屋子长什么样，再教它在这间屋子里怎么动手。</b>顺序反了，动作分支就得一边学几何一边学控制，两件事互相拖。</p>
+
+  <h3>二、双分支：一支管「会发生什么」，一支管「空间在哪」</h3>
+
+  <ul>
+    <li><b>预测分支</b>：读 Wan2.2 视频模型的中间表征。它提供的不是未来画面，而是「物体状态会怎么演化」的隐变量。</li>
+    <li><b>几何分支</b>：用 VGGT 拿空间结构。它提供的是「东西在哪、离多远」，这对接触类任务比语义更直接。</li>
+    <li><b>合成</b>：两路信息汇到动作策略，生成动作序列。原文强调「解耦」与「分阶段协同」——即两支各有自己的优化节奏，不是简单拼接。</li>
+  </ul>
+
+  <p>这个设计对应第 1 步的公理：<b>动态先验与几何先验是两种不同性质的信息，混在一起学容易互相干扰。</b>分开之后，视觉适配可以单独收敛，动作分支再从这个起点接力。</p>
+
+  <h3>三、ESI：两层循环，冻结大模型</h3>
+
+  <table>
+    <tr><th>层级</th><th>谁在动</th><th>做什么</th><th>失败时</th></tr>
+    <tr><td>回合内循环</td><td>大模型出意图 → 动作模型出动作 → 大模型复核</td><td>采纳 / 调整 / 纠正三选一，执行后拿新观测进下一轮</td><td>执行失败或动作明显偏离意图 → <b>大模型直接接管控制权</b></td></tr>
+    <tr><td>跨回合循环</td><td>提示词体系 · 技能接口 · 动作模型权重</td><td>复用完整交互轨迹，同步更新这三样</td><td>大模型本体<b>始终冻结</b>，不参与更新</td></tr>
+  </table>
+
+  <p>这套「回合内协作 + 跨回合优化」的结构，本质是把<b>人机协作里的试错过程显式记录下来</b>，再把这个记录当成监督。和 RSI（递归自我改进）的区别在于：它优化的对象不是代码，而是<b>接口的措辞与技能边界</b>。</p>
+
+  <h3>四、H1-1K：把「长序列 + 语言」留在数据里</h3>
+
+  <p>数据集的关键不在 1,129 小时，而在<b>字段设计</b>：每条示范给一路高位视角加两路腕部视角，同时提供<b>语言时序</b>与<b>子任务区间</b>，部分示范还有细粒度子任务分段。覆盖五大类任务（办公文档整理、餐具摆放收纳、食品储存与厨房整理、料框拣选、双手物体操作），356 个任务配置，LeRobot v3.0 格式、按任务独立加载。</p>
+
+  <p>为什么要这么细？因为多任务长序列的难点是<b>「同一段动作在不同阶段有不同含义」</b>——同样是伸手，前面是去拿、后面是去放。没有子任务区间，模型学到的就是一段无差别的轨迹。<b>这个字段比多几百小时更值钱。</b></p>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">公式</span>三式分别对应「怎么接」「怎么训」「怎么改」</h2>
+
+  <div class="box bad">
+  <b>先声明</b>：原文为厂商发布稿，<b>未给出编号公式</b>。以下三式为按原文流程整理的<b>形式化表达，非原文照抄</b>；符号是为便于比较而统一的，具体实现细节以技术报告为准。
+  </div>
+
+  <div class="fml">
+    <div class="name">式 1　视觉适配：把视频先验「翻译」到目标域，而不是改它</div>
+    \[
+    \theta_{v}^{\star}=\arg\min_{\theta_{v}}\ \mathbb{E}_{(o_{t},\,o_{t+H})\sim\mathcal{D}}\Big\|\,f_{\theta_{v}}(o_{t})-\mathrm{sg}\big[\,z_{t+H}\,\big]\,\Big\|_{2}^{2}
+    \]
+    <div class="exp">
+    \(o_t\) 是当前观测，\(z_{t+H}\) 是视频模型在 \(t+H\) 处给出的中间表征，\(\mathrm{sg}[\cdot]\) 表示停止梯度，\(\theta_v\) 只是适配那部分的参数。<br>
+    <b>说人话：</b>别去改视频模型，只训练一个「翻译层」，让它看着当前画面就能对上视频模型对未来的那层理解。<b>sg 的作用是让视频模型完全不动</b>——它是资产，不是待训对象。<br>
+    这一步就是在 30,000 步里先花掉的那 3,000 步。原文的说法是它「改善目标域视觉拟合」，翻成工程语言：<b>先把损失曲面从这个起点压平，后面动作学习不必再从悬崖上往下跳。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　分阶段联合训练：两个损失，一个时间表</div>
+    \[
+    \mathcal{L}(\theta)=\underbrace{\mathcal{L}_{\mathrm{pred}}(\theta_{v})}_{\text{阶段一主导}}+\ \lambda(t)\cdot\mathcal{L}_{\mathrm{act}}(\theta_{a})\ +\ \beta\cdot\big\|\,\theta_{a}-\theta_{a}^{(0)}\,\big\|_{2}^{2}
+    \]
+    <div class="exp">
+    \(\mathcal{L}_{\mathrm{pred}}\) 是预测分支的拟合损失，\(\mathcal{L}_{\mathrm{act}}\) 是动作分支的损失，\(\lambda(t)\) 是随步数变化的权重——前 3,000 步让它接近 0（动作分支几乎不更新），之后升到正常值。最后一项是动作分支相对初始点的偏移约束。<br>
+    <b>说人话：</b>训练就像两班倒。前一班只让「看」的那半边上手，后一班才让「动」的那半边接手。<b>不是同时训练两个头，而是排了个班表。</b><br>
+    为什么这个班表重要：如果两个损失从一开始就同时下降，动作分支会去迁就一个还没对齐的视觉表征，学到的是「错配的常识」。这类错误在训练曲线上看不出来，只在扰动测试里暴露。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3　ESI 的两层优化：改措辞，不改大模型</div>
+    \[
+    \begin{aligned}
+    \text{回合内：}&\quad a^{\star}=\arg\max_{a\in\{\text{采纳},\text{调整},\text{纠正}\}}\ \mathbb{1}\big[\mathrm{exec}(a,\pi_{\theta_{a}})\ \text{达成子任务}\big]\\
+    \text{跨回合：}&\quad (P^{\star},\,S^{\star},\,\theta_{a}^{\star})=\arg\max_{P,S,\theta_{a}}\ \mathbb{E}_{\tau\sim\mathcal{D}_{\mathrm{roll}}}\big[\,\mathrm{succ}(P,S,\theta_{a};\tau)\,\big],\quad \theta_{\mathrm{base}}\ \text{冻结}
+    \end{aligned}
+    \]
+    <div class="exp">
+    \(P\) 是提示词体系，\(S\) 是技能接口，\(\theta_a\) 是动作模型权重，\(\theta_{\mathrm{base}}\) 是多模态大模型本体（冻结），\(\mathcal{D}_{\mathrm{roll}}\) 是本轮跑出来的完整交互轨迹。<br>
+    <b>说人话：</b>每个回合里，大模型只在三个动作里选一个——照做、微调、亲自上；跑完之后，把整段过程回放一遍，只改三样东西：怎么说话、技能边界在哪、动作模型怎么调。<b>大模型本身一动不动。</b><br>
+    这个约束决定了它的能力上限也决定了它的成本结构：<b>提升只能来自「表达能力」而非「模型智力」</b>。所以当任务需要新的物理直觉时，这套循环就帮不上忙——这也是原文把细粒度接触失败列为遗留瓶颈的原因。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">值不值</span>「先对齐再学动作」值得抄，但所有数字都是自己跑的</h2>
+
+  <h3>值得拿走的四条</h3>
+
+  <div class="box good">
+    <b>1. 「10% 预算做视觉适配」是最便宜的一条经验。</b>它不增加数据、不改结构，只改训练顺序，就换来 19 个百分点。<b>任何拿视频模型初始化动作模型的团队，都可以今天就试。</b><br>
+    <b>2. 先验的效果要拆成两个自变量报告。</b>「接在哪个模块」和「监督覆盖多宽」——这两个维度一旦分开报，读者才能判断增益来自结构还是来自覆盖。<b>多数论文只报一个总的涨点，这篇至少在方法上把问题问对了。</b><br>
+    <b>3. 冻结大模型、只改接口，是一笔被低估的账。</b>改提示词和技能边界，成本是一台机器上改文字；改 4B 以上权重，成本是几千张卡。ESI 把可优化对象从权重挪到了接口，这个思路可以搬到任何「大模型 + 小策略」的组合上。<br>
+    <b>4. 数据集的字段设计比小时数更值钱。</b>语言时序 + 子任务区间，让「同一段动作在不同阶段有不同含义」这件事第一次可被监督。这比再加 500 小时更能提升长序列任务。
+  </div>
+
+  <h3>必须打的五个问号</h3>
+
+  <ul class="crit">
+    <li><b>这是厂商发布稿，不是论文。</b>没有 arXiv 编号、没有同行评议、没有附录里的实现细节。文中的技术报告是自我披露，读者无法核对损失函数、数据配比、评测协议。<b>所有「第一」「SOTA」都应视为营销口径。</b></li>
+    <li><b>受控实验只证明了「有增益」，没证明「增益从哪来」。</b>37.64→56.80 是在 LIBERO-Plus 上测的，但原文没有把「视觉适配」与「动作头结构改动」这两件事分离。<b>也就是说，无法排除增益其实来自结构而非训练顺序。</b></li>
+    <li><b>RoboDojo 的「超 GPT6-Astra 近 24 个百分点」不可复核。</b>GPT6-Astra 是闭源系统，其分数来自何处、用什么配置跑、是否调过提示词，全部未知。<b>拿一个不可复现的对手做对比，只能当宣传看。</b></li>
+    <li><b>ESI 缺最关键的消融：弱规划器对照。</b>所有实验都用同一个强多模态模型。于是分不清 49.41% 是「两层循环的设计」带来的，还是「背后那个模型够强」带来的。<b>这组对照不做，「接口即能力」这个论断就悬着。</b></li>
+    <li><b>「Physical RSI / 能力复利」目前是愿景，不是结果。</b>原文描述的是零售、仓储、工业场景里的数据回流体系（采集—训练—部署—监督—回流—进化），但<b>没有给出任何一条「回流 N 小时后模型涨了多少」的曲线</b>。复利要有利率才有意义，这里只给了账户。</li>
+  </ul>
+
+  <div class="box note">
+    <b>一句话结论：</b>如果只拿一条，就拿「<b>先让视觉对齐，再学动作</b>」——它不改任何结构，只改训练顺序，在受控条件下值 19 个百分点；如果拿两条，第二条是「<b>冻结大模型，去改接口</b>」——把可优化对象从权重挪到措辞和边界，是这套系统成本结构的根。但要清楚：这两条的证据等级不同，前者有受控实验，后者只有单一强模型下的自评，且整篇没有经过任何外部审稿。
+  </div>
+
+  <p class="src">来源：公众号 human five《Robot Use Agent 走向真实场景，具身智能如何实现持续进化？》（2026-11-27）· 原文为零次方 ZERITH-V2.5 / ESI / ZERITH-H1-1K 官方发布 · 技术报告 zerith.com/blog/zerith-2-5、zerith.com/blog/esi · 数据集 huggingface.co/datasets/OpenZerith/Zerith-H1-1K</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+
+</div>
+
+</body>
+</html>

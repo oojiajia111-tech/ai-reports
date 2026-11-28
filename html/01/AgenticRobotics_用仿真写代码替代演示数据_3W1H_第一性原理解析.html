@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agentic Robotics：把「写程序」交给智能体 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>不给演示数据，给一段视频和一个仿真器<span class="sub">AUTOLab（UC Berkeley / Ken Goldberg）· Real2Sim（RoboSimStudio + Newton）→ GaP 图即策略 + 递归自改进 → Sim2Real（ROS2）· Flip Anything 24 种工具 24.7%→95.0% · VABAR 六类任务 / 33 项技能库 · 每轮 360 个仿真回合 / 36 个策略版本 · 真机上不跑任何大模型</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-27</div>
+    <div><b>体裁</b> 路线综述 · 附多篇论文</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>机器人学有两条老路：要么工程师建模写程序，稳，但一个场景一套；要么拿大量真机演示训策略，通用，但脆、说不清为什么。第三条路是把「写程序」这件事交给智能体：看一段人干活的视频，搭出对应的仿真，在里面写代码、跑失败、改代码，最后导出一份能在真机上跑的动作程序。最反直觉的一点是——真机运行时，脑子里没有任何大模型。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据公众号 human five《告诉WAM，我以后去搞robot use agent了》（2026-11-27）撰写，原文是 UC Berkeley AUTOLab 的<b>路线综述</b>，串联了 RoboSimStudio（arXiv 2610.18835）、GaP（CoRL 2026 Spotlight，前 3.4%）、VABAR、Flip Anything（CoRL 2026 Late-Breaking）等多项工作。文中数字（Flip Anything 24 种工具 / 36 个策略版本 / 24.7%→95.0%、每轮 360 个仿真回合、VABAR 六类任务 / 两个难度 / 33 项技能库、GaP Spotlight 前 3.4%）均取自原文。<b>🔴 这是综述，不是单篇论文；原文全篇没有编号公式。</b>第四节三式为<b>按原文流程整理的形式化表达，非原文照抄</b>——它的作用是把这个流水线的每一步变成可比较的优化问题，而不是复现作者未写出的式子。
+</div>
+
+<section id="what">
+  <h2><span class="tag">是什么</span>一个输入、三个阶段、一个输出，中间没有神经网络在跑</h2>
+
+  <p>先把最容易误会的地方说清：<b>这不是「让大模型控制机器人」，而是「让大模型离线写机器人的程序」。</b>两者的区别在于谁在闭环里——这条路线里，闭环里只有导出的 ROS2 代码。</p>
+
+  <table>
+    <tr><th>环节</th><th>输入</th><th>谁干活</th><th>输出</th></tr>
+    <tr><td><b>输入</b></td><td>一段人（或机器人）执行任务的短视频 + 一句任务描述</td><td>—</td><td>任务规格</td></tr>
+    <tr><td><b>① Real2Sim</b></td><td>视频 + RoboSimStudio + 目标机器人规格 + 传感规格 + 环境几何</td><td>编程智能体做<b>逆向物理建模</b></td><td>Newton 物理仿真环境（视觉上与视频匹配）</td></tr>
+    <tr><td><b>② 代码生成</b></td><td>仿真环境 + 预期的任务变化范围</td><td><b>GaP</b>（Graph-as-Policy）多智能体框架 + 递归自改进</td><td>机器人计算图（Robot Computation Graph）</td></tr>
+    <tr><td><b>③ Sim2Real</b></td><td>计算图</td><td>导出为 <b>ROS2 代码</b>，真机跑</td><td>执行结果；失败回流到 ①②</td></tr>
+  </table>
+
+  <p>原文列了五条特征，其中两条最能说明它的定位：<b>「不需要演示数据集」</b>——一次真实演示只用来建仿真，不进入训练；<b>「智能体离线生成可解释的 ROS2 计算图」</b>——因为离线，所以智能体可以慢，而真机端只跑轻量代码。</p>
+
+  <h3>把几个数字摊开</h3>
+
+  <table>
+    <tr><th>维度</th><th>数值</th><th>为什么这个数字重要</th></tr>
+    <tr><td>仿真迭代规模</td><td>每个策略版本跑 360 个仿真回合</td><td><b>真机上不可能一天跑 360 次</b>——这是它敢自改进的前提</td></tr>
+    <tr><td>策略版本数</td><td>Flip Anything 共 36 个版本</td><td>版本数 = 迭代次数，直接对应「改了多少轮代码」</td></tr>
+    <tr><td>任务提升</td><td>24 种工具上 24.7% → 95.0%</td><td>这是全篇唯一的端到端闭环证据，也是唯一可核的「从很差到很好」</td></tr>
+    <tr><td>技能库</td><td>VABAR：6 类任务 / 2 个难度 / 33 项技能</td><td>技能库是 GaP 的「词汇表」，<b>没有它智能体写不出可组合的程序</b></td></tr>
+    <tr><td>论文级别</td><td>GaP 为 CoRL 2026 Spotlight（前 3.4%）</td><td>说明这套思路在学术共同体内已被接受，不是孤例</td></tr>
+  </table>
+</section>
+
+<section id="why">
+  <h2><span class="tag">为什么</span>公理链：缺的不是智能，是一段能被读、被改、被验证的程序</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：基于模型的路，可靠但边际成本不降</div>
+    <div class="d">工程师为每个应用建模、写程序、调参数。好处是可解释、可验证、跑得快；坏处是<b>换一个场景就得重来一遍</b>。这条路的成本曲线是线性的，永远摊不平。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：无模型的路，通用但数据缺口大得离谱</div>
+    <div class="d">用大量真机演示训 VLA / ACT。好处是通用、能处理柔性物体；坏处是<b>数据缺口被量化过：Science Robotics 的编辑评论直接称之为「十万年的机器人数据缺口」</b>。而且策略是黑盒，出了问题只能重训。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：两条路的差距，不在「智能」而在「程序」</div>
+    <div class="d">这是全篇最关键的一句判断：<b>VLA 缺的不是理解能力，而是一段可以读、可以改、可以单测的控制流程。</b>程序有结构、有模块边界、有失败模式——这些正是可以被人（或智能体）直接操作的东西。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：如果瓶颈是「写程序」，那就该让最会写程序的东西来写</div>
+    <div class="d">LLM 的强项恰好是读规格、写代码、看报错、改代码。<b>但它的弱项是实时性——不能在 10 毫秒的控制回路里跑。</b>这一对矛盾直接决定了架构：<b>让它离线干活，产出轻量代码。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：离线干活就需要一个能跑几千次的试验场</div>
+    <div class="d">真机上没法一天试 360 次。所以必须有仿真。<b>但手动搭仿真同样是人力线性成本</b>——于是又绕回同一个问题：让智能体自己搭。这就是 Real2Sim 为什么要做「逆向物理」：不是手工调摩擦系数，而是从视频里反解出让仿真看起来一致的物理参数。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 6 步：仿真不准怎么办？把真机失败当新证据喂回去</div>
+    <div class="d">这条回路是整个架构的保险丝。<b>没有它，仿真里的 95% 就只是仿真里的 95%。</b>原文把「真实世界中的执行失败会作为新的证据反馈给智能体」写成了 1.2 节的核心机制，而不是脚注。</div>
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">怎么做</span>逆向物理 → 图即策略 → 递归自改进 → 导出代码</h2>
+
+  <h3>一、Real2Sim：从视频反解物理，而不是手工调参</h3>
+
+  <p>输入是视频 + 任务描述 + 机器人规格（RoboSimStudio、Newton 引擎）。智能体要产出一个「视觉上与视频匹配」的仿真环境。原文称之为<b>智能体逆向物理建模（Agentic Inverse Physics）</b>：拟合一个物理模型，使其产生与真实视频相一致的仿真结果。</p>
+
+  <p>这比「跑一个 video-to-sim 模型」要重，但它换来了两样东西：<b>一是可控（参数在手上，能改）；二是可验证（能在仿真里复现视频里的那段动作）。</b>VABAR 把这个过程标准化成六类工业/医疗/基础设施任务、两个难度等级、33 项技能库——<b>标准化是为了让「智能体写的程序」可以互相比较。</b></p>
+
+  <h3>二、GaP：策略是一张图，不是一个网络</h3>
+
+  <p>GaP（Graph-as-Policy）的核心主张：<b>机器人操作系统由若干独立模块构成</b>——感知、抓取选择、运动规划、力控制、故障恢复。智能体不写一个大函数，而是<b>生成这些模块、把它们连成有向图、再逐个测试</b>。</p>
+
+  <p>「图」这个形式很关键，它带来三个工程好处：</p>
+  <ul>
+    <li><b>可单测</b>：每个节点能单独跑，失败能定位到节点，而不是「整个策略不行」；</li>
+    <li><b>可组合</b>：任务变化时换节点或换边，不必重训；</li>
+    <li><b>可导出</b>：图天然对应 ROS2 的节点图，导出几乎是同构映射。</li>
+  </ul>
+
+  <h3>三、递归自改进：一轮 360 个回合，失败分组，改代码</h3>
+
+  <p>RSI 的循环很朴素，但每一步都有讲究：跑数百个 episode → <b>对失败案例分类归组</b> → 根据失败分析重写程序代码。Flip Anything 就是这条循环的产物：智能体写双臂策略把任意工具翻到指定面朝下，读自己的失败记录改代码，36 个版本后从 24.7% 到 95.0%。</p>
+
+  <p>「失败分类归组」这一步是全篇最容易被忽略的技术点：<b>如果只是「失败了就重试」，LLM 会陷入局部修补；只有把失败归成几类，它才能改到结构层面。</b>这与软件工程里的「先定位 bug 类型再改」是同一件事。</p>
+
+  <h3>四、Sim2Real：导出的代码里没有智能体</h3>
+
+  <p>计算图被转成 ROS2 代码，真机执行，性能反馈回到第二阶段。原文特别强调：<b>最终的 ROS2 代码运行时不需要任何智能体参与</b>，红线右侧不再运行任何模型。这带来两个直接后果——延迟可控、行为可解释；也带来一个直接限制——<b>它不能做需要实时重新规划的任务。</b></p>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">公式</span>三式是「反问题」写法，不是原文式子</h2>
+
+  <div class="box bad">
+  <b>🔴 必须说清</b>：原文是路线综述，<b>全篇没有编号公式，也没有损失函数</b>。下面三式是把它的三步流程写成优化问题的<b>形式化表达，非原文照抄</b>：逆向物理 = 一个标定问题，GaP = 一个在任务分布上的搜索问题，RSI = 一个失败加权的代码迭代问题。<b>这类「核心机制难形式化」本身就是一个诊断——它说明这套方法目前难以被严格横向比较，这一点写进了第五节。</b>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 1　逆向物理：让仿真「看起来像」那段视频</div>
+    \[
+    \theta^{\star}=\arg\min_{\theta\in\Theta}\ \sum_{t=0}^{T}\rho\Big(\,\mathcal{R}_{\theta}\big(s_{t}\big),\;I_{t}\,\Big)\;+\;\Omega(\theta)
+    \]
+    <div class="exp">
+    \(\theta\) 是物理参数（摩擦、质量、刚度、阻尼、接触模型等），\(s_t\) 是仿真状态，\(\mathcal{R}_\theta\) 把状态渲染成图像，\(I_t\) 是视频帧，\(\rho\) 是视觉差异度量，\(\Omega\) 是参数正则（防止解出物理上荒谬的组合）。<br>
+    <b>说人话：</b>不断调仿真的「手感参数」，直到它渲染出来的画面和视频里那一帧对得上。对上了，就认为物理也对上了。<br>
+    <b>这个式子的软肋一眼可见：</b>视觉一致不蕴含物理一致。一个袋子可以被「调得很软」看起来像视频，但承重行为完全不同。<b>原文承认「目前的物理模型仍然不够完善」，这句话对应的就是这里的欠定性。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　GaP：在任务变化范围内搜一张图</div>
+    \[
+    G^{\star}=\arg\max_{G\in\mathcal{G}}\ \mathbb{E}_{x\sim P(X)}\Big[\,\mathbf{1}\big[\mathrm{succ}(G,x)\big]\Big]-\lambda\,\mathrm{Cost}(G),\qquad \mathcal{G}=\text{由技能库 }\mathcal{S}\text{ 组合出的所有图}
+    \]
+    <div class="exp">
+    \(G\) 是一张由技能节点连成的计算图，\(X\) 是「预期任务变化范围」内的初始状态分布（这是原文强调的输入之一），\(\mathrm{Cost}\) 是执行时间或代码复杂度。<br>
+    <b>说人话：</b>不追求「在某一个初始状态上成功」，而追求「在这个任务可能出现的各种初始状态上大部分都成功」。<b>这个「分布」是它和传统程序最大的区别</b>——传统程序优化的是单点正确，这里优化的是覆盖。<br>
+    λ 很重要：没有它，智能体会写出一个「什么都试一遍」的超长程序，成功率高但跑得慢。VABAR 里两个难度等级的设置，本质上就是在压这个权衡。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3　RSI：用失败样本加权重写代码</div>
+    \[
+    A_{n+1}=\arg\min_{A\in\mathcal{A}}\ \sum_{x\in\mathcal{F}_{n}}w(x)\,\ell\big(A,x\big)\;+\;\mu\,\big\|A-A_{n}\big\|_{\mathrm{struct}}
+    \]
+    <div class="exp">
+    \(A_n\) 是第 n 版程序，\(\mathcal{F}_n\) 是这一轮<b>失败并被归类</b>的 episode 集合，\(w(x)\) 给难例更高权重，\(\ell\) 是任务损失，最后一项约束「别把上一版改得面目全非」（结构距离）。<br>
+    <b>说人话：</b>拿失败的案例当作业本，重写代码，但要求改动尽量小、可追溯。<b>最后那一项是工程上的保险</b>——没有它，LLM 容易「整段重写」，看起来修好了，其实把已经工作的部分也换掉了。<br>
+    这里也能看出它和微调的根本差别：<b>微调的更新落在几十亿个浮点数上，无法解释；这里的更新落在几十行代码上，可以 diff。</b>这就是「可解释」在这个框架里的确切含义——不是注意力可视化，是能看 diff。
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">值不值</span>把「写程序」交给智能体，是一条真路线，但只走通了一个案例</h2>
+
+  <h3>值得拿走的四条</h3>
+
+  <div class="box good">
+    <b>1. 「瓶颈是程序，不是智能」这个重述很有力。</b>一旦把问题重述成「写一段可读可改的控制流程」，LLM 的能力就被放到了它最擅长的位置，而它的实时性弱点被架构性地绕开了。<b>这个重述本身，比任何一个模块都值得学。</b><br>
+    <b>2. 图（而不是函数）作为策略载体，是可测试性的来源。</b>节点可单测、失败可定位、任务变化只需换边——<b>这三条让「自动改进」第一次有了可行的调试接口。</b>用端到端网络做策略，你没法让 LLM 去「改第 7 层」。<br>
+    <b>3. 失败必须分类归组，否则自改进退化成瞎试。</b>这是全篇最实用的一条工程经验：360 个 episode 的价值不在数量，在于<b>它们能被归成几类可修的问题</b>。<br>
+    <b>4. 「真机上不跑智能体」是一个负责任的默认值。</b>延迟可控、行为可解释、故障可复现——<b>在安全敏感场景里，这比多 5 个百分点重要得多。</b>
+  </div>
+
+  <h3>必须打的五个问号</h3>
+
+  <ul class="crit">
+    <li><b>唯一端到端证据只有 Flip Anything 一个任务。</b>24 种工具、36 个版本、24.7%→95.0%——这很好，但它是<b>单一任务、单一机器人、单一实验室</b>。原文列的其他项目（VABAR、RoboSimStudio、Push-Alphabet）各自解决流水线的一段，<b>没有一个是「全流程 + 多任务 + 第三方复现」的组合。</b></li>
+    <li><b>「不需要演示数据集」的说法有前提。</b>它确实不需要「训练数据集」，但<b>仍然需要一次真实演示来建仿真</b>，还需要人把任务变化范围写清楚。这个前置成本的量级原文没给——而它恰恰是决定这套方法能不能规模化的关键。</li>
+    <li><b>视觉一致的仿真，物理未必一致。</b>式 1 的欠定性是结构性的：多组物理参数可以渲染出同样的画面。<b>而灵巧操作恰恰对接触参数最敏感。</b>原文自己把「物理模型不够完善」列在局限性第一条，这是诚实的，但也说明这条路的上限目前由仿真保真度决定。</li>
+    <li><b>智能体太慢，只能离线。</b>原文明确写「编程智能体的运行速度较慢，因此更适合用于离线策略开发」。<b>这意味着它无法处理需要在线适应的任务</b>（比如人递过来一个没见过的物体）。它的适用边界比「通用机器人」窄得多。</li>
+    <li><b>「能否扩展到开放式通用机器人或人形」作者自己说不知道。</b>这一点很关键：<b>当前的证据全部来自桌面级操作任务</b>（工具分类、齿轮啮合、线缆插入、推字母块）。人形的平衡、全身协调、长时序任务，与「写一段操作程序」是完全不同难度的问题。</li>
+  </ul>
+
+  <div class="box note">
+    <b>一句话结论：</b>如果只拿一条，就拿「<b>把瓶颈重述成程序而非智能</b>」——它一举绕开了 LLM 的实时性弱点，也给了自动改进一个可 diff 的对象；如果拿两条，第二条是「<b>策略用图，不用函数</b>」——可单测、可定位、可组合，这是「让智能体改代码」能成立的前提。<b>但要记住它的证据边界：一个任务、一个平台、一个实验室，物理保真度仍是天花板。</b>
+  </div>
+
+  <p class="src">来源：公众号 human five《告诉WAM，我以后去搞robot use agent了》（2026-11-27）· 原文为 UC Berkeley AUTOLab 路线综述 · 涉及 RoboSimStudio（arXiv 2610.18835）、GaP（CoRL 2026）、VABAR、Flip Anything（CoRL 2026 Late-Breaking）· 引述 Ken Goldberg《Goosebumps: A Paradigm Shift Is Occurring in Robotics》(2026-09) 与《A Tale of Two Cultures》(ICRA 2026)</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+
+</div>
+
+</body>
+</html>

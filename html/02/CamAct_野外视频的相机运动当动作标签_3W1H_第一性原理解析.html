@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CamAct：野外视频的相机运动当动作标签 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>不会操作的画面，也能教机器人怎么动<span class="sub">CamAct（HIT / ZJU / ACE Robotics）· 44.40 h YouTube 第一视角步行视频 → 过滤后 36.09 h · Depth Anything 3 恢复相机轨迹 → SE(2) 三维持伪动作 · 与机器人动作拼接共享一个 action head + 掩码 · LIBERO 96.40%→98.10% · RoboCasa365 22.96%→29.32% · LIBERO-Plus 74.49% · 真机 +14.06 pp</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-25 · arXiv 2611.34257</div>
+    <div><b>关键词</b> 野外视频 · 相机运动 · 伪动作 · 掩码流匹配 · 运动监督</div>
+    <div><b>一句话</b> 它教的不是「怎么操作」，是「怎么动」——而后者恰好最缺</div>
+    <div><b>方向</b> 数采</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>大家默认能教机器人的视频，得有人在操作东西。CamAct 说不用：街头行走的第一视角视频里一个杯子都没有，但它记下了相机怎么前进、怎么转弯。把这段运动还原成动作，再和机器人动作拼进同一个输出头，各管各的维度，模型就多学了一点「怎么动」。反直觉的地方在于——不会操作的画面，补的正是操作策略最缺的那部分运动常识。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据 <b>arXiv 2611.34257 正文（HTML 版）</b>撰写，作者 Haoming Gu、Yunpeng Qing、Zhi Hou、Weinan Zhang，单位哈尔滨工业大学 / 浙江大学 / ACE Robotics，2026-11-25 提交。<b>关键数字均取自原文</b>：原始视频 44.40 h、过滤后 36.09 h；LIBERO 96.40%→98.10%；RoboCasa 365 22.96%→29.32%；LIBERO-Plus 71.90%→74.49%；真机 54.69%→68.75%（+14.06 pp）；默认机器人:视频 = 80:20；每任务 50 次 rollout。<b>公式按原文式 (2)~(5) 转写</b>，符号做了统一。
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：把「相机怎么动」当成一种动作标签</h2>
+
+  <p>先看它到底加了什么。它没有新建数据集，没有新的网络结构，<b>只多做了一件事：给野外视频造一套动作标签。</b>这套标签叫「伪动作」，来源是相机运动。</p>
+
+  <table>
+    <tr><th>环节</th><th>做法</th><th>产出</th></tr>
+    <tr><td>视频来源</td><td>YouTube 第一视角<b>步行</b>视频，CC BY 许可，官方 API 采集</td><td>44.40 h 原始 → 过滤后 <b>36.09 h</b></td></tr>
+    <tr><td>相机轨迹恢复</td><td>Depth Anything 3 估计相机位姿；按相邻帧像素差做镜头切分，剔除近静止段；长镜头用重叠窗口 + <b>Sim(3)</b> 对齐拼回单条轨迹</td><td>逐帧 camera-to-world 位姿（旋转 + 平移）</td></tr>
+    <tr><td>伪动作构造</td><td>投影到固定平面，取 <b>SE(2)</b>：前向位移、左向位移、偏航变化</td><td>每帧一个 3 维动作，配成 H 步动作块</td></tr>
+    <tr><td>训练</td><td>与机器人动作<b>拼接</b>（不是对齐），共享一个 action head，用掩码各管各的维度</td><td>统一 VLA，80:20 混采</td></tr>
+  </table>
+
+  <p>核心配置：主干 <b>Qwen3-VL-4B</b>，动作头用 flow matching（分别测了 GR00T 与 π 两个版本），动作块 H 在 LIBERO 上是 8、RoboCasa 365 上是 16。<b>两个数据源都不用本体感知输入，也不用 source embedding</b>——这一点很重要，说明它不是靠「告诉模型这是哪种数据」来区分的，而是靠动作维度的位置。</p>
+
+  <h3>三组成绩，一条比一条硬</h3>
+
+  <table>
+    <tr><th>基准</th><th>robot-only 基线</th><th>CamAct</th><th>增量</th></tr>
+    <tr><td>LIBERO（overall）</td><td>96.40（GR00T）/ 96.90（π）</td><td><b>98.10</b>（两种底座都是）</td><td>+1.70 / +1.20 pp</td></tr>
+    <tr><td>RoboCasa 365（overall）</td><td>22.96（GR00T）/ 25.16（π）</td><td><b>29.32</b> / 27.68</td><td>+6.36 / +2.52 pp</td></tr>
+    <tr><td>LIBERO-Plus（零样本 OOD）</td><td>71.90</td><td><b>74.49</b></td><td>+2.59 pp</td></tr>
+    <tr><td>真机 4 任务（FR3）</td><td>54.69%</td><td><b>68.75%</b></td><td>+14.06 pp</td></tr>
+  </table>
+
+  <p>哪一组最能说明问题？<b>不是 LIBERO（已接近饱和），是真机那 +14 个百分点</b>——每任务只采 50 条演示、每方法 16 次试验，这种小样本条件下还能涨 14 个点，说明增益来自「先验」而非「多训了」。</p>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：最便宜的监督信号，恰好是「运动」而不是「操作」</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：VLA 缺的是多样性，不是数据量</div>
+    <div class="d">原文的出发点很直白：VLA 要大规模、多样化数据，而机器人演示采集成本极高——要人、要设备、要本体重录。<b>所以问题不是「再采一万条」，而是「从别处借」。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：借人类操作视频，是主流做法，但量仍然有限</div>
+    <div class="d">现有工作主要用第一视角人类视频里的<b>物体操作交互</b>。这条路的瓶颈是：真正在操作东西的第一视角视频，其实没有想象中多，而且往往需要额外标注手部或物体。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：步行视频量最大、最便宜，而且完全没有操作</div>
+    <div class="d">这正是被忽略的那一块：街头、商场、走廊的第一视角行走视频，海量、免费、无版权障碍（CC BY）。<b>它一个物体都不操作，但记录了观察者怎么平移、怎么转向。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：关键洞察——腕部相机与行走的第一视角，在「视角怎么变」上是同源的</div>
+    <div class="d">机器人的腕部相机随手臂移动，人的头部/身体相机随行走移动。<b>两者的运动都表现为「视野里的东西整体平移 + 旋转」，而不是「某个物体在动」。</b>所以「相机运动」这个量，跨这两个域是同一种东西。这一步是整篇能成立的唯一支点。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：但两种动作的分布不同，所以不能「对齐」，只能「拼接」</div>
+    <div class="d">相机伪动作（3 维 SE(2)）和机器人末端动作（多维、幅度不同）在数值分布上差得远。<b>硬把二者对齐坐标，会互相污染监督信号</b>——视频样本会把机器人动作的尺度带偏。<b>解法是拼接 + 掩码：各占各的维度，谁也看不见谁。</b>原文的消融很直接：拼接 98.10%，直接对齐 95.75%。</div>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：一条数据管线 + 一个掩码损失</h2>
+
+  <h3>一、数据管线：先把视频洗干净，再谈恢复</h3>
+
+  <p>过滤条件写得很具体：<b>俯仰超过 35°、平面速度超过 3 m/s、偏航角速度超过 60°/s、近静止超过 1 秒</b>的片段一律剔除。44.40 h 洗完剩 36.09 h，丢掉约 19%。</p>
+
+  <p>为什么要这么狠？因为伪动作是从相机轨迹推出来的，<b>轨迹一旦有跳变（镜头切换）或几乎不动（站着看手机），推出来的「动作」就是噪声。</b>宁可少 8 小时，也不要让模型学到「站着不动也是一段动作」。</p>
+
+  <h3>二、轨迹恢复：切分 + 对齐，两件麻烦事</h3>
+
+  <ul>
+    <li><b>镜头切分</b>：用相邻帧像素差检测突变与近静止，切成视觉连续的 shot，逐 shot 独立重建。不切的话，一次镜头切换会被解成「相机瞬移」。</li>
+    <li><b>重叠窗口对齐</b>：长 shot 分窗重建，用共享帧估 <b>Sim(3)</b>（含尺度）变换，把各段的尺度、旋转、平移对齐后拼成一条轨迹。<b>Sim(3) 而不是 SE(3)，是因为单目重建的尺度本身不确定，必须先对齐尺度再拼。</b></li>
+  </ul>
+
+  <h3>三、伪动作：为什么用 SE(2) 而不是 SE(3)</h3>
+
+  <p>这是一个刻意的降维。行走视频主要捕捉<b>地面平面内的移动与朝向变化</b>，垂直抖动和俯仰变化是噪声多于信号。所以把轨迹投影到固定平面（法向量取初始相机的上方向），只保留前向位移、左向位移、偏航变化三个量。</p>
+
+  <p>代价是丢掉了俯仰与垂直运动；收益是<b>标签干净且与平面操作任务同构</b>（桌面操作绝大多数也是平面移动 + 高度调整 + 朝向变化）。原文的视角消融其实印证了这个取舍：<b>只有腕部视角时 +2.10 pp，只有第三人称时 −1.90 pp</b>——它学的是「腕部相机的运动先验」，第三人称视角的运动模式和它不同源，反而拖累。</p>
+
+  <h3>四、训练：一个头，两套维度，一个掩码</h3>
+
+  <p>机器人动作与视频伪动作各自按第 1/99 百分位归一化，然后<b>补零拼成一个 (d_R + 3) 维向量</b>：机器人样本填前 d_R 维、后 3 维置零；视频样本相反。共享 action head 输出 H × (d_R+3)，用掩码只监督有值的那部分。</p>
+
+  <p>采样比默认 <b>80:20</b>（机器人:视频）。消融显示这个比例依赖训练预算：60k 步时 90:10 更好（22.24% vs 21.16%），120k 步时 80:20 最好（29.32%），而 <b>67:33 反而掉到 22.40%</b>。<b>视频不是越多越好——它是「先验」，不是「数据量」。</b></p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：三个量、一次拼接、一个掩码</h2>
+
+  <div class="fml">
+    <div class="name">式 1　伪动作：在平面坐标系里记「相对上一步挪了多少」（原文式 2）</div>
+    \[
+    \mathbf{u}_{t}=\begin{bmatrix}R_{\mathrm{2D}}(\psi_{t})^{\top}\left(\mathbf{p}_{t+1}-\mathbf{p}_{t}\right)\\[2pt] \psi_{t+1}-\psi_{t}\end{bmatrix}\in\mathbb{R}^{3}
+    \]
+    <div class="exp">
+    \(\mathbf{p}_t\in\mathbb{R}^{2}\) 是投到固定平面后的相机位置，\(\psi_t\) 是解缠绕后的偏航角，\(R_{\mathrm{2D}}(\psi_t)\) 把「朝前-朝左」的轴对到平面的参考系里。<br>
+    <b>说人话：</b>先转成「以我此刻朝向为准」的局部坐标，再记下这一步往前走了多少、往左走了多少、身体转了多少度。<b>三个数，就是一帧的「动作」。</b><br>
+    这里有个容易忽略的性质：每个 \(\mathbf{u}_{t+k}\) 都用 \(t+k\) 时刻的朝向做参考，所以<b>整段 chunk 描述的是连续的局部增量，与 shot 的平面原点、初始朝向都无关</b>。这正是它敢跨视频、跨场景混训的原因——标签只依赖相对变化。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　拼接：不共享维度，只共享输出头（原文式 3）</div>
+    \[
+    \mathbf{y}^{R}_{t}=\big[\tilde{\mathbf{a}}_{t};\;\mathbf{0}_{3}\big],\qquad
+    \mathbf{y}^{V}_{t}=\big[\mathbf{0}_{d_{R}};\;\tilde{\mathbf{u}}_{t}\big],\qquad
+    \hat{\mathbf{Y}}\in\mathbb{R}^{H\times(d_{R}+3)}
+    \]
+    <div class="exp">
+    \(\tilde{\mathbf{a}}_t\) 是归一化后的机器人动作，\(\tilde{\mathbf{u}}_t\) 是归一化后的相机伪动作，\(\mathbf{0}\) 是补零占位。<br>
+    <b>说人话：</b>不让两种动作「对齐成同一个意思」，而是让它们「各占一段座位」。机器人样本坐前 d_R 个位子，视频样本坐后 3 个位子，中间用零填满。<b>模型要学的不是「把两者映射到一起」，而是「同一个头，按掩码输出不同段」。</b><br>
+    为什么不让它们对齐？因为两者的物理含义根本不是一回事：一个是夹爪的速度，一个是头/腕的移动速度。强行对齐，等于让模型相信「走路等于抓东西」。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3　掩码流匹配：分母归一化是关键一行（原文式 4~5）</div>
+    \[
+    \mathcal{L}_{q}=\mathbb{E}_{s,\epsilon}\left[\frac{\big\|\mathbf{M}_{q}\odot\mathbf{E}_{\theta}\big\|_{F}^{2}}{\max\!\big(1,\sum_{h,j}M_{q,h,j}\big)}\right],\qquad
+    \mathcal{L}_{\mathrm{joint}}=(1-\lambda)\,\mathbb{E}_{\mathcal{D}_{R}}[\mathcal{L}_{R}]+\lambda\,\mathbb{E}_{\mathcal{D}_{V}}[\mathcal{L}_{V}]
+    \]
+    <div class="exp">
+    \(\mathbf{E}_{\theta}=\mathbf{V}_{\theta}(\mathbf{Y}_{s},s,\mathbf{h}_{t})-(\mathbf{Y}-\boldsymbol{\epsilon})\) 是速度预测残差，\(\mathbf{M}_q\) 是把源掩码（机器人 \(\mathbf{m}^R=[\mathbf{1}_{d_R};\mathbf{0}_3]\)、视频 \(\mathbf{m}^V=[\mathbf{0}_{d_R};\mathbf{1}_3]\)）广播到预测时域后的 0/1 矩阵，\(\lambda\) 是采样到视频样本的概率。<br>
+    <b>说人话：</b>算损失时，只在「这一段有真值」的维度上算，别的维度全部屏蔽。<b>而分母那个 max(1, 有效项数) 是整篇最容易被抄漏的一行：</b>如果不除，机器人样本有 d_R 个维度、视频样本只有 3 个，前者的损失数值天然大一个量级，等于偷偷给机器人数据加了权重。<br>
+    除完之后，两类样本的损失量级可比，\(\lambda\) 才真正等于「采样比例」。<b>这类细节不写进论文正文，别人复现就会差 2~3 个点，然后归因于「玄学」。</b>
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限：把「监督信号」的价格打下来一个数量级</h2>
+
+  <h3>值得拿走的四条</h3>
+
+  <div class="box good">
+    <b>1. 「运动监督」比「操作监督」便宜一个数量级。</b>操作视频要挑、要标、要保证有物体交互；行走视频只要 CC BY 许可就能批量下。<b>把「能用的视频」从「有操作的」放宽到「有运动的」，可用数据量直接换了量级。</b><br>
+    <b>2. 掩码 + 分母归一化，是异构数据混训的通用模板。</b>任何「两类数据、维度不同、都想共用一个头」的场景都能直接套：拼接占位、掩码监督、按有效项数归一。<b>这个模板比这篇的具体结果更长寿。</b><br>
+    <b>3. 视角消融给出了机制解释，而不是只报涨点。</b>仅腕部 +2.10、仅第三人称 −1.90，说明增益来自「与腕部相机同源的运动先验」。<b>这条比「平均涨 2 个点」有信息量得多——它告诉你什么时候别用这招。</b><br>
+    <b>4. 冻结 VLM 也涨 10.25 pp，说明它改的是动作接口而不是语义。</b>这条消融很聪明：它把「你其实是在教语言模型」这个替代解释排除掉了大半。
+  </div>
+
+  <h3>必须打的五个问号</h3>
+
+  <ul class="crit">
+    <li><b>SE(2) 丢掉了俯仰和垂直运动。</b>桌面操作里「抬起 15 厘米再放下」是极常见的动作，而这套伪动作对此<b>完全无表达</b>。原文的前提是「行走视频近似地面平面运动、首帧近似水平」，一旦视频源换成手持拍摄（俯仰剧烈），标签就失真。</li>
+    <li><b>36 小时是个很小的量。</b>相比机器人演示的几百到几千小时、人类操作视频的几十万小时，36 小时只能算「概念验证」规模。<b>它证明「这类信号有用」，但没证明「加十倍的量还能继续涨」。</b>而这个问题的答案，决定了它在工程上值不值得投入。</li>
+    <li><b>数据过滤带进了选择偏差。</b>剔除俯仰 >35°、速度 >3 m/s、偏航 >60°/s 的片段，等于<b>系统性丢掉了「快速转身、上下楼梯、低头看东西」这几类运动</b>。而这些恰恰是机器人最需要的动态场景。剩下的 36 小时可能偏「平稳直行」，运动多样性被压缩了。</li>
+    <li><b>真实实验的规模偏小。</b>4 个任务、每任务 50 条演示、每方法 16 次试验、单平台（FR3）。<b>+14.06 pp 的点估计很漂亮，但 16 次试验的置信区间宽度大约在 ±10 pp 量级</b>。原文没给方差，读者无法判断这个增益有多稳。</li>
+    <li><b>它依赖 Depth Anything 3 的重建质量，而重建误差没有单独评估。</b>相机轨迹的尺度、旋转一旦有漂移，伪动作就是错的，而模型会认真地把这些错误学进去。<b>「依赖外部重建」这一点在方法上是个隐藏的耦合</b>：换一个更好的重建器，结论可能变，但也可能变差。</li>
+  </ul>
+
+  <div class="box note">
+    <b>一句话结论：</b>如果只拿一条，就拿「<b>放松对视频的要求</b>」——从「有操作」放宽到「有运动」，可用数据立刻换量级；如果拿两条，第二条是「<b>拼接 + 掩码 + 按有效项归一</b>」这套异构混训模板，它能让你把两种完全不同的信号塞进一个头而不互相污染。<b>但要清楚它的边界：SE(2) 表达不了高度，36 小时也还只是概念验证。</b>
+  </div>
+
+  <p class="src">来源：arXiv 2611.34257《CamAct: Learning Robotic Manipulation from In-the-Wild Videos via Camera Motion》（2026-11-25）· 作者 Haoming Gu、Yunpeng Qing、Zhi Hou、Weinan Zhang · 哈尔滨工业大学 / 浙江大学 / ACE Robotics</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 前沿论文拆解 · 深度拆解前沿成果，说人话讲明白</footer>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHAPE：意图走离散符号，执行走两条连续流 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b3;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>让意图走离散符号，让执行走两条连续流<span class="sub">SHAPE（Sharpa × CUHK × SJTU-Sharpa）· Qwen3-VL-4B 主干 + 0.6B 动作专家 · FAST 离散 token 直接监督主干（λ=0.1）· joint 65 维 / EEF 55 维双流并行 · 人类 2,811 h + 机器人 228 h · 真机 6 任务 0.80 vs π0.5 0.63 / GR00T N1.7 0.51 · 零真机演示迁移 21/60 · RoboCasa GR-1 72.2%</span></h1>
+  <div class="meta">
+    <div><b>来源</b> 公众号 human five</div>
+    <div><b>公众号发布</b> 2026-11-27</div>
+    <div><b>arXiv</b> 2611.24585</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>人手和机械手长得不像，关节数也不一样。硬把两边的动作数值对齐，等于拿两把刻度不同的尺子量同一段距离，越量越乱。SHAPE 换了个切法：跨本体真正共享的不是角度，是「这一步要干什么」。所以它让离散动作词去监督语言主干，管意图；让两条连续流分别管关节和末端，管执行。人的视频只教意图，真机的数据才教手感——分开喂，反而不打架。</p>
+</div>
+
+<div class="toc">
+  <a href="#what">① 是什么</a>
+  <a href="#why">② 为什么</a>
+  <a href="#how">③ 怎么做</a>
+  <a href="#formula">④ 核心公式</a>
+  <a href="#worth">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据公众号 human five《零真机演示，双臂灵巧手看人手视频学会新任务》（2026-11-27）与 <b>arXiv 2611.24585 正文</b>撰写。作者 Yaping Li、Zhihong Liu、Jiacheng Li 等，单位 Sharpa Robotics / 香港中文大学 / SJTU-Sharpa 联合实验室 / 中国科学技术大学，2026-11-25 提交。<b>关键数字均取自原文</b>：人类 ego 数据 320 任务 / 73.1k episodes / 2,811 h，机器人遥操作 105 任务 / 10.5k episodes / 228 h，1:1 采样；真机六任务 0.80 vs 0.63 vs 0.51；零演示迁移 35.0%（21/60）；GR-1 仿真 72.2% / 64.8% / 62.6%；FAST 损失在语言主干上贡献 70%（人类批次）与 93%（机器人批次）的梯度能量。<b>第四节公式以原文式 1 与动作参数化定义为准</b>，FAST 与 flow matching 的内部展开原文引用外部文献，未重复给出。
+</div>
+
+<section id="what">
+  <h2><span class="tag">是什么</span>把「跨本体」这个难题切成两半：一半能共享，一半不能</h2>
+
+  <p>先看它的结构为什么长这样。<b>SHAPE 的判断是：跨本体的困难不是均匀分布的，而是集中在一个点上——动作数值。</b>意图（拿起杯子、拧开盖子）在人手和机械手上是同一件事；执行（哪几个关节转多少度）则完全不同。所以它把监督拆成两层，各用各的表示。</p>
+
+  <table>
+    <tr><th>层</th><th>用什么表示</th><th>谁提供监督</th><th>跨本体能不能共享</th></tr>
+    <tr><td>意图层</td><td><b>离散动作 token</b>（FAST，1,024 词表，DCT + BPE 压缩动作块）</td><td>人类视频 + 机器人演示，<b>共享同一词表</b></td><td>能——符号不依赖关节数</td></tr>
+    <tr><td>执行层 · 关节流</td><td>65 维（两臂各 7 + 两手各 22 + 7 个躯干/颈）</td><td><b>只有机器人数据</b>（人类没有关节标签）</td><td>不能——直接绑定本体</td></tr>
+    <tr><td>执行层 · 末端流</td><td>55 维（3 位姿 + 6 旋转 + 5×3 指尖，双侧）</td><td>人类 + 机器人</td><td>能——位姿是共通的，靠 IK 落地</td></tr>
+  </table>
+
+  <p>这张表就是全文的骨架。<b>它没有试图让两个本体「变得一样」，而是让两者在一个更抽象的层上「说同一种话」。</b>人手的视频不提供任何关节角度，但它提供了「现在该伸手、该捏、该转」的符号序列——这部分恰恰是最可迁移的。</p>
+
+  <h3>模型与数据规模</h3>
+
+  <table>
+    <tr><th>维度</th><th>数值</th><th>为什么重要</th></tr>
+    <tr><td>语言主干</td><td>Qwen3-VL-4B</td><td>选 4B 而非 7B+，说明它要的是「可部署的推理预算」</td></tr>
+    <tr><td>动作专家</td><td>0.6B Transformer，逐层读主干 keys/values</td><td>动作能力集中在这 0.6B 里，主干只是「看懂」</td></tr>
+    <tr><td>动作块长度</td><td>H = 64</td><td>比常见的 8~16 长得多，赌的是「一次预测更长的动作能减少抖动」</td></tr>
+    <tr><td>人类预训练数据</td><td>320 任务 / 73.1k episodes / 2,811 h</td><td>只监督 EEF 流与 FAST，<b>不监督关节流</b></td></tr>
+    <tr><td>机器人预训练数据</td><td>105 任务 / 10.5k episodes / 228 h</td><td>人类:机器人 = <b>1:1</b> 采样，等于把 228 h 放大到和 2,811 h 同权</td></tr>
+    <tr><td>视频辅助头</td><td>Wan 扩散头，64 个可学习 future query，预测约 1 秒后帧</td><td>视频预测是辅助任务，权重 λ_V = 1</td></tr>
+  </table>
+
+  <p>成绩上：真机 6 项双臂 22-DoF 任务综合得分 <b>0.80</b>（π0.5 为 0.63，GR00T N1.7 为 0.51）；<b>完全不提供目标任务的机器人演示</b>时，靠人的视频把 3 个未见任务迁到真机，60 次测试成功 21 次；RoboCasa GR-1 的 24 个任务平均 <b>72.2%</b>（π0.5 64.8%，GR00T N1.7 62.6%）。</p>
+</section>
+
+<section id="why">
+  <h2><span class="tag">为什么</span>公理链：可迁移的是意图，不可迁移的是角度</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：真机遥操作太贵，必须借人的视频</div>
+    <div class="d">精细灵巧操作的遥操作采集是公认瓶颈：一套设备、一个操作员、一段一段录。<b>而网上和头戴设备里的第一视角人类视频是海量的、免费的、天然的。</b>这不是「可选优化」，是唯一可能把量做上去的方向。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：但人手和机械手在外观、自由度、运动学上全不一样</div>
+    <div class="d">两条老路都不便宜：一是把人手「换皮」渲染成机械手（复杂渲染管线，且渲染出来的动力学仍是假的）；二是在特征空间硬做跨本体对齐（需要配对数据，而配对本身就稀缺）。<b>更根本的问题是：这两条路都在「外观」层做功夫，而灵巧操作真正难的是接触。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：所以先问——到底什么才是跨本体共享的？</div>
+    <div class="d">答案不是角度，也不是像素，而是<b>时序上的操作意图</b>：这一段是接近、这一段是闭合、这一段是旋转。意图可以离散化，离散符号不依赖本体，因此可以共享词表。<b>这一步是整篇的转折点：把「对齐」从几何问题改成了符号问题。</b></div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：符号管意图，连续流管精度——两件事不能合并</div>
+    <div class="d">离散 token 适合表达「做什么」，不适合表达「差 2 毫米」；连续流匹配适合表达精细轨迹，但需要同本体的标签。<b>所以并行两条流：关节流吃机器人数据保精度，末端流吃人类数据保泛化，推理时按场景切换。</b>这不是冗余，是分工。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：人类数据没有关节标签，为什么还能帮到关节流？</div>
+    <div class="d">原文给了一个很硬的答案：两条流共享同一个动作专家，<b>EEF 流与关节流在共享专家上的梯度余弦相似度高达 +0.84</b>，人类批次与机器人批次的梯度方向在绝大多数检查点也保持正相关。也就是说，人类数据虽然只监督 EEF，但它把共享专家的参数往「正确的方向」推，关节流顺带受益。<b>这解释了「无关节标签也能提精度」这个反直觉现象。</b></div>
+  </div>
+</section>
+
+<section id="how">
+  <h2><span class="tag">怎么做</span>一个主干、两条流、一张注意力掩码</h2>
+
+  <h3>一、离散监督直接加在主干上，不走旁路</h3>
+
+  <p>预训练时，人手的 EEF 动作块被 FAST 压成离散 token（DCT 变换 + 字节对编码，1,024 词表，映射到主干词表），<b>以自回归方式让主干直接预测这些 token</b>。关键细节：动作专家在注意力掩码上<b>被禁止读取 FAST token</b>——否则它会「抄近路」，直接把符号当动作，主干就学不到东西了。</p>
+
+  <p>这个设计的用意是把「任务对齐」的梯度打进语言主干：<b>让主干在看人手画面时，也知道「下一步该伸手了」，而不只是「画面里有一只手」。</b>原文的探针实验证明了这一点——加入离散监督后，冻结主干最后一层的人类画面线性动作探针 R² 从 0.089 升到 0.143，机器人探针向人类画面的零样本迁移相关性从 0.205 升到 0.281。</p>
+
+  <h3>二、并行双流：同一专家，两套输出</h3>
+
+  <ul>
+    <li><b>Joint 分支</b>：直接预测关节空间动作。<b>有真机演示时走这条</b>，因为灵巧手的精细控制最终要靠关节。</li>
+    <li><b>EEF + IK 分支</b>：预测末端位姿，再用逆运动学映射到真机。<b>迁移人类视频新任务时走这条</b>，因为人手视频里没有机器人关节。</li>
+    <li><b>共享</b>：两条流在同一个 flow matching 专家里并行，各有自己的输入/输出投影。关节流在预训练阶段<b>只由机器人数据监督</b>（用掩码 m_J 屏蔽人类样本）。</li>
+  </ul>
+
+  <h3>三、训练目标：四项加权，一项带掩码</h3>
+
+  <p>总损失 = EEF 流损失 + m_J × 关节流损失 + 0.1 × FAST 损失 + 1.0 × 视频损失 + 0.2 × 文本损失。四个权重里最值得注意的是 <b>FAST 只给 0.1</b>——它是辅助任务，不是主任务；但梯度分析显示它在语言主干上贡献了 70%（人类批次）到 93%（机器人批次）的梯度能量。<b>权重小、影响大，因为它作用的位置在主干，而主干是所有下游的入口。</b></p>
+
+  <h3>四、一个必须看的反证：换成连续回归头会怎样</h3>
+
+  <p>团队做了个很聪明的对照：把离散 token 换成<b>梯度范数已配平的连续回归头</b>，让两者梯度强度可比。结果：人类画面的动作探针 R² 反而更高（0.230 vs 0.143），但<b>主干最后一层的同任务近邻占比从 57% 掉到 40%，零遥操迁移成功率从 35.0%（21/60）掉到 18.3%（11/60）</b>。</p>
+
+  <p>这个结果很关键：<b>它说明「表征里有多少动作信息」和「跨本体任务结构有没有保住」是两件事。</b>连续回归把信息塞进去了，但把结构搅乱了；离散符号牺牲了一部分信息量，换来了跨本体的语义对齐。这条对照，比任何涨点都更能说明设计意图。</p>
+</section>
+
+<section id="formula">
+  <h2><span class="tag">公式</span>一个总损失、一个参数化、一个掩码</h2>
+
+  <div class="fml">
+    <div class="name">式 1　总训练目标（原文式 1）：四项损失，一项带掩码</div>
+    \[
+    \mathcal{L}=\mathcal{L}^{\mathrm{EEF}}_{\mathrm{FM}}+m_{J}\,\mathcal{L}^{\mathrm{joint}}_{\mathrm{FM}}+\lambda_{F}\,\mathcal{L}_{\mathrm{FAST}}+\lambda_{V}\,\mathcal{L}_{\mathrm{video}}+\lambda_{T}\,\mathcal{L}_{\mathrm{text}}
+    \]
+    <div class="exp">
+    \(\mathcal{L}^{\mathrm{EEF}}_{\mathrm{FM}}\) 是末端流的流匹配损失（人类 + 机器人数据都监督），\(\mathcal{L}^{\mathrm{joint}}_{\mathrm{FM}}\) 是关节流的流匹配损失（预训练只由机器人数据监督），\(m_J\) 是<b>对无关节标签样本的 0/1 掩码</b>，\(\mathcal{L}_{\mathrm{FAST}}\) 是主干上的离散 token 预测损失，后两项是视频与文本辅助任务。<br>
+    权重：\(\lambda_F=0.1\)、\(\lambda_V=1\)、\(\lambda_T=0.2\)。<br>
+    <b>说人话：</b>一共四个老师在教：末端流、关节流、离散词、未来画面。人手样本只请前两个里的一个（末端）+ 离散词 + 画面，关节流那位老师对它<b>不开口</b>——这就是 m_J 的全部作用。<br>
+    值得注意的设计取舍：<b>没有单独的「对齐损失」</b>。原文明确说，跨本体语义对齐是在没有任何显式对齐项的情况下涌现的（同任务近邻占比 37%→57%）。这一点很重要：它是「涌现」，不是「优化目标」。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　动作参数化：一切相对当前腕部表达</div>
+    \[
+    \mathbf{a}^{T}_{t+k}=T_{t}^{-1}T_{t+k},\qquad
+    \mathbf{a}^{p}_{t+k}=p_{t+k}-p_{t},\qquad
+    \mathbf{a}^{q}_{t+k}=q_{t+k}-q_{t},\qquad k=0,\dots,H-1
+    \]
+    <div class="exp">
+    \(T_t\in SE(3)\) 是 \(t\) 时刻腕部位姿，\(p_t\) 是<b>腕坐标系下</b>五指尖位置，\(q_t\) 是关节位置，\(H=64\) 是动作块长度。<br>
+    <b>说人话：</b>不记「手在世界坐标的哪儿」，只记「相对此刻的自己，腕转了多少、指尖挪了多少、关节差多少」。<b>这三种量都是「增量」，因此换一台机器人、换一个安装高度，语义不变。</b><br>
+    这是跨本体能成立的工程前提：如果动作记在世界坐标系里，换本体就全废；记成相对量，才可能被同一个专家学。人类样本没有 \(q\)，所以关节那一项对它天然缺失——这正是 \(m_J\) 存在的原因，不是巧合，是结构决定的。
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3　双流掩码：谁监督哪条流，用一行表示</div>
+    \[
+    \mathcal{L}=\mathcal{L}^{\mathrm{EEF}}_{\mathrm{FM}}+\underbrace{m_{J}}_{\in\{0,1\}}\mathcal{L}^{\mathrm{joint}}_{\mathrm{FM}},\qquad
+    m_{J}=\begin{cases}1, & \text{机器人样本（有 } q\text{ 标签）}\\ 0, & \text{人类样本（无 } q\text{ 标签）}\end{cases}
+    \]
+    <div class="exp">
+    <b>说人话：</b>一个二元开关，决定「这一条样本能不能教关节流」。人类视频的关节标签不存在，硬编一个就是造假，所以直接把这一项关掉。<br>
+    但这里有个微妙之处值得点出：<b>关掉损失不等于关掉梯度。</b>两条流共享同一个动作专家，EEF 流在人类样本上产生的梯度仍会流经共享参数，进而影响关节流的行为。原文的梯度余弦 +0.84 就是这个机制的量化证据。<b>换句话说，「不监督」和「无影响」是两件事，这篇把前者说清了，后者靠实验测出来了。</b>
+    </div>
+  </div>
+</section>
+
+<section id="worth">
+  <h2><span class="tag">值不值</span>「符号管意图、连续管执行」这条切法值得抄</h2>
+
+  <h3>值得拿走的四条</h3>
+
+  <div class="box good">
+    <b>1. 把跨本体问题从几何改写成符号，是最有迁移价值的一步。</b>一旦意图被离散化，人类数据和机器人数据就落在同一张词表上，判重、对齐、混采全都不需要额外机制。<b>这个思路可以直接搬到任何「异构数据源 + 同一任务族」的场景。</b><br>
+    <b>2. 两条流并行、按场景切换，比强行统一表示务实。</b>有真机数据走关节流保精度，没数据走末端流保泛化——<b>承认「一种表示不可能同时最优」，然后用工程手段按需切换。</b>这比宣称「我们的统一表示两全其美」要诚实得多。<br>
+    <b>3. 反证做得比正证好。</b>用连续回归头做对照，证明「信息更多 ≠ 结构更好」（R² 0.230 但近邻 40%、迁移 18.3%）。<b>这种「把对手做强再比」的消融，是判断一篇论文可信度的最快方式。</b><br>
+    <b>4. 梯度流向分析解释了反直觉现象。</b>人类数据没有关节标签，却能提升关节流——原文用梯度能量占比（70% / 93%）与余弦相似度（+0.84）把机制量化了。<b>这类分析比再多两个基准分数有用。</b>
+  </div>
+
+  <h3>必须打的五个问号</h3>
+
+  <ul class="crit">
+    <li><b>零演示迁移的成功率只有 35%。</b>21/60 听起来是个开始，但换个说法就是<b>三分之二的新任务会失败</b>。而且这是「3 个未见任务、每任务 20 次」的小样本，置信区间很宽。原文没有给失败案例的分类，读者无法判断失败是「完全不会」还是「差一点」。</li>
+    <li><b>真机只有 6 项任务，且都是双臂 22-DoF 同一平台。</b>0.80 的综合得分是这 6 项的平均，任务选择、评分细则、初始条件均由作者设定。<b>换一个平台（比如 6 自由度夹爪）是否还成立，完全没有证据。</b></li>
+    <li><b>「FAST 是关键」这个结论有一个未排除的替代解释。</b>换成连续头时，作者用「梯度范数配平」来控制变量，但配平本身可能改变了优化动态。<b>更干净的对照应该是「保留离散但换词表大小」或「保留连续但加大容量」。</b>目前的证据支持「离散优于连续」，但不够支持「因为离散所以跨本体对齐」。</li>
+    <li><b>预训练采样比 1:1 没有做敏感性分析。</b>2,811 小时人类数据配 228 小时机器人数据，等权采样意味着<b>每条机器人样本被重复看了约 12 遍</b>。这个比例对结果有多敏感，原文没给曲线。对照 CamAct 那类工作（20% 视频比例在 120k 步最优、33% 反而下降），这个数字很可能是调出来的。</li>
+    <li><b>「零真机演示」的措辞要小心。</b>迁移时确实没有目标任务的遥操作数据，但模型仍在 105 个真机任务上预训练过、并在同平台真机上评测。<b>所以准确说法是「零目标任务演示」，不是「零真机数据」。</b>这两者在工程成本上差一个量级。</li>
+  </ul>
+
+  <div class="box note">
+    <b>一句话结论：</b>如果只拿一条，就拿「<b>把跨本体对齐从几何问题改成符号问题</b>」——意图离散化之后，人视频和真机数据第一次能落在同一张词表上；如果拿两条，第二条是「<b>两条流并行、按场景切换</b>」——承认一种表示不可能同时最优，比宣称统一表示两全其美更可信。但要清楚：<b>零演示迁移只有 35%，这条路刚刚走通第一步，不是已经走完。</b>
+  </div>
+
+  <p class="src">来源：公众号 human five《零真机演示，双臂灵巧手看人手视频学会新任务！Sharpa x CUHK x SJTU 新工作 SHAPE》（2026-11-27）· 论文 SHAPE: Discrete Supervision and Parallel Continuous Streams for Learning Dexterous Manipulation from Egocentric Human Data · arXiv 2611.24585 · 项目页 li-yaping.github.io/SHAPE</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 公众号 human five · 深度拆解前沿成果，说人话讲明白</footer>
+
+</div>
+
+</body>
+</html>

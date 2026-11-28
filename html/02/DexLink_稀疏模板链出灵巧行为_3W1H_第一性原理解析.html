@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DexLink：稀疏模板链出灵巧行为 · 3W1H 第一性原理解析</title>
+<script>MathJax = {tex: {inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']]}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+<style>
+  :root{--bg:#f7f8fa;--card:#fff;--text:#1a2233;--muted:#5b6472;--brand:#0b6bcb;--brand-bg:#eef5fd;--warn:#b45309;--warn-bg:#fef7ed;--ok:#047857;--ok-bg:#effcf5;--border:#e5e8ee;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;padding:32px 16px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  .head{background:linear-gradient(135deg,#0b3f7a,#0b6bcb);color:#fff;border-radius:14px;padding:30px 30px 24px;}
+  h1{font-size:26px;font-weight:700;line-height:1.4;}
+  h1 .sub{display:block;font-size:14px;font-weight:400;opacity:.85;margin-top:8px;}
+  .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;}
+  .meta div{background:rgba(255,255,255,.14);border-radius:8px;padding:4px 12px;font-size:13px;}
+  .thesis{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--brand);border-radius:12px;padding:22px 24px;margin:22px 0;}
+  .thesis .lbl{color:var(--brand);font-weight:700;font-size:14px;letter-spacing:1px;margin-bottom:8px;}
+  .thesis p{font-size:16px;}
+  .toc{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;font-size:13px;}
+  .toc a{color:var(--brand);text-decoration:none;background:var(--brand-bg);padding:4px 12px;border-radius:999px;}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:20px;}
+  h2{font-size:19px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  h2 .tag{font-size:12px;color:#fff;background:var(--brand);border-radius:6px;padding:2px 8px;margin-right:8px;vertical-align:2px;}
+  h3{font-size:16px;margin:16px 0 8px;color:#0b3f7a;}
+  p{margin:8px 0;color:var(--text);}
+  ul,ol{margin:8px 0 8px 22px;}
+  li{margin:6px 0;}
+  .step{border-left:3px solid var(--brand);background:var(--brand-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;}
+  .step .t{font-weight:700;margin-bottom:4px;}
+  .step .d{color:var(--muted);font-size:14.5px;}
+  .fml{background:#0f1729;color:#dbe7ff;border-radius:10px;padding:16px 18px;margin:14px 0;overflow-x:auto;}
+  .fml .name{color:#8fb8f5;font-size:13px;margin-bottom:8px;}
+  .fml .exp{color:#9fb0cc;font-size:13.5px;margin-top:10px;line-height:1.7;}
+  .box{border-radius:10px;padding:14px 18px;margin:12px 0;font-size:14.5px;}
+  .box.good{background:var(--ok-bg);border:1px solid #bbe7d3;}
+  .box.bad{background:var(--warn-bg);border:1px solid #f3d9b1;}
+  .crit{margin:10px 0 0 22px;}
+  .crit li{color:var(--warn);}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0;}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;}
+  th{background:#f2f6fc;}
+  a{color:var(--brand);}
+  .src{font-size:13px;color:var(--muted);}
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:24px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="head">
+  <h1>灵巧操作要的不是更多演示，是能复用的「抓法」<span class="sub">DexLink（Princeton / NEC Labs）· 稀疏 hand-object 交互模板（OakInk 287 / ARCTIC）· 物体感知重定向（构型项 + BPS 关系项，λ=1e-3）· 物体坐标系内插值出参考轨迹 · 残差 PPO 精修 51.2M transitions · 20 个尺度条件 13 个 100% · 跨类迁移 1.0 · 真机 4 物体全成</span></h1>
+  <div class="meta">
+    <div><b>论文发布</b> 2026-11-25 · arXiv 2611.34936</div>
+    <div><b>关键词</b> 交互模板 · 物体感知重定向 · 参考轨迹 · 残差强化学习 · 灵巧手</div>
+    <div><b>一句话</b> 可复用的不是轨迹，是「怎么抓」——路线每任务给一次，抓法从模板库拿</div>
+    <div><b>方向</b> 训练数据</div>
+  </div>
+</div>
+
+<div class="thesis">
+  <div class="lbl">💡 第一性原理核心立论</div>
+  <p>灵巧手的数据瓶颈不是没有演示，是每换一个物体就得重新演示一遍。DexLink 把一段演示拆成两半：物体该走的路，和手该怎么抓住它。路用几个路点描述，抓法用交互模板描述，模板可以换物体复用；中间缺的轨迹直接插值，反正后面的强化学习会把它修成动力学可行的。它真正的主张是——可复用的从来不是轨迹，而是「抓法」这件事本身。</p>
+</div>
+
+<div class="toc">
+  <a href="#s1">① 是什么</a>
+  <a href="#s2">② 为什么</a>
+  <a href="#s3">③ 怎么做</a>
+  <a href="#s4">④ 核心公式</a>
+  <a href="#s5">⑤ 价值与局限</a>
+</div>
+
+<div class="box bad" style="margin-top:0">
+<b>材料来源交代</b>：本篇依据 <b>arXiv 2611.34936 正文（HTML 版）</b>撰写，作者 Meenal Parakh、Deep Patel、Beining Han、Jia Deng，单位普林斯顿大学 / NEC 美国实验室，2026-11-25 提交。<b>关键数字均取自原文</b>：重定向 287 个交互 / 33 类物体、1 cm 阈值力闭合 60% / 2 cm 阈值 80%、召回 0.8（随机 0.4）；尺度实验 5 模板 × 4 尺度 = 20 条件、13 个达 100%；每策略 51.2M 环境转移、1,024 并行环境；真机 4 个物体全成功（含 2 个零样本）；重定向 CPU 约 10 分钟、RL 1~20 小时。<b>公式按原文转写</b>（重定向目标、参考链接、残差动作与奖励），符号做了统一。
+</div>
+
+<section id="s1">
+  <h2><span class="tag">What</span>是什么：把「一段演示」拆成「路点 + 模板」</h2>
+
+  <p>先看它换掉了什么。传统做法是「一段完整演示喂给策略」，它换成了<b>两样更小的东西</b>：</p>
+
+  <table>
+    <tr><th>拆出来的部分</th><th>怎么表示</th><th>复用性</th><th>谁提供</th></tr>
+    <tr><td><b>物体该走的路</b></td><td>物体位姿路点序列（s0 到 sK），每点带时间戳（含关节值时也带）</td><td>与物体、任务强绑定，<b>每任务写一次</b></td><td>人手写 / 智能体辅助</td></tr>
+    <tr><td><b>手该怎么抓</b></td><td><b>交互模板</b>：源物体网格 + 源物体坐标系下的人手关键点 + 源→目标旋转</td><td>与物体<b>弱绑定</b>——可以跨尺度、跨实例、跨类别搬</td><td>OakInk（287 个交互 / 33 类）、ARCTIC</td></tr>
+    <tr><td>中间那段轨迹</td><td><b>不在物体坐标系里插值</b>（腕变换在物体系内插值、旋转用球面插值）</td><td>—</td><td>算法生成，不要求动力学可行</td></tr>
+    <tr><td>动力学可行性</td><td><b>残差 PPO</b>：在参考轨迹上叠一个小的修正量</td><td>—</td><td>仿真里自己学</td></tr>
+  </table>
+
+  <p>这个拆法的锋利之处在于：<b>它把「采集成本」从「任务 × 物体」降到了「任务 + 物体类别」。</b>加一个新物体，不用重新演示，从模板库里挑一个抓法、重定向到新几何上就行。</p>
+
+  <h3>规模与成绩</h3>
+
+  <table>
+    <tr><th>维度</th><th>数值</th><th>为什么重要</th></tr>
+    <tr><td>重定向质量</td><td>287 个交互 / 33 类；1 cm 阈值力闭合可行率约 60%，2 cm 约 80%</td><td><b>60% 意味着四成的模板在严格阈值下抓不住</b>——这是它真实的上限</td></tr>
+    <tr><td>多样性</td><td>可行解召回约 0.8（随机基线 0.4），人类手 PCA 空间无坍缩</td><td>说明它没有退化成「总用同一种抓法」</td></tr>
+    <tr><td>跨几何复用</td><td>5 个模板 × 4 个尺度 = 20 条件，<b>13 个达 100%</b></td><td>集中在名义尺度附近，1.25× 那档崩了</td></tr>
+    <tr><td>跨类迁移</td><td>苹果→相机 1.0、苹果→鼠标 1.0、锤子→酒杯 1.0（目标专属模板反而 0.67）</td><td><b>迁移模板不输专属模板</b>，这是最反直觉的一条</td></tr>
+    <tr><td>训练预算</td><td>每策略 51.2M 转移 / 1,024 并行环境 / 3 个种子</td><td>单任务训练成本可控在 GPU 1~20 小时</td></tr>
+    <tr><td>真机</td><td>4 个物体（2 个见过、2 个零样本）全部抓取-抬升成功</td><td>只有 grasp-and-lift，<b>没有推、拧、插</b></td></tr>
+  </table>
+</section>
+
+<section id="s2">
+  <h2><span class="tag">Why</span>为什么：两条合成数据的路，卡在同一件事上</h2>
+
+  <div class="step">
+    <div class="t">第 1 步：仿真合成数据的两条老路，各有各的瓶颈</div>
+    <div class="d">一条靠<b>人类演示</b>（遥操作、动捕、视频标注）：采集贵、难规模化，且演示绑定在特定的「任务-物体」对上。另一条靠<b>通用奖励函数 / 手部先验</b>：便宜，但对「手指-物体到底怎么接触」控制力很弱，<b>容易生成物理上成立、但人类看着别扭的动作</b>。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 2 步：「演示」这个单位太粗了</div>
+    <div class="d">一段演示里混着两件性质完全不同的事：<b>物体要去哪</b>（任务语义，随物体变），和<b>手要怎么抓</b>（接触模式，跨物体很稳）。把它们捆在一起，就只能在「重新演示一遍」和「用通用奖励瞎试」之间二选一。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 3 步：这两件事的可复用性差一个量级</div>
+    <div class="d">「把杯子抬到 15 厘米」换一个杯子就完全不同；但「从侧面握住圆柱体、拇指对掌」换个杯子照样成立。<b>既然复用性不同，就该拆开、按各自的粒度复用。</b>这就是模板化的全部动机。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 4 步：拆开之后，中间那段轨迹就不必是「真轨迹」了</div>
+    <div class="d">这是最聪明的一步取舍：既然末端有 RL 精修，参考轨迹就<b>不需要动力学可行</b>，只需要「把探索的偏见往正确方向拉」。于是不必解轨迹优化、不必保证可执行，<b>直接插值就行</b>。原文写得很明确：参考只要求「把 RL 的探索偏见往意图行为上拉」。</div>
+  </div>
+
+  <div class="step">
+    <div class="t">第 5 步：但插值会带来「跟着参考走」的系统偏差</div>
+    <div class="d">如果策略直接输出绝对动作，参考一旦不完美，误差会累积、且无法修正。<b>所以用残差形式：输出对参考的有界修正量。</b>消融印证了这一点——Delta 动作在长程任务（叠三个方块）上完全失败（0.0），残差形式 100%。</div>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="tag">How</span>怎么做：重定向 → 链接 → 残差 RL</h2>
+
+  <h3>一、物体感知重定向：不匹配手指位置，匹配「手与物体的关系」</h3>
+
+  <p>最朴素的重定向是「让机器人指尖去够人类指尖的位置」（fingertip IK）。问题很明显：<b>人手和机械手的连杆长度不同，指尖对上不等于抓法对上。</b>所以 DexLink 同时保两件事：</p>
+
+  <ul>
+    <li><b>手内构型</b>：腕→指尖、指根→指尖、拇指对掌、手掌朝向三重点——这几组<b>相对关系</b>要对上，而不是绝对坐标对上；</li>
+    <li><b>手物关系</b>：用 <b>BPS（Basis Point Set）描述子</b>比较「每个手部关键点到物体表面的距离、方向、法向、局部特征」。<b>这是在比「手贴着物体的哪个部位、贴成什么样」，而不是比坐标。</b></li>
+  </ul>
+
+  <p>实现细节：SNOPT 求解、容差 1e-4、物体表面采 512 点、BPS 用 39 个手部关键点 × 9 通道 = 351 维；关系项权重 λ = 1e-3。最后做<b>穿透处理</b>：对手指关节组做顺序线搜索消除机器人与物体的穿插，并把「源模板里标记为接触」的关键点压向物体表面。</p>
+
+  <h3>二、参考轨迹链接：在物体坐标系里插值</h3>
+
+  <p>相邻两个带模板的路点之间，用归一化时间 alpha 插值（alpha 从 0 走到 1）。关键设计：<b>腕部变换在物体坐标系内插值</b>，然后乘上当前物体位姿。<b>这样物体在动的时候，手与物体的相对关系近似保持不变</b>——如果直接在世界上插值，物体一转，手就「脱手」了。</p>
+
+  <h3>三、残差 RL：参考给方向，策略修细节</h3>
+
+  <p>观测 116 维（本体感知 + 接触信号 + 腕相对物体状态 + 参考状态 + 归一化任务进度），动作 18 维（腕平移 3 + 腕旋转 3 + 12 个手关节）。奖励五项加权：<b>物体跟踪 0.625 / 手构型相似 0.083 / 手物关系相似 0.083 / 重定向关节接近 0.167 / 关节平滑 0.042</b>，完成再给 +10。</p>
+
+  <p>还有一个不显眼但很关键的技巧：<b>reset 时沿参考轨迹按访问密度取初始时间步</b>（负指数相关）。这样长程任务的每个阶段都能被并行学到，而不是每次从第一步重来。<b>消融显示：只从初始状态 reset，香蕉交接任务从 86.7% 掉到 30.0%。</b></p>
+
+  <h3>四、四任务消融：哪些部件是真的必需</h3>
+
+  <table>
+    <tr><th>配置</th><th>笔记本有序抓取</th><th>叠三块</th><th>香蕉双手交接</th></tr>
+    <tr><td>去参考轨迹（无 hand trajopt）</td><td>0.0</td><td>0.0</td><td>—</td></tr>
+    <tr><td>Delta 绝对动作</td><td>33.3</td><td>0.0</td><td>66.7</td></tr>
+    <tr><td>只从初始状态 reset</td><td>33.3</td><td>0.0</td><td>30.0</td></tr>
+    <tr><td>去交互奖励</td><td>0.0</td><td>66.7</td><td>33.3</td></tr>
+    <tr><td><b>完整方法</b></td><td><b>92.0</b></td><td><b>100.0</b></td><td><b>86.7</b></td></tr>
+  </table>
+
+  <p>这张表的价值在于：<b>四个部件（参考轨迹、残差形式、全阶段 reset、交互奖励）去掉任何一个，长程任务都会塌。</b>而且塌的方式各不相同——去参考是「根本学不出来」，去残差是「短程还行、长程全崩」。<b>这比只报最终成功率信息量大得多。</b></p>
+</section>
+
+<section id="s4">
+  <h2><span class="tag">Formula</span>核心公式：一个重定向、一个链接、一个奖励</h2>
+
+  <div class="fml">
+    <div class="name">式 1　物体感知重定向：构型 + 关系，两项一起压（原文核心式）</div>
+    \[
+    (\mathbf{w}_k^{\star},q_k^{\star})=\arg\min_{\mathbf{w}_k\in SE(3),\,q_k}\Big[\mathcal{L}_{\mathrm{cfg}}\big(\mathbf{w}_k\!\cdot\!\mathrm{FK}(q_k),\bar{P}^{h}_k\big)+\lambda\,\mathcal{L}_{\mathrm{rel}}\big(\mathbf{w}_k\!\cdot\!\mathrm{FK}(q_k),\mathcal{M}^{\mathrm{tgt}}_k;\bar{P}^{h}_k,\bar{\mathcal{M}}^{\mathrm{src}}_k\big)\Big]
+    \]
+    <div class="exp">
+    \(\mathbf{w}_k\) 是腕部位姿，\(q_k\) 是手部关节，\(\mathrm{FK}\) 是正运动学，\(\bar{P}^h_k\) 是旋转对齐后的人手关键点，\(\mathcal{M}^{\mathrm{tgt}}_k\) 是目标物体网格，\(\bar{\mathcal{M}}^{\mathrm{src}}_k\) 是源物体网格，\(\lambda=10^{-3}\)。<br>
+    <b>说人话：</b>调两个东西——手整体摆在哪、手指怎么弯——让两件事同时成立：<b>手的姿态像人手的姿态，手和物体的贴合关系也像人手与源物体的关系</b>。<br>
+    第一项 \(\mathcal{L}_{\mathrm{cfg}}\) 只在<b>相对量</b>上比（方向用余弦距离、未归一化向量用平方 L2），这样手大手小不影响；第二项 \(\mathcal{L}_{\mathrm{rel}}\) 才是关键，它用 BPS 描述子把「手贴着物体表面哪个点、贴着时法向朝哪」编码成 351 维去比。<b>没有第二项，重定向出来的手会「姿势像人、但离物体半厘米」——抓不住。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 2　参考轨迹链接：在物体坐标系里插值，物件转了手才不脱</div>
+    \[
+    \mathbf{w}^{\mathrm{ref}}_t=T^{\mathrm{obj}}_t\cdot\mathrm{Interp}_{SE(3)}\big(\mathbf{w}^{\star}_k,\mathbf{w}^{\star}_\ell;\alpha_t\big),\qquad
+    q^{\mathrm{ref}}_t=\mathrm{Interp}\big(q^{\star}_k,q^{\star}_\ell;\alpha_t\big),\qquad
+    \alpha_t=\frac{t-t_k}{t_\ell-t_k}
+    \]
+    <div class="exp">
+    \(T^{\mathrm{obj}}_t\) 是 \(t\) 时刻物体（或其关节部件）的位姿，\(\alpha_t\) 是归一化时间，旋转用球面插值、平移与关节值线性插值。<br>
+    <b>说人话：</b>别问「手在世界里的哪儿」，先问「手相对物体在哪儿」，插完再跟着物体一起走。<b>这样物体一边转一边被搬，手始终贴着它。</b><br>
+    这个式子还藏着一个前提：<b>参考轨迹不要求动力学可行</b>。原文写得很直白——它只需要把 RL 的探索往意图方向拉。所以这里可以放心用插值，不必解一个带约束的轨迹优化。<b>「不追求正确，只追求方向对」是整篇最省的取舍。</b>
+    </div>
+  </div>
+
+  <div class="fml">
+    <div class="name">式 3　残差动作与奖励：参考给底，策略加修正</div>
+    \[
+    \mathbf{w}^{\mathrm{cmd}}_t=\mathbf{w}^{\mathrm{ref}}_t\oplus\Delta\mathbf{w}_t,\quad
+    q^{\mathrm{cmd}}_t=q^{\mathrm{ref}}_t+\Delta q_t,\quad
+    R_t=\sum_{k\in\mathcal{K}}\bar{w}_k\,r_k(t)+w_{\mathrm{succ}}\mathbf{1}_{\mathrm{succ}}(t)
+    \]
+    <div class="exp">
+    \((\Delta\mathbf{w}_t,\Delta q_t)\sim\pi_\theta(x_t)\) 是策略输出的有界修正，\(\oplus\) 是 \(SE(3)\) 上的加法，\(\mathcal{K}=\{\mathrm{obj},\mathrm{int},\mathrm{ref},\mathrm{smooth}\}\) 分别是物体跟踪、手物交互相似、参考跟随、关节平滑四项，\(w_{\mathrm{succ}}=10\) 是完成奖励。<br>
+    <b>说人话：</b>参考轨迹先说「大概这么走」，策略只负责说「偏左两厘米、手指再合一点」。<b>因为只学修正量，探索空间小了一个量级，样本效率才上得去。</b><br>
+    五项权重的排序也值得看：<b>物体跟踪 0.625 占了六成，手物关系只有 0.083。</b>这说明它把「东西有没有到位」当主目标，把「抓得像不像人」当正则——<b>不是让人手当标准答案，而是让它当「不走歪」的约束。</b>
+    </div>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="tag">Worth</span>价值与局限：把数据成本的量纲从「任务×物体」降到「任务」</h2>
+
+  <h3>值得拿走的四条</h3>
+
+  <div class="box good">
+    <b>1. 「模板可复用、轨迹不必可行」是一组很省的组合。</b>因为不要求参考物理上能跑通，就不必解轨迹优化；因为末端有残差 RL，偏差能被修。这两条合起来，<b>把「造数据」从「录演示」变成了「选模板 + 写路点」</b>——原文估的任务制作成本是 &lt;1 分钟/任务（含人工核验）。<br>
+    <b>2. 重定向质量有两级指标，比只报成功率诚实。</b>1 cm 阈值 60%、2 cm 阈值 80%，等于自己说出了「四成模板在严格条件下抓不住」。<b>这种自曝短板的写法，比一个漂亮的 95% 更可信。</b><br>
+    <b>3. 跨类迁移不输专属模板，是最有工程价值的一条。</b>苹果→鼠标、锤子→酒杯都是 1.0，而给酒杯专门生成的模板反而只有 0.67。<b>说明「人手抓法的先验」比「为该物体定制的解」更强</b>——这直接推翻了「必须为每个物体单独造数据」的默认假设。<br>
+    <b>4. 消融的失败模式各不相同，信息量很大。</b>去参考 = 学不出来；去残差 = 长程崩；只从初始 reset = 后半段崩；去交互奖励 = 抓法崩。<b>四个部件各自对应一种失败模式，这让人能判断自己该补哪一块。</b>
+  </div>
+
+  <h3>必须打的五个问号</h3>
+
+  <ul class="crit">
+    <li><b>它需要一个显式的任务规格，而这个东西不好搞。</b>路点序列 + 每个路点挂哪个模板 + 源→目标旋转——<b>这比「给一段视频」难得多</b>。原文把这件事推给了「agentic 系统」，但那是展望，不是已实现的结果。换句话说：<b>它省掉了演示，但把成本转移到了「写规格」上。</b></li>
+    <li><b>真机只做了抓取-抬升。</b>4 个物体、每个 10 次试验、成功判据是「举在空中约 1 分钟」。<b>推、拧、插、双手交接这些真正难的动作，一个都没上真机。</b>所以「零样本 sim-to-real」这个结论的适用范围很窄。</li>
+    <li><b>20 个尺度条件里 7 个不是 100%，且 1.25× 那一档直接归零。</b>原文自己说「极端尺度不稳定且跨种子波动」。<b>这意味着它离「换个杯子就能用」还有距离——名义尺度附近好用，尺度一变就得重新挑模板。</b></li>
+    <li><b>「1.0 成功率」要看条件数。</b>跨类迁移表里每行是一个条件、可能只有一个种子。<b>而部分任务变体明确写了「2/3 个种子成功、1 个完全失败」。</b>所以那些 1.0 应当读作「在这个条件下成功过」，不是「稳定成功」。</li>
+    <li><b>只在刚体上验证，且模板来源有限。</b>OakInk 是静态/功能性交互、ARCTIC 是双手时序交互，<b>可形变物体（布、绳、袋子）完全没有覆盖</b>。而这类物体恰恰是「模板复用」最难的地方——它们的接触状态随形变而变，无法用一个静态关键点集描述。</li>
+  </ul>
+
+  <div class="box note">
+    <b>一句话结论：</b>如果只拿一条，就拿「<b>把演示拆成『路线 + 抓法』，按各自的复用粒度分别复用</b>」——这一拆，数据成本从「任务 × 物体」降到「任务 + 物体类别」；如果拿两条，第二条是「<b>参考轨迹不要求可行</b>」——既然末端有残差 RL，中间那段插值就够，不必解轨迹优化。<b>但要清楚：它用「写规格」换掉了「录演示」，而那件事目前还得靠人。</b>
+  </div>
+
+  <p class="src">来源：arXiv 2611.34936《DexLink: Synthesizing Dexterous Behaviors from Chained Hand-object Poses》（2026-11-25）· 作者 Meenal Parakh、Deep Patel、Beining Han、Jia Deng · 普林斯顿大学 / NEC 美国实验室 · 项目页 dex-link.github.io</p>
+</section>
+
+<footer>3W1H 第一性原理解析 · 前沿论文拆解 · 深度拆解前沿成果，说人话讲明白</footer>
+
+</div>
+
+</body>
+</html>
